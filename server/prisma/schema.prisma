@@ -101,8 +101,8 @@ model Ticket {
   createdAt   DateTime           @default(now()) @map("created_at")
   updatedAt   DateTime           @updatedAt @map("updated_at")
   app         App                @relation(fields: [appId], references: [id])
-  user        User               @relation("CreatedTickets", fields: [userId], references: [id])
-  assignee    User?              @relation("AssignedTickets", fields: [assignedTo], references: [id])
+  user        User               @relation("CreatedTickets", fields: [userId], references: [id], onDelete: Cascade)
+  assignee    User?              @relation("AssignedTickets", fields: [assignedTo], references: [id], onDelete: SetNull)
   comments    TicketComment[]
   attachments TicketAttachment[]
   history     TicketHistory[]
@@ -123,7 +123,7 @@ model TicketComment {
   isInternalNote Boolean  @default(false) @map("is_internal_note")
   createdAt      DateTime @default(now()) @map("created_at")
   ticket         Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  user           User     @relation(fields: [userId], references: [id])
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([ticketId])
   @@map("ticket_comments")
@@ -151,7 +151,7 @@ model TicketHistory {
   newValue  String?  @map("new_value")
   createdAt DateTime @default(now()) @map("created_at")
   ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  user      User     @relation("ChangedBy", fields: [changedBy], references: [id])
+  user      User     @relation("ChangedBy", fields: [changedBy], references: [id], onDelete: Cascade)
 
   @@index([ticketId])
   @@map("ticket_history")
@@ -177,7 +177,7 @@ model Feedback {
   comment     String?              @db.Text
   createdAt   DateTime             @default(now()) @map("created_at")
   app         App                  @relation(fields: [appId], references: [id])
-  user        User                 @relation(fields: [userId], references: [id])
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   replies     FeedbackReply[]
   attachments FeedbackAttachment[]
 
@@ -208,7 +208,7 @@ model FeedbackReply {
   body       String   @db.Text
   createdAt  DateTime @default(now()) @map("created_at")
   feedback   Feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [userId], references: [id])
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([feedbackId])
   @@map("feedback_replies")
@@ -231,7 +231,7 @@ model Notification {
   link      String?
   isRead    Boolean          @default(false) @map("is_read")
   createdAt DateTime         @default(now()) @map("created_at")
-  user      User             @relation(fields: [userId], references: [id])
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isRead])
   @@index([createdAt])

@@ -89,6 +89,23 @@ export default function Users() {
     if (selectedUser?.id === userId) viewUser(userId);
   };
 
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deletingUser, setDeletingUser] = useState(false);
+
+  const handleDeleteUser = async (userId: string) => {
+    setDeletingUser(true);
+    try {
+      await api.delete(`/admin/users/${userId}`);
+      setSelectedUser(null);
+      setDeleteConfirm(null);
+      fetchUsers();
+    } catch (err: any) {
+      alert(err.response?.data?.error || "Failed to delete user");
+    } finally {
+      setDeletingUser(false);
+    }
+  };
+
   const roleBadge = (role: string) => {
     const styles: Record<string, string> = {
       super_admin: "bg-purple-100 text-purple-700 ring-1 ring-purple-200",
@@ -366,14 +383,37 @@ export default function Users() {
                 </div>
 
                 {/* Actions */}
-                <button onClick={() => toggleBan(selectedUser.id, !selectedUser.isBanned)}
-                  className={`w-full py-2.5 rounded-xl text-sm font-medium transition-all ${
-                    selectedUser.isBanned
-                      ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
-                      : "bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
-                  }`}>
-                  {selectedUser.isBanned ? "Unban User" : "Ban User"}
-                </button>
+                <div className="space-y-2">
+                  <button onClick={() => toggleBan(selectedUser.id, !selectedUser.isBanned)}
+                    className={`w-full py-2.5 rounded-xl text-sm font-medium transition-all ${
+                      selectedUser.isBanned
+                        ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
+                        : "bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
+                    }`}>
+                    {selectedUser.isBanned ? "Unban User" : "Ban User"}
+                  </button>
+
+                  {deleteConfirm === selectedUser.id ? (
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-3 space-y-2">
+                      <p className="text-xs text-red-700 font-medium">Delete this user and all their data? This cannot be undone.</p>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleDeleteUser(selectedUser.id)} disabled={deletingUser}
+                          className="flex-1 py-2 rounded-lg text-xs font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-all">
+                          {deletingUser ? "Deleting..." : "Yes, Delete"}
+                        </button>
+                        <button onClick={() => setDeleteConfirm(null)}
+                          className="flex-1 py-2 rounded-lg text-xs font-medium bg-white text-gray-600 border border-gray-300 hover:bg-gray-50 transition-all">
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button onClick={() => setDeleteConfirm(selectedUser.id)}
+                      className="w-full py-2.5 rounded-xl text-sm font-medium bg-white text-red-600 border border-red-200 hover:bg-red-50 transition-all">
+                      Delete User
+                    </button>
+                  )}
+                </div>
 
                 {/* Recent tickets */}
                 {selectedUser.recentTickets && selectedUser.recentTickets.length > 0 && (

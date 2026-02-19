@@ -139,6 +139,28 @@ router.get("/tickets/:id", async (req: Request, res: Response) => {
   }
 });
 
+// Delete ticket
+router.delete("/tickets/:id", async (req: Request, res: Response) => {
+  try {
+    await prisma.ticket.delete({ where: { id: req.params.id } });
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Delete ticket error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Delete comment
+router.delete("/tickets/:id/comments/:commentId", async (req: Request, res: Response) => {
+  try {
+    await prisma.ticketComment.delete({ where: { id: req.params.commentId } });
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Delete comment error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Add comment or internal note
 router.post("/tickets/:id/notes", async (req: Request, res: Response) => {
   try {
@@ -459,6 +481,21 @@ router.patch("/users/:id/ban", async (req: Request, res: Response) => {
     return res.json(user);
   } catch (err) {
     console.error("Toggle ban error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Delete user
+router.delete("/users/:id", async (req: Request, res: Response) => {
+  try {
+    // Prevent self-deletion
+    if (req.params.id === req.user!.id) {
+      return res.status(400).json({ error: "Cannot delete your own account" });
+    }
+    await userService.deleteUser(req.params.id);
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Delete user error:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 });

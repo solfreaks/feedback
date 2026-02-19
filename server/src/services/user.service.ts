@@ -82,3 +82,7 @@ export async function toggleBan(userId: string, isBanned: boolean) {
     select: { id: true, email: true, name: true, isBanned: true },
   });
 }
+
+export async function deleteUser(userId: string) {
+  return prisma.user.delete({ where: { id: userId } });
+}

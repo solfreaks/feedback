@@ -1,0 +1,233 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  user
+  admin
+  super_admin
+}
+
+enum Priority {
+  low
+  medium
+  high
+  critical
+}
+
+enum TicketStatus {
+  open
+  in_progress
+  resolved
+  closed
+}
+
+enum FeedbackCategory {
+  bug_report
+  feature_request
+  suggestion
+  complaint
+  general
+}
+
+model App {
+  id          String     @id @default(uuid())
+  name        String
+  description String?
+  iconUrl     String?    @map("icon_url")
+  platform    String?    // e.g. "flutter", "android", "ios", "web"
+  bundleId    String?    @map("bundle_id") // e.g. "com.example.app"
+  emailFrom   String?    @map("email_from")
+  emailName   String?    @map("email_name")
+  smtpHost    String?    @map("smtp_host")
+  smtpPort    Int?       @map("smtp_port")
+  smtpUser    String?    @map("smtp_user")
+  smtpPass    String?    @map("smtp_pass")
+  apiKey      String     @unique @map("api_key")
+  isActive    Boolean    @default(true) @map("is_active")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  tickets     Ticket[]
+  categories  Category[]
+  feedbacks   Feedback[]
+
+  @@map("apps")
+}
+
+model User {
+  id              String          @id @default(uuid())
+  googleId        String?         @unique @map("google_id")
+  email           String          @unique
+  name            String
+  password        String?
+  avatarUrl       String?         @map("avatar_url")
+  role            UserRole        @default(user)
+  isBanned        Boolean         @default(false) @map("is_banned")
+  lastActiveAt    DateTime?       @map("last_active_at")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  tickets         Ticket[]        @relation("CreatedTickets")
+  assignedTickets Ticket[]        @relation("AssignedTickets")
+  comments        TicketComment[]
+  historyChanges  TicketHistory[] @relation("ChangedBy")
+  feedbacks       Feedback[]
+  feedbackReplies FeedbackReply[]
+  notifications   Notification[]
+
+  @@map("users")
+}
+
+model Ticket {
+  id          String             @id @default(uuid())
+  appId       String             @map("app_id")
+  userId      String             @map("user_id")
+  title       String
+  description String             @db.Text
+  category    String?
+  priority    Priority           @default(medium)
+  status      TicketStatus       @default(open)
+  assignedTo  String?            @map("assigned_to")
+  slaDeadline DateTime?          @map("sla_deadline")
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+  app         App                @relation(fields: [appId], references: [id])
+  user        User               @relation("CreatedTickets", fields: [userId], references: [id])
+  assignee    User?              @relation("AssignedTickets", fields: [assignedTo], references: [id])
+  comments    TicketComment[]
+  attachments TicketAttachment[]
+  history     TicketHistory[]
+
+  @@index([appId])
+  @@index([userId])
+  @@index([status])
+  @@index([priority])
+  @@index([assignedTo])
+  @@map("tickets")
+}
+
+model TicketComment {
+  id             String   @id @default(uuid())
+  ticketId       String   @map("ticket_id")
+  userId         String   @map("user_id")
+  body           String   @db.Text
+  isInternalNote Boolean  @default(false) @map("is_internal_note")
+  createdAt      DateTime @default(now()) @map("created_at")
+  ticket         Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id])
+
+  @@index([ticketId])
+  @@map("ticket_comments")
+}
+
+model TicketAttachment {
+  id        String   @id @default(uuid())
+  ticketId  String   @map("ticket_id")
+  fileUrl   String   @map("file_url")
+  fileName  String   @map("file_name")
+  fileSize  Int      @map("file_size")
+  createdAt DateTime @default(now()) @map("created_at")
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@map("ticket_attachments")
+}
+
+model TicketHistory {
+  id        String   @id @default(uuid())
+  ticketId  String   @map("ticket_id")
+  changedBy String   @map("changed_by")
+  field     String
+  oldValue  String?  @map("old_value")
+  newValue  String?  @map("new_value")
+  createdAt DateTime @default(now()) @map("created_at")
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user      User     @relation("ChangedBy", fields: [changedBy], references: [id])
+
+  @@index([ticketId])
+  @@map("ticket_history")
+}
+
+model Category {
+  id          String  @id @default(uuid())
+  appId       String  @map("app_id")
+  name        String
+  description String?
+  app         App     @relation(fields: [appId], references: [id])
+
+  @@unique([appId, name])
+  @@map("categories")
+}
+
+model Feedback {
+  id          String               @id @default(uuid())
+  appId       String               @map("app_id")
+  userId      String               @map("user_id")
+  rating      Int                  // 1-5 stars
+  category    FeedbackCategory     @default(general)
+  comment     String?              @db.Text
+  createdAt   DateTime             @default(now()) @map("created_at")
+  app         App                  @relation(fields: [appId], references: [id])
+  user        User                 @relation(fields: [userId], references: [id])
+  replies     FeedbackReply[]
+  attachments FeedbackAttachment[]
+
+  @@index([appId])
+  @@index([userId])
+  @@index([rating])
+  @@index([category])
+  @@map("feedbacks")
+}
+
+model FeedbackAttachment {
+  id         String   @id @default(uuid())
+  feedbackId String   @map("feedback_id")
+  fileUrl    String   @map("file_url")
+  fileName   String   @map("file_name")
+  fileSize   Int      @map("file_size")
+  createdAt  DateTime @default(now()) @map("created_at")
+  feedback   Feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+
+  @@index([feedbackId])
+  @@map("feedback_attachments")
+}
+
+model FeedbackReply {
+  id         String   @id @default(uuid())
+  feedbackId String   @map("feedback_id")
+  userId     String   @map("user_id")
+  body       String   @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+  feedback   Feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@index([feedbackId])
+  @@map("feedback_replies")
+}
+
+enum NotificationType {
+  new_ticket
+  ticket_update
+  new_feedback
+  new_comment
+  feedback_reply
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String           @map("user_id")
+  type      NotificationType
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean          @default(false) @map("is_read")
+  createdAt DateTime         @default(now()) @map("created_at")
+  user      User             @relation(fields: [userId], references: [id])
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}

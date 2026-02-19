@@ -19,6 +19,7 @@ export interface App {
   smtpPort?: number;
   smtpUser?: string;
   smtpPass?: string;
+  googleClientId?: string;
   apiKey: string;
   isActive: boolean;
   createdAt: string;

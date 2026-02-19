@@ -35,16 +35,19 @@ export default function Apps() {
   // Create modal
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [newApp, setNewApp] = useState({ name: "", description: "", platform: "", bundleId: "", emailFrom: "", emailName: "", smtpHost: "", smtpPort: "", smtpUser: "", smtpPass: "" });
+  const [newApp, setNewApp] = useState({ name: "", description: "", platform: "", bundleId: "", googleClientId: "", emailFrom: "", emailName: "", smtpHost: "", smtpPort: "", smtpUser: "", smtpPass: "" });
 
   // Edit modal
   const [editApp, setEditApp] = useState<App | null>(null);
   const [saving, setSaving] = useState(false);
-  const [editForm, setEditForm] = useState({ name: "", description: "", platform: "", bundleId: "", emailFrom: "", emailName: "", smtpHost: "", smtpPort: "", smtpUser: "", smtpPass: "" });
+  const [editForm, setEditForm] = useState({ name: "", description: "", platform: "", bundleId: "", googleClientId: "", emailFrom: "", emailName: "", smtpHost: "", smtpPort: "", smtpUser: "", smtpPass: "" });
 
   // Delete confirm
   const [deleteApp, setDeleteApp] = useState<App | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Setup guide
+  const [showGuide, setShowGuide] = useState(false);
 
   const fetchApps = () => {
     api.get("/admin/apps").then((r) => { setApps(r.data); setLoading(false); });
@@ -57,7 +60,7 @@ export default function Apps() {
     if (!newApp.name.trim()) return;
     setCreating(true);
     await api.post("/admin/apps", { ...newApp, smtpPort: newApp.smtpPort ? parseInt(newApp.smtpPort) : undefined });
-    setNewApp({ name: "", description: "", platform: "", bundleId: "", emailFrom: "", emailName: "", smtpHost: "", smtpPort: "", smtpUser: "", smtpPass: "" });
+    setNewApp({ name: "", description: "", platform: "", bundleId: "", googleClientId: "", emailFrom: "", emailName: "", smtpHost: "", smtpPort: "", smtpUser: "", smtpPass: "" });
     setShowCreate(false);
     setCreating(false);
     fetchApps();
@@ -74,7 +77,7 @@ export default function Apps() {
   };
 
   const openEdit = (app: App) => {
-    setEditForm({ name: app.name, description: app.description || "", platform: app.platform || "", bundleId: app.bundleId || "", emailFrom: app.emailFrom || "", emailName: app.emailName || "", smtpHost: app.smtpHost || "", smtpPort: app.smtpPort ? String(app.smtpPort) : "", smtpUser: app.smtpUser || "", smtpPass: app.smtpPass || "" });
+    setEditForm({ name: app.name, description: app.description || "", platform: app.platform || "", bundleId: app.bundleId || "", googleClientId: app.googleClientId || "", emailFrom: app.emailFrom || "", emailName: app.emailName || "", smtpHost: app.smtpHost || "", smtpPort: app.smtpPort ? String(app.smtpPort) : "", smtpUser: app.smtpUser || "", smtpPass: app.smtpPass || "" });
     setEditApp(app);
   };
 
@@ -150,6 +153,75 @@ export default function Apps() {
           </svg>
           Register App
         </button>
+      </div>
+
+      {/* Setup Guide */}
+      <div className="mb-6">
+        <button onClick={() => setShowGuide(!showGuide)}
+          className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors">
+          <svg className={`w-4 h-4 transition-transform ${showGuide ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+          </svg>
+          How to configure app settings
+        </button>
+        {showGuide && (
+          <div className="mt-3 bg-blue-50 border border-blue-200 rounded-xl p-5 text-sm text-gray-700 space-y-4">
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-1">Google Client ID (Web type)</h4>
+              <ol className="list-decimal list-inside space-y-1 text-gray-600">
+                <li>Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">Google Cloud Console &rarr; Credentials</a></li>
+                <li>Select the project for your app (or create one)</li>
+                <li>Under <strong>OAuth 2.0 Client IDs</strong>, find the <strong>Web application</strong> type client</li>
+                <li>If you don't have one, click <strong>Create Credentials &rarr; OAuth client ID &rarr; Web application</strong></li>
+                <li>Copy the <strong>Client ID</strong> (ends with <code className="bg-blue-100 px-1 rounded">.apps.googleusercontent.com</code>)</li>
+              </ol>
+              <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+                <strong>Important:</strong> Use the <strong>Web</strong> client ID here, not the Android/iOS one. In your mobile app, pass this as the <code className="bg-amber-100 px-1 rounded">serverClientId</code> (Flutter: <code className="bg-amber-100 px-1 rounded">GoogleSignIn(serverClientId: '...')</code>). The Android/iOS client IDs are only used by the mobile app locally — the server verifies tokens against the Web client ID.
+              </div>
+              <p className="mt-1 text-gray-500">Each app published under a different Google account needs its own Web Client ID.</p>
+            </div>
+
+            <div className="border-t border-blue-200 pt-4">
+              <h4 className="font-semibold text-gray-900 mb-1">Bundle ID / Package Name</h4>
+              <p className="text-gray-600">
+                <strong>Android:</strong> Find in <code className="bg-blue-100 px-1 rounded">android/app/build.gradle</code> &rarr; <code className="bg-blue-100 px-1 rounded">applicationId</code> (e.g. <code className="bg-blue-100 px-1 rounded">com.example.myapp</code>)<br />
+                <strong>iOS:</strong> Find in Xcode &rarr; Target &rarr; General &rarr; <strong>Bundle Identifier</strong><br />
+                <strong>Flutter:</strong> Same as Android <code className="bg-blue-100 px-1 rounded">applicationId</code>, or check <code className="bg-blue-100 px-1 rounded">pubspec.yaml</code>
+              </p>
+            </div>
+
+            <div className="border-t border-blue-200 pt-4">
+              <h4 className="font-semibold text-gray-900 mb-1">API Key</h4>
+              <p className="text-gray-600">
+                Auto-generated when you register an app. Use this key in your mobile app's <code className="bg-blue-100 px-1 rounded">x-api-key</code> header for all API requests.
+                You can regenerate it anytime (the old key will stop working immediately).
+              </p>
+            </div>
+
+            <div className="border-t border-blue-200 pt-4">
+              <h4 className="font-semibold text-gray-900 mb-1">Email Settings (optional)</h4>
+              <p className="text-gray-600 mb-2">
+                Configure per-app sender email so notifications come from the right address (e.g. <code className="bg-blue-100 px-1 rounded">support@shopease.com</code> instead of a generic address).
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-gray-600">
+                <li><strong>Sender Email / Name:</strong> The "From" address and display name for outgoing emails</li>
+                <li><strong>SMTP Settings:</strong> Only needed if this app uses a different mail server than the global default</li>
+              </ul>
+            </div>
+
+            <div className="border-t border-blue-200 pt-4">
+              <h4 className="font-semibold text-gray-900 mb-1">SMTP Settings (optional)</h4>
+              <p className="text-gray-600 mb-2">
+                If left empty, the global SMTP server is used. To use a separate mail server for this app:
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-gray-600">
+                <li><strong>Gmail:</strong> Host: <code className="bg-blue-100 px-1 rounded">smtp.gmail.com</code>, Port: <code className="bg-blue-100 px-1 rounded">587</code>, use an <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">App Password</a></li>
+                <li><strong>Outlook:</strong> Host: <code className="bg-blue-100 px-1 rounded">smtp-mail.outlook.com</code>, Port: <code className="bg-blue-100 px-1 rounded">587</code></li>
+                <li><strong>Custom domain:</strong> Host: <code className="bg-blue-100 px-1 rounded">mail.yourdomain.com</code>, Port: <code className="bg-blue-100 px-1 rounded">587</code> (TLS) or <code className="bg-blue-100 px-1 rounded">465</code> (SSL)</li>
+              </ul>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Apps Grid */}
@@ -306,6 +378,12 @@ export default function Apps() {
                     className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 font-mono" />
                 </div>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Google Client ID <span className="font-normal text-gray-400">(Web type)</span></label>
+                <input type="text" value={newApp.googleClientId} onChange={(e) => setNewApp({ ...newApp, googleClientId: e.target.value })}
+                  placeholder="your-client-id.apps.googleusercontent.com"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 font-mono" />
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Sender Email</label>
@@ -401,6 +479,12 @@ export default function Apps() {
                     placeholder="com.example.app"
                     className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 font-mono" />
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Google Client ID <span className="font-normal text-gray-400">(Web type)</span></label>
+                <input type="text" value={editForm.googleClientId} onChange={(e) => setEditForm({ ...editForm, googleClientId: e.target.value })}
+                  placeholder="your-client-id.apps.googleusercontent.com"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 font-mono" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>

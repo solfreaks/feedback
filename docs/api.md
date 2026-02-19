@@ -23,6 +23,7 @@
 - [File Uploads](#file-uploads)
 - [Error Responses](#error-responses)
 - [Integration Examples](#integration-examples)
+- [App Integration Guide](app-integration.md) (Flutter, Android — full setup)
 
 ---
 
@@ -33,11 +34,14 @@
 ```http
 POST /auth/google
 Content-Type: application/json
+x-api-key: <App API Key>
 
 {
   "idToken": "<Google ID Token>"
 }
 ```
+
+> The `x-api-key` header identifies which app the user is logging into. The server uses the app's configured Google Client ID to verify the token (falls back to the global `GOOGLE_CLIENT_ID` if not set).
 
 **Response `200`:**
 ```json
@@ -693,6 +697,7 @@ GET /admin/apps
     "bundleId": "com.example.shopease",
     "emailFrom": "support@shopease.com",
     "emailName": "ShopEase Support",
+    "googleClientId": "123456789.apps.googleusercontent.com",
     "apiKey": "fb_a1b2c3d4e5f6...",
     "isActive": true,
     "createdAt": "2026-01-01T00:00:00.000Z",
@@ -728,11 +733,12 @@ Content-Type: application/json
   "platform": "flutter",
   "bundleId": "com.example.myapp",
   "emailFrom": "support@myapp.com",
-  "emailName": "MyApp Support"
+  "emailName": "MyApp Support",
+  "googleClientId": "your-web-client-id.apps.googleusercontent.com"
 }
 ```
 
-Only `name` is required. Optional fields: `description`, `platform`, `bundleId`, `emailFrom`, `emailName`.
+Only `name` is required. Optional fields: `description`, `platform`, `bundleId`, `googleClientId` (Web type), `emailFrom`, `emailName`, `smtpHost`, `smtpPort`, `smtpUser`, `smtpPass`.
 
 **Response `201`:**
 ```json
@@ -766,7 +772,8 @@ Content-Type: application/json
   "bundleId": "com.example.updated",
   "isActive": false,
   "emailFrom": "help@updated.com",
-  "emailName": "Updated App Support"
+  "emailName": "Updated App Support",
+  "googleClientId": "new-web-client-id.apps.googleusercontent.com"
 }
 ```
 
@@ -1189,11 +1196,14 @@ const baseUrl = 'http://your-server:3000';
 String? jwtToken;
 const apiKey = 'fb_your_app_api_key';
 
-// 1. Authenticate with Google
+// 1. Authenticate with Google (x-api-key required)
 Future<void> login(String googleIdToken) async {
   final res = await http.post(
     Uri.parse('$baseUrl/auth/google'),
-    headers: {'Content-Type': 'application/json'},
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+    },
     body: jsonEncode({'idToken': googleIdToken}),
   );
   final data = jsonDecode(res.body);

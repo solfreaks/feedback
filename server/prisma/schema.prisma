@@ -48,6 +48,7 @@ model App {
   smtpPort    Int?       @map("smtp_port")
   smtpUser    String?    @map("smtp_user")
   smtpPass    String?    @map("smtp_pass")
+  googleClientId String? @map("google_client_id")
   apiKey      String     @unique @map("api_key")
   isActive    Boolean    @default(true) @map("is_active")
   createdAt   DateTime   @default(now()) @map("created_at")

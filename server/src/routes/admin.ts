@@ -217,10 +217,10 @@ router.get("/apps/:id", async (req: Request, res: Response) => {
 // Register new app
 router.post("/apps", async (req: Request, res: Response) => {
   try {
-    const { name, description, platform, bundleId, emailFrom, emailName, smtpHost, smtpPort, smtpUser, smtpPass } = req.body;
+    const { name, description, platform, bundleId, emailFrom, emailName, smtpHost, smtpPort, smtpUser, smtpPass, googleClientId } = req.body;
     if (!name) return res.status(400).json({ error: "name is required" });
     const app = await prisma.app.create({
-      data: { name, description, platform, bundleId, emailFrom, emailName, smtpHost, smtpPort, smtpUser, smtpPass, apiKey: `fb_${uuidv4().replace(/-/g, "")}` },
+      data: { name, description, platform, bundleId, emailFrom, emailName, smtpHost, smtpPort, smtpUser, smtpPass, googleClientId, apiKey: `fb_${uuidv4().replace(/-/g, "")}` },
     });
     return res.status(201).json(app);
   } catch (err) {
@@ -232,7 +232,7 @@ router.post("/apps", async (req: Request, res: Response) => {
 // Update app
 router.patch("/apps/:id", async (req: Request, res: Response) => {
   try {
-    const { name, description, platform, bundleId, isActive, emailFrom, emailName, smtpHost, smtpPort, smtpUser, smtpPass } = req.body;
+    const { name, description, platform, bundleId, isActive, emailFrom, emailName, smtpHost, smtpPort, smtpUser, smtpPass, googleClientId } = req.body;
     const app = await prisma.app.update({
       where: { id: req.params.id },
       data: {
@@ -247,6 +247,7 @@ router.patch("/apps/:id", async (req: Request, res: Response) => {
         ...(smtpPort !== undefined && { smtpPort }),
         ...(smtpUser !== undefined && { smtpUser }),
         ...(smtpPass !== undefined && { smtpPass }),
+        ...(googleClientId !== undefined && { googleClientId }),
       },
       include: { _count: { select: { tickets: true, feedbacks: true } } },
     });

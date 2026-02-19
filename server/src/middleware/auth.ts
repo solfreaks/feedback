@@ -5,8 +5,16 @@ import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import { config } from "../config";
 
-const googleClient = new OAuth2Client(config.googleClientId);
 const prisma = new PrismaClient();
+
+// Cache OAuth2Client instances per clientId
+const googleClients = new Map<string, OAuth2Client>();
+function getGoogleClient(clientId: string): OAuth2Client {
+  if (!googleClients.has(clientId)) {
+    googleClients.set(clientId, new OAuth2Client(clientId));
+  }
+  return googleClients.get(clientId)!;
+}
 
 export interface AuthUser {
   id: string;
@@ -39,10 +47,27 @@ export async function googleAuth(req: Request, res: Response) {
     return res.status(400).json({ error: "idToken is required" });
   }
 
+  const apiKey = req.headers["x-api-key"] as string;
+  if (!apiKey) {
+    return res.status(400).json({ error: "x-api-key header is required" });
+  }
+
   try {
-    const ticket = await googleClient.verifyIdToken({
+    // Look up app to get per-app Google Client ID
+    const app = await prisma.app.findUnique({ where: { apiKey } });
+    if (!app) {
+      return res.status(401).json({ error: "Invalid API key" });
+    }
+
+    const clientId = app.googleClientId || config.googleClientId;
+    if (!clientId) {
+      return res.status(500).json({ error: "Google Client ID not configured" });
+    }
+
+    const client = getGoogleClient(clientId);
+    const ticket = await client.verifyIdToken({
       idToken,
-      audience: config.googleClientId,
+      audience: clientId,
     });
     const payload = ticket.getPayload();
     if (!payload || !payload.sub || !payload.email) {

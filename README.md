@@ -93,7 +93,12 @@ Key endpoints:
 | POST   | `/feedbacks`              | Submit feedback      |
 | GET    | `/feedbacks`              | List my feedbacks    |
 
-See [docs/api.md](docs/api.md) for the full API reference with Flutter and Android examples.
+See [docs/api.md](docs/api.md) for the full API reference.
+
+## App Integration
+
+- [Flutter Integration Guide](docs/app-integration.md) — Complete Flutter setup with service class, UI examples, and auth flow
+- [Android Native Guide](docs/android-integration.md) — Kotlin + OkHttp setup with Google Sign-In, API client, and UI examples
 
 ## Deployment
 

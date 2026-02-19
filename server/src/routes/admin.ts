@@ -428,6 +428,25 @@ router.get("/feedback-stats", async (req: Request, res: Response) => {
   }
 });
 
+// ==================== PROFILE ====================
+
+// Update own profile
+router.patch("/profile", async (req: Request, res: Response) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ error: "name is required" });
+    const user = await prisma.user.update({
+      where: { id: req.user!.id },
+      data: { name: name.trim() },
+      select: { id: true, email: true, name: true, role: true, avatarUrl: true },
+    });
+    return res.json(user);
+  } catch (err) {
+    console.error("Update profile error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ==================== USERS ====================
 
 // List users

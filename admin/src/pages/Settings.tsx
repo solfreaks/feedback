@@ -30,9 +30,8 @@ export default function Settings() {
     setSaving(true);
     setProfileMsg("");
     try {
-      await api.patch("/admin/users/" + user.id + "/role", { role: user.role });
-      const updated = { ...user, name };
-      localStorage.setItem("user", JSON.stringify(updated));
+      const { data } = await api.patch("/admin/profile", { name });
+      localStorage.setItem("user", JSON.stringify({ ...user, name: data.name }));
       setProfileMsg("Profile updated successfully");
       setTimeout(() => setProfileMsg(""), 3000);
     } catch {

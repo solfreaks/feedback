@@ -35,12 +35,12 @@ export default function Apps() {
   // Create modal
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [newApp, setNewApp] = useState({ name: "", description: "", platform: "", bundleId: "", googleClientId: "", emailFrom: "", emailName: "", smtpHost: "", smtpPort: "", smtpUser: "", smtpPass: "" });
+  const [newApp, setNewApp] = useState({ name: "", description: "", platform: "", bundleId: "", googleClientId: "", emailFrom: "", emailName: "", smtpHost: "", smtpPort: "", smtpUser: "", smtpPass: "", firebaseProjectId: "", firebaseClientEmail: "", firebasePrivateKey: "" });
 
   // Edit modal
   const [editApp, setEditApp] = useState<App | null>(null);
   const [saving, setSaving] = useState(false);
-  const [editForm, setEditForm] = useState({ name: "", description: "", platform: "", bundleId: "", googleClientId: "", emailFrom: "", emailName: "", smtpHost: "", smtpPort: "", smtpUser: "", smtpPass: "" });
+  const [editForm, setEditForm] = useState({ name: "", description: "", platform: "", bundleId: "", googleClientId: "", emailFrom: "", emailName: "", smtpHost: "", smtpPort: "", smtpUser: "", smtpPass: "", firebaseProjectId: "", firebaseClientEmail: "", firebasePrivateKey: "" });
 
   // Delete confirm
   const [deleteApp, setDeleteApp] = useState<App | null>(null);
@@ -60,7 +60,7 @@ export default function Apps() {
     if (!newApp.name.trim()) return;
     setCreating(true);
     await api.post("/admin/apps", { ...newApp, smtpPort: newApp.smtpPort ? parseInt(newApp.smtpPort) : undefined });
-    setNewApp({ name: "", description: "", platform: "", bundleId: "", googleClientId: "", emailFrom: "", emailName: "", smtpHost: "", smtpPort: "", smtpUser: "", smtpPass: "" });
+    setNewApp({ name: "", description: "", platform: "", bundleId: "", googleClientId: "", emailFrom: "", emailName: "", smtpHost: "", smtpPort: "", smtpUser: "", smtpPass: "", firebaseProjectId: "", firebaseClientEmail: "", firebasePrivateKey: "" });
     setShowCreate(false);
     setCreating(false);
     fetchApps();
@@ -77,7 +77,7 @@ export default function Apps() {
   };
 
   const openEdit = (app: App) => {
-    setEditForm({ name: app.name, description: app.description || "", platform: app.platform || "", bundleId: app.bundleId || "", googleClientId: app.googleClientId || "", emailFrom: app.emailFrom || "", emailName: app.emailName || "", smtpHost: app.smtpHost || "", smtpPort: app.smtpPort ? String(app.smtpPort) : "", smtpUser: app.smtpUser || "", smtpPass: app.smtpPass || "" });
+    setEditForm({ name: app.name, description: app.description || "", platform: app.platform || "", bundleId: app.bundleId || "", googleClientId: app.googleClientId || "", emailFrom: app.emailFrom || "", emailName: app.emailName || "", smtpHost: app.smtpHost || "", smtpPort: app.smtpPort ? String(app.smtpPort) : "", smtpUser: app.smtpUser || "", smtpPass: app.smtpPass || "", firebaseProjectId: app.firebaseProjectId || "", firebaseClientEmail: app.firebaseClientEmail || "", firebasePrivateKey: app.firebasePrivateKey || "" });
     setEditApp(app);
   };
 
@@ -220,6 +220,21 @@ export default function Apps() {
                 <li><strong>Custom domain:</strong> Host: <code className="bg-blue-100 px-1 rounded">mail.yourdomain.com</code>, Port: <code className="bg-blue-100 px-1 rounded">587</code> (TLS) or <code className="bg-blue-100 px-1 rounded">465</code> (SSL)</li>
               </ul>
             </div>
+
+            <div className="border-t border-blue-200 pt-4">
+              <h4 className="font-semibold text-gray-900 mb-1">Firebase / FCM (Push Notifications)</h4>
+              <p className="text-gray-600 mb-2">To send push notifications to app users, configure Firebase for each app:</p>
+              <ol className="list-decimal list-inside space-y-1 text-gray-600">
+                <li>Go to <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">Firebase Console</a> and select your project</li>
+                <li>Go to <strong>Project Settings &rarr; Service accounts</strong></li>
+                <li>Click <strong>Generate new private key</strong> to download the JSON file</li>
+                <li>From the JSON file, copy: <code className="bg-blue-100 px-1 rounded">project_id</code>, <code className="bg-blue-100 px-1 rounded">client_email</code>, and <code className="bg-blue-100 px-1 rounded">private_key</code></li>
+                <li>Paste them into the Firebase fields when editing the app</li>
+              </ol>
+              <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+                <strong>Important:</strong> Keep the private key secret. Each app on a different Firebase project needs its own service account credentials.
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -341,8 +356,8 @@ export default function Apps() {
       {/* Create Modal */}
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowCreate(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4" onClick={(e) => e.stopPropagation()}>
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
               <h2 className="text-lg font-semibold text-gray-900">Register New App</h2>
               <button onClick={() => setShowCreate(false)} className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -350,7 +365,7 @@ export default function Apps() {
                 </svg>
               </button>
             </div>
-            <form onSubmit={createApp} className="p-6 space-y-4">
+            <form onSubmit={createApp} className="p-6 space-y-4 overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">App Name *</label>
                 <input type="text" value={newApp.name} onChange={(e) => setNewApp({ ...newApp, name: e.target.value })}
@@ -427,6 +442,30 @@ export default function Apps() {
                   </div>
                 </div>
               </div>
+              <div className="border-t border-gray-100 pt-4 mt-2">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Firebase / FCM (optional — for push notifications)</p>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Firebase Project ID</label>
+                    <input type="text" value={newApp.firebaseProjectId} onChange={(e) => setNewApp({ ...newApp, firebaseProjectId: e.target.value })}
+                      placeholder="my-app-12345"
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 font-mono" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Firebase Client Email</label>
+                    <input type="text" value={newApp.firebaseClientEmail} onChange={(e) => setNewApp({ ...newApp, firebaseClientEmail: e.target.value })}
+                      placeholder="firebase-adminsdk-xxx@my-app.iam.gserviceaccount.com"
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 font-mono text-xs" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Firebase Private Key</label>
+                    <textarea value={newApp.firebasePrivateKey} onChange={(e) => setNewApp({ ...newApp, firebasePrivateKey: e.target.value })}
+                      placeholder="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
+                      rows={3}
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 font-mono resize-none" />
+                  </div>
+                </div>
+              </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button type="button" onClick={() => setShowCreate(false)}
                   className="px-4 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors">Cancel</button>
@@ -443,8 +482,8 @@ export default function Apps() {
       {/* Edit Modal */}
       {editApp && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setEditApp(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4" onClick={(e) => e.stopPropagation()}>
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
               <h2 className="text-lg font-semibold text-gray-900">Edit App</h2>
               <button onClick={() => setEditApp(null)} className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -452,7 +491,7 @@ export default function Apps() {
                 </svg>
               </button>
             </div>
-            <form onSubmit={saveEdit} className="p-6 space-y-4">
+            <form onSubmit={saveEdit} className="p-6 space-y-4 overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">App Name *</label>
                 <input type="text" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
@@ -526,6 +565,30 @@ export default function Apps() {
                     <input type="password" value={editForm.smtpPass} onChange={(e) => setEditForm({ ...editForm, smtpPass: e.target.value })}
                       placeholder="app-password"
                       className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" />
+                  </div>
+                </div>
+              </div>
+              <div className="border-t border-gray-100 pt-4 mt-2">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Firebase / FCM (optional — for push notifications)</p>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Firebase Project ID</label>
+                    <input type="text" value={editForm.firebaseProjectId} onChange={(e) => setEditForm({ ...editForm, firebaseProjectId: e.target.value })}
+                      placeholder="my-app-12345"
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 font-mono" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Firebase Client Email</label>
+                    <input type="text" value={editForm.firebaseClientEmail} onChange={(e) => setEditForm({ ...editForm, firebaseClientEmail: e.target.value })}
+                      placeholder="firebase-adminsdk-xxx@my-app.iam.gserviceaccount.com"
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 font-mono text-xs" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Firebase Private Key</label>
+                    <textarea value={editForm.firebasePrivateKey} onChange={(e) => setEditForm({ ...editForm, firebasePrivateKey: e.target.value })}
+                      placeholder="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
+                      rows={3}
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 font-mono resize-none" />
                   </div>
                 </div>
               </div>

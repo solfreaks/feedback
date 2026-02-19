@@ -217,10 +217,10 @@ router.get("/apps/:id", async (req: Request, res: Response) => {
 // Register new app
 router.post("/apps", async (req: Request, res: Response) => {
   try {
-    const { name, description, platform, bundleId, emailFrom, emailName, smtpHost, smtpPort, smtpUser, smtpPass, googleClientId } = req.body;
+    const { name, description, platform, bundleId, emailFrom, emailName, smtpHost, smtpPort, smtpUser, smtpPass, googleClientId, firebaseProjectId, firebaseClientEmail, firebasePrivateKey } = req.body;
     if (!name) return res.status(400).json({ error: "name is required" });
     const app = await prisma.app.create({
-      data: { name, description, platform, bundleId, emailFrom, emailName, smtpHost, smtpPort, smtpUser, smtpPass, googleClientId, apiKey: `fb_${uuidv4().replace(/-/g, "")}` },
+      data: { name, description, platform, bundleId, emailFrom, emailName, smtpHost, smtpPort, smtpUser, smtpPass, googleClientId, firebaseProjectId, firebaseClientEmail, firebasePrivateKey, apiKey: `fb_${uuidv4().replace(/-/g, "")}` },
     });
     return res.status(201).json(app);
   } catch (err) {
@@ -232,7 +232,12 @@ router.post("/apps", async (req: Request, res: Response) => {
 // Update app
 router.patch("/apps/:id", async (req: Request, res: Response) => {
   try {
-    const { name, description, platform, bundleId, isActive, emailFrom, emailName, smtpHost, smtpPort, smtpUser, smtpPass, googleClientId } = req.body;
+    const { name, description, platform, bundleId, isActive, emailFrom, emailName, smtpHost, smtpPort, smtpUser, smtpPass, googleClientId, firebaseProjectId, firebaseClientEmail, firebasePrivateKey } = req.body;
+    // Clear cached Firebase app if config changes
+    if (firebaseProjectId !== undefined || firebaseClientEmail !== undefined || firebasePrivateKey !== undefined) {
+      const { clearFirebaseApp } = await import("../services/fcm.service");
+      clearFirebaseApp(req.params.id);
+    }
     const app = await prisma.app.update({
       where: { id: req.params.id },
       data: {
@@ -248,6 +253,9 @@ router.patch("/apps/:id", async (req: Request, res: Response) => {
         ...(smtpUser !== undefined && { smtpUser }),
         ...(smtpPass !== undefined && { smtpPass }),
         ...(googleClientId !== undefined && { googleClientId }),
+        ...(firebaseProjectId !== undefined && { firebaseProjectId }),
+        ...(firebaseClientEmail !== undefined && { firebaseClientEmail }),
+        ...(firebasePrivateKey !== undefined && { firebasePrivateKey }),
       },
       include: { _count: { select: { tickets: true, feedbacks: true } } },
     });

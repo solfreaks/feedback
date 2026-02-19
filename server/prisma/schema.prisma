@@ -55,7 +55,11 @@ model App {
   updatedAt   DateTime   @updatedAt @map("updated_at")
   tickets     Ticket[]
   categories  Category[]
+  firebaseProjectId    String?  @map("firebase_project_id")
+  firebaseClientEmail  String?  @map("firebase_client_email")
+  firebasePrivateKey   String?  @db.Text @map("firebase_private_key")
   feedbacks   Feedback[]
+  deviceTokens DeviceToken[]
 
   @@map("apps")
 }
@@ -78,6 +82,7 @@ model User {
   feedbacks       Feedback[]
   feedbackReplies FeedbackReply[]
   notifications   Notification[]
+  deviceTokens    DeviceToken[]
 
   @@map("users")
 }
@@ -231,4 +236,21 @@ model Notification {
   @@index([userId, isRead])
   @@index([createdAt])
   @@map("notifications")
+}
+
+model DeviceToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  appId     String   @map("app_id")
+  token     String   @db.VarChar(512)
+  platform  String?  // "android", "ios"
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  app       App      @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, token])
+  @@index([userId])
+  @@index([appId])
+  @@map("device_tokens")
 }

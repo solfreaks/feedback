@@ -20,6 +20,9 @@ export interface App {
   smtpUser?: string;
   smtpPass?: string;
   googleClientId?: string;
+  firebaseProjectId?: string;
+  firebaseClientEmail?: string;
+  firebasePrivateKey?: string;
   apiKey: string;
   isActive: boolean;
   createdAt: string;

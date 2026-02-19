@@ -879,4 +879,98 @@ Future<void> _clearToken() async {
 - [ ] Configure Google Sign-In in your app with `serverClientId` = Web Client ID
 - [ ] Initialize `FeedbackService` with your API key and server URL
 - [ ] Test: Sign in → Create ticket → Add comment → Submit feedback
+- [ ] (Optional) Set up Firebase and register FCM token for push notifications
 - [ ] Deploy and update the server URL to production
+
+---
+
+## Push Notifications (FCM)
+
+Send push notifications to users when their tickets are updated or feedback receives a reply.
+
+### 1. Firebase Setup
+
+1. Add Firebase to your Flutter project: [FlutterFire docs](https://firebase.google.com/docs/flutter/setup)
+2. In the Firebase Console, go to **Project Settings → Service accounts → Generate new private key**
+3. In the admin panel, edit your app and paste: **Project ID**, **Client Email**, and **Private Key**
+
+### 2. Dependencies
+
+```yaml
+# pubspec.yaml
+dependencies:
+  firebase_core: ^3.0.0
+  firebase_messaging: ^15.0.0
+```
+
+### 3. Initialize and Register Token
+
+```dart
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+
+// In your main.dart or after login:
+await Firebase.initializeApp();
+final fcmToken = await FirebaseMessaging.instance.getToken();
+if (fcmToken != null) {
+  await FeedbackService.registerDeviceToken(fcmToken);
+}
+
+// Listen for token refresh
+FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
+  FeedbackService.registerDeviceToken(newToken);
+});
+```
+
+### 4. Add to FeedbackService
+
+```dart
+// Add these methods to FeedbackService:
+
+static Future<void> registerDeviceToken(String token) async {
+  await _post('/device-tokens', {
+    'token': token,
+    'platform': Platform.isAndroid ? 'android' : 'ios',
+  });
+}
+
+static Future<void> removeDeviceToken(String token) async {
+  await http.delete(
+    Uri.parse('$_baseUrl/device-tokens'),
+    headers: _headers(),
+    body: jsonEncode({'token': token}),
+  );
+}
+```
+
+### 5. Handle Incoming Notifications
+
+```dart
+// Foreground messages
+FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+  // Show local notification or in-app banner
+  final title = message.notification?.title ?? '';
+  final body = message.notification?.body ?? '';
+  // Use flutter_local_notifications to show a notification
+});
+
+// Background/terminated tap handler
+FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+  final type = message.data['type']; // "ticket_update", "new_comment", "feedback_reply"
+  final ticketId = message.data['ticketId'];
+  final feedbackId = message.data['feedbackId'];
+  // Navigate to the relevant screen
+});
+```
+
+### 6. Unregister on Logout
+
+```dart
+Future<void> logout() async {
+  final token = await FirebaseMessaging.instance.getToken();
+  if (token != null) {
+    await FeedbackService.removeDeviceToken(token);
+  }
+  // Clear stored JWT, navigate to login...
+}
+```

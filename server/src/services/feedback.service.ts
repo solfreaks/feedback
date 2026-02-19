@@ -1,5 +1,6 @@
 import { PrismaClient, FeedbackCategory } from "@prisma/client";
 import { notifyAdmins } from "./notification.service";
+import { sendPushToUser } from "./fcm.service";
 
 const prisma = new PrismaClient();
 
@@ -73,10 +74,24 @@ export async function getFeedbackDetail(feedbackId: string) {
 }
 
 export async function addReply(data: { feedbackId: string; userId: string; body: string }) {
-  return prisma.feedbackReply.create({
+  const reply = await prisma.feedbackReply.create({
     data,
     include: { user: { select: { id: true, name: true, avatarUrl: true } } },
   });
+
+  // FCM push to feedback creator
+  const feedback = await prisma.feedback.findUnique({
+    where: { id: data.feedbackId },
+    select: { userId: true, appId: true, rating: true },
+  });
+  if (feedback && feedback.userId !== data.userId) {
+    sendPushToUser(feedback.userId, feedback.appId, {
+      title: "Feedback Reply",
+      body: `${reply.user.name} replied to your ${feedback.rating}★ feedback`,
+    }, { type: "feedback_reply", feedbackId: data.feedbackId });
+  }
+
+  return reply;
 }
 
 export async function addFeedbackAttachment(data: {

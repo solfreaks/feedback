@@ -2,6 +2,7 @@ import { PrismaClient, Priority, TicketStatus } from "@prisma/client";
 import { calculateSlaDeadline } from "../utils/sla";
 import { notifyTicketCreated, notifyStatusChange, notifyNewComment } from "./email.service";
 import { notifyAdmins } from "./notification.service";
+import { sendPushToUser } from "./fcm.service";
 
 const prisma = new PrismaClient();
 
@@ -117,6 +118,11 @@ export async function addComment(data: {
       // Notify ticket creator (if commenter is not the creator)
       if (ticket.userId !== data.userId) {
         notifyNewComment(ticket.user.email, ticket.title, comment.user.name, ticket.app);
+        // FCM push to ticket creator
+        sendPushToUser(ticket.userId, ticket.appId, {
+          title: "New Comment",
+          body: `${comment.user.name} commented on "${ticket.title}"`,
+        }, { type: "new_comment", ticketId: data.ticketId });
       }
       // Notify assigned developer (if commenter is not the assignee)
       if (ticket.assignee && ticket.assignee.id !== data.userId) {
@@ -174,6 +180,11 @@ export async function updateTicket(
   // Notify on status change
   if (updates.status && updates.status !== current.status) {
     notifyStatusChange(current.user.email, current.title, current.status, updates.status, current.app);
+    // FCM push to ticket creator
+    sendPushToUser(current.userId, current.appId, {
+      title: "Ticket Updated",
+      body: `Your ticket "${current.title}" is now ${updates.status.replace("_", " ")}`,
+    }, { type: "ticket_update", ticketId });
   }
 
   return ticket;

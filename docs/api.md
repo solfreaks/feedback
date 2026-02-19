@@ -17,6 +17,7 @@
 - [Admin — Apps & Categories](#admin--apps--categories)
 - [Admin — Users](#admin--users)
 - [Admin — Analytics](#admin--analytics)
+- [Device Tokens (FCM)](#device-tokens-fcm)
 - [Notifications](#notifications)
 - [WebSocket (Real-time)](#websocket-real-time)
 - [SLA & Priority](#sla--priority)
@@ -738,7 +739,7 @@ Content-Type: application/json
 }
 ```
 
-Only `name` is required. Optional fields: `description`, `platform`, `bundleId`, `googleClientId` (Web type), `emailFrom`, `emailName`, `smtpHost`, `smtpPort`, `smtpUser`, `smtpPass`.
+Only `name` is required. Optional fields: `description`, `platform`, `bundleId`, `googleClientId` (Web type), `emailFrom`, `emailName`, `smtpHost`, `smtpPort`, `smtpUser`, `smtpPass`, `firebaseProjectId`, `firebaseClientEmail`, `firebasePrivateKey`.
 
 **Response `201`:**
 ```json
@@ -1015,6 +1016,83 @@ GET /admin/analytics?appId=uuid
   ]
 }
 ```
+
+---
+
+## Device Tokens (FCM)
+
+Register and remove FCM device tokens for push notifications. Requires `Authorization` + `x-api-key` headers.
+
+### Register Device Token
+
+```
+POST /device-tokens
+```
+
+**Body:**
+```json
+{
+  "token": "fcm-device-token-string",
+  "platform": "android"  // optional: "android" or "ios"
+}
+```
+
+**Response (201):**
+```json
+{
+  "id": "uuid",
+  "userId": "user-uuid",
+  "appId": "app-uuid",
+  "token": "fcm-device-token-string",
+  "platform": "android",
+  "createdAt": "2025-01-01T00:00:00.000Z",
+  "updatedAt": "2025-01-01T00:00:00.000Z"
+}
+```
+
+If the same token already exists for the user, it will be updated (upsert).
+
+### Remove Device Token
+
+Call this on user logout to stop receiving push notifications.
+
+```
+DELETE /device-tokens
+```
+
+**Body:**
+```json
+{
+  "token": "fcm-device-token-string"
+}
+```
+
+**Response (200):**
+```json
+{ "success": true }
+```
+
+### Push Notification Events
+
+The server sends FCM notifications for these events:
+
+| Event | Recipient | Notification |
+|-------|-----------|-------------|
+| Ticket status change | Ticket creator | "Your ticket 'Title' is now resolved" |
+| New comment (non-internal) | Ticket creator | "Name commented on 'Title'" |
+| Feedback reply | Feedback creator | "Name replied to your 5★ feedback" |
+
+Each notification includes a `data` payload with `type` (`ticket_update`, `new_comment`, `feedback_reply`) and the relevant `ticketId` or `feedbackId` for navigation.
+
+### Firebase Setup (Admin Panel)
+
+Each app needs its own Firebase service account for FCM. In the admin panel (Apps → Edit), provide:
+
+- **Firebase Project ID** — from the service account JSON (`project_id`)
+- **Firebase Client Email** — from the JSON (`client_email`)
+- **Firebase Private Key** — from the JSON (`private_key`)
+
+Generate the service account JSON from: Firebase Console → Project Settings → Service accounts → Generate new private key.
 
 ---
 

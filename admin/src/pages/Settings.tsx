@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import api from "../api";
 
 export default function Settings() {
@@ -27,6 +27,8 @@ export default function Settings() {
 
   // Test email state
   const [testEmailTo, setTestEmailTo] = useState(user.email || "");
+  const [testEmailAppId, setTestEmailAppId] = useState("");
+  const [testEmailApps, setTestEmailApps] = useState<{ id: string; name: string }[]>([]);
   const [sendingTest, setSendingTest] = useState(false);
   const [testEmailMsg, setTestEmailMsg] = useState({ text: "", type: "" });
 
@@ -95,13 +97,21 @@ export default function Settings() {
     }
   };
 
+  useEffect(() => {
+    api.get("/admin/apps").then((r) => setTestEmailApps(r.data));
+  }, []);
+
   const sendTestEmail = async (e: FormEvent) => {
     e.preventDefault();
     setSendingTest(true);
     setTestEmailMsg({ text: "", type: "" });
     try {
-      const { data } = await api.post("/admin/test-email", { to: testEmailTo });
-      setTestEmailMsg({ text: `Test email sent to ${data.to}`, type: "success" });
+      const { data } = await api.post("/admin/test-email", {
+        to: testEmailTo,
+        ...(testEmailAppId ? { appId: testEmailAppId } : {}),
+      });
+      const source = data.source === "app" ? "per-app SMTP" : "global SMTP";
+      setTestEmailMsg({ text: `Test email sent to ${data.to} via ${source}`, type: "success" });
       setTimeout(() => setTestEmailMsg({ text: "", type: "" }), 5000);
     } catch (err: any) {
       setTestEmailMsg({ text: err.response?.data?.error || "Failed to send test email", type: "error" });
@@ -294,9 +304,25 @@ export default function Settings() {
                   <p className="text-xs text-gray-400 mt-1">Defaults to your account email if left unchanged</p>
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">SMTP Source</label>
+                  <select value={testEmailAppId} onChange={(e) => setTestEmailAppId(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors bg-white">
+                    <option value="">Global SMTP (.env)</option>
+                    {testEmailApps.map((a) => (
+                      <option key={a.id} value={a.id}>{a.name} (per-app SMTP)</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {testEmailAppId
+                      ? "Uses the SMTP settings configured for this app in Apps → Edit"
+                      : "Uses the global SMTP_HOST / SMTP_USER from the server .env file"}
+                  </p>
+                </div>
+
                 <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
                   <p className="text-sm text-blue-700 font-medium mb-1">What this sends</p>
-                  <p className="text-xs text-blue-600">A simple test email with subject "Test Email – Feedback Hub" using your global SMTP configuration from the server's <code className="bg-blue-100 px-1 rounded">.env</code> file.</p>
+                  <p className="text-xs text-blue-600">A simple test email to verify your SMTP configuration is working. Select an app above to test its per-app SMTP, or leave on Global to test the server's <code className="bg-blue-100 px-1 rounded">.env</code> settings.</p>
                 </div>
 
                 {testEmailMsg.text && (

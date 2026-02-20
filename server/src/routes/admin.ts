@@ -488,17 +488,29 @@ router.patch("/profile", async (req: Request, res: Response) => {
 // Send test email
 router.post("/test-email", async (req: Request, res: Response) => {
   try {
-    const { to } = req.body;
+    const { to, appId } = req.body;
     const recipient = to?.trim() || req.user!.email;
+
+    let app: { name: string; emailFrom?: string | null; emailName?: string | null; smtpHost?: string | null; smtpPort?: number | null; smtpUser?: string | null; smtpPass?: string | null } | undefined;
+    if (appId) {
+      const found = await prisma.app.findUnique({
+        where: { id: appId },
+        select: { name: true, emailFrom: true, emailName: true, smtpHost: true, smtpPort: true, smtpUser: true, smtpPass: true },
+      });
+      if (!found) return res.status(404).json({ error: "App not found" });
+      app = found;
+    }
+
     await emailService.sendEmail(
       recipient,
-      "Test Email – Feedback Hub",
+      `Test Email – ${app?.name || "Feedback Hub"}`,
       `<h2>Test Email</h2>
-       <p>This is a test email sent from Feedback Hub to verify your SMTP configuration is working correctly.</p>
-       <p>If you received this, your email setup is working!</p>
-       <p style="color:#888;font-size:12px">Sent at ${new Date().toLocaleString()}</p>`
+       <p>This is a test email sent from <strong>${app?.name || "Feedback Hub"}</strong> to verify your SMTP configuration is working correctly.</p>
+       <p>If you received this, your ${app ? "per-app" : "global"} email setup is working!</p>
+       <p style="color:#888;font-size:12px">Sent at ${new Date().toLocaleString()}</p>`,
+      app
     );
-    return res.json({ success: true, to: recipient });
+    return res.json({ success: true, to: recipient, source: app ? "app" : "global" });
   } catch (err: any) {
     console.error("Test email error:", err);
     return res.status(500).json({ error: err.message || "Failed to send test email" });

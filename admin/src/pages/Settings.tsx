@@ -3,7 +3,7 @@ import api from "../api";
 
 export default function Settings() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const [activeTab, setActiveTab] = useState<"profile" | "admins" | "security">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "admins" | "security" | "email">("profile");
 
   // Profile state
   const [name, setName] = useState(user.name || "");
@@ -24,6 +24,11 @@ export default function Settings() {
   const [adminPassword, setAdminPassword] = useState("");
   const [registering, setRegistering] = useState(false);
   const [regMsg, setRegMsg] = useState({ text: "", type: "" });
+
+  // Test email state
+  const [testEmailTo, setTestEmailTo] = useState(user.email || "");
+  const [sendingTest, setSendingTest] = useState(false);
+  const [testEmailMsg, setTestEmailMsg] = useState({ text: "", type: "" });
 
   const saveProfile = async (e: FormEvent) => {
     e.preventDefault();
@@ -90,6 +95,21 @@ export default function Settings() {
     }
   };
 
+  const sendTestEmail = async (e: FormEvent) => {
+    e.preventDefault();
+    setSendingTest(true);
+    setTestEmailMsg({ text: "", type: "" });
+    try {
+      const { data } = await api.post("/admin/test-email", { to: testEmailTo });
+      setTestEmailMsg({ text: `Test email sent to ${data.to}`, type: "success" });
+      setTimeout(() => setTestEmailMsg({ text: "", type: "" }), 5000);
+    } catch (err: any) {
+      setTestEmailMsg({ text: err.response?.data?.error || "Failed to send test email", type: "error" });
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
   const tabs = [
     { key: "profile" as const, label: "Profile", icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -99,6 +119,11 @@ export default function Settings() {
     { key: "security" as const, label: "Security", icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+      </svg>
+    )},
+    { key: "email" as const, label: "Test Email", icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
       </svg>
     )},
     ...(user.role === "super_admin" ? [{ key: "admins" as const, label: "Admin Registration", icon: (
@@ -247,6 +272,66 @@ export default function Settings() {
                   <button type="submit" disabled={pwSaving}
                     className="bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
                     {pwSaving ? "Changing..." : "Change Password"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Test Email Tab */}
+          {activeTab === "email" && (
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-100">
+                <h2 className="text-base font-semibold text-gray-900">Test Email Configuration</h2>
+                <p className="text-sm text-gray-500 mt-0.5">Send a test email to verify your SMTP settings are working</p>
+              </div>
+              <form onSubmit={sendTestEmail} className="p-6 space-y-5">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Send To</label>
+                  <input type="email" value={testEmailTo} onChange={(e) => setTestEmailTo(e.target.value)}
+                    required placeholder="recipient@example.com"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors" />
+                  <p className="text-xs text-gray-400 mt-1">Defaults to your account email if left unchanged</p>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
+                  <p className="text-sm text-blue-700 font-medium mb-1">What this sends</p>
+                  <p className="text-xs text-blue-600">A simple test email with subject "Test Email – Feedback Hub" using your global SMTP configuration from the server's <code className="bg-blue-100 px-1 rounded">.env</code> file.</p>
+                </div>
+
+                {testEmailMsg.text && (
+                  <div className={`flex items-center gap-2 text-sm px-4 py-3 rounded-lg ${
+                    testEmailMsg.type === "error" ? "bg-red-50 text-red-700 border border-red-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  }`}>
+                    {testEmailMsg.type === "error" ? (
+                      <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                    )}
+                    {testEmailMsg.text}
+                  </div>
+                )}
+
+                <div className="pt-2">
+                  <button type="submit" disabled={sendingTest}
+                    className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                    {sendingTest ? (
+                      <>
+                        <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                        </svg>
+                        Send Test Email
+                      </>
+                    )}
                   </button>
                 </div>
               </form>

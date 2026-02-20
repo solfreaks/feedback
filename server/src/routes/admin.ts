@@ -9,6 +9,7 @@ import * as ticketService from "../services/ticket.service";
 import * as analyticsService from "../services/analytics.service";
 import * as feedbackService from "../services/feedback.service";
 import * as userService from "../services/user.service";
+import * as emailService from "../services/email.service";
 import { config } from "../config";
 
 const router = Router();
@@ -192,6 +193,21 @@ router.post("/tickets/:id/attachments", upload.single("file"), async (req: Reque
     return res.status(201).json(attachment);
   } catch (err) {
     console.error("Admin upload attachment error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// List admin users (for assignee picker)
+router.get("/admins", async (_req: Request, res: Response) => {
+  try {
+    const admins = await prisma.user.findMany({
+      where: { role: { in: ["admin", "super_admin"] } },
+      select: { id: true, name: true, email: true, avatarUrl: true, role: true },
+      orderBy: { name: "asc" },
+    });
+    return res.json(admins);
+  } catch (err) {
+    console.error("List admins error:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -417,6 +433,28 @@ router.post("/feedbacks/:id/attachments", upload.single("file"), async (req: Req
   }
 });
 
+// Delete feedback
+router.delete("/feedbacks/:id", async (req: Request, res: Response) => {
+  try {
+    await prisma.feedback.delete({ where: { id: req.params.id } });
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Admin delete feedback error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Delete feedback reply
+router.delete("/feedbacks/:id/replies/:replyId", async (req: Request, res: Response) => {
+  try {
+    await prisma.feedbackReply.delete({ where: { id: req.params.replyId } });
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Admin delete feedback reply error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Feedback analytics
 router.get("/feedback-stats", async (req: Request, res: Response) => {
   try {
@@ -444,6 +482,26 @@ router.patch("/profile", async (req: Request, res: Response) => {
   } catch (err) {
     console.error("Update profile error:", err);
     return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Send test email
+router.post("/test-email", async (req: Request, res: Response) => {
+  try {
+    const { to } = req.body;
+    const recipient = to?.trim() || req.user!.email;
+    await emailService.sendEmail(
+      recipient,
+      "Test Email – Feedback Hub",
+      `<h2>Test Email</h2>
+       <p>This is a test email sent from Feedback Hub to verify your SMTP configuration is working correctly.</p>
+       <p>If you received this, your email setup is working!</p>
+       <p style="color:#888;font-size:12px">Sent at ${new Date().toLocaleString()}</p>`
+    );
+    return res.json({ success: true, to: recipient });
+  } catch (err: any) {
+    console.error("Test email error:", err);
+    return res.status(500).json({ error: err.message || "Failed to send test email" });
   }
 });
 

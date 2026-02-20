@@ -54,16 +54,25 @@ export default function TicketDetail() {
   const [deletingTicket, setDeletingTicket] = useState(false);
   const [deleteCommentId, setDeleteCommentId] = useState<string | null>(null);
   const [deletingComment, setDeletingComment] = useState(false);
+  const [admins, setAdmins] = useState<{ id: string; name: string; avatarUrl?: string }[]>([]);
+  const [assignDropdownOpen, setAssignDropdownOpen] = useState(false);
 
   const fetchTicket = () => {
     api.get(`/admin/tickets/${id}`).then((r) => { setTicket(r.data); setLoading(false); });
   };
 
   useEffect(() => { fetchTicket(); }, [id]);
+  useEffect(() => {
+    api.get("/admin/admins").then((r) => setAdmins(r.data));
+  }, []);
 
-  const updateTicket = async (updates: Record<string, string>) => {
+  const updateTicket = async (updates: Record<string, string | null>) => {
     setUpdating(true);
-    await api.patch(`/admin/tickets/${id}`, updates);
+    // Convert empty string to null for unassign
+    const payload = Object.fromEntries(
+      Object.entries(updates).map(([k, v]) => [k, v === "" ? null : v])
+    );
+    await api.patch(`/admin/tickets/${id}`, payload);
     fetchTicket();
     setUpdating(false);
   };
@@ -566,15 +575,53 @@ export default function TicketDetail() {
               </div>
 
               {/* Assignee */}
-              <div>
+              <div className="relative">
                 <label className="text-xs font-medium text-gray-400 block mb-1">Assignee</label>
-                {ticket.assignee ? (
-                  <div className="flex items-center gap-2">
-                    <Avatar name={ticket.assignee.name} size={24} />
-                    <span className="text-sm font-medium text-gray-700">{ticket.assignee.name}</span>
+                <button onClick={() => setAssignDropdownOpen((o) => !o)}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition-colors text-left">
+                  {ticket.assignee ? (
+                    <>
+                      <Avatar name={ticket.assignee.name} size={22} />
+                      <span className="text-sm font-medium text-gray-700 flex-1">{ticket.assignee.name}</span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-[22px] h-[22px] rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      </div>
+                      <span className="text-sm text-gray-400 italic flex-1">Unassigned</span>
+                    </>
+                  )}
+                  <svg className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {assignDropdownOpen && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden">
+                    <button onClick={() => { updateTicket({ assignedTo: "" }); setAssignDropdownOpen(false); }}
+                      className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-gray-50 text-left border-b border-gray-100">
+                      <div className="w-[22px] h-[22px] rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </div>
+                      <span className="text-sm text-gray-500">Unassign</span>
+                    </button>
+                    {admins.map((a) => (
+                      <button key={a.id} onClick={() => { updateTicket({ assignedTo: a.id }); setAssignDropdownOpen(false); }}
+                        className={`w-full flex items-center gap-2 px-3 py-2.5 hover:bg-blue-50 text-left ${ticket.assignedTo === a.id ? "bg-blue-50" : ""}`}>
+                        <Avatar name={a.name} avatarUrl={a.avatarUrl} size={22} />
+                        <span className="text-sm text-gray-700">{a.name}</span>
+                        {ticket.assignedTo === a.id && (
+                          <svg className="w-3.5 h-3.5 text-blue-600 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </button>
+                    ))}
                   </div>
-                ) : (
-                  <span className="text-sm text-gray-400 italic">Unassigned</span>
                 )}
               </div>
 

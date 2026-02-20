@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import api from "../api";
 import Avatar from "../components/Avatar";
 
@@ -71,6 +71,11 @@ export default function FeedbackDetail() {
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [deleteFeedbackConfirm, setDeleteFeedbackConfirm] = useState(false);
+  const [deletingFeedback, setDeletingFeedback] = useState(false);
+  const [deleteReplyId, setDeleteReplyId] = useState<string | null>(null);
+  const [deletingReply, setDeletingReply] = useState(false);
+  const navigate = useNavigate();
 
   const fetchFeedback = () => {
     api.get(`/admin/feedbacks/${id}`).then((r) => { setFeedback(r.data); setLoading(false); });
@@ -96,6 +101,30 @@ export default function FeedbackDetail() {
     });
     setUploading(false);
     fetchFeedback();
+  };
+
+  const handleDeleteFeedback = async () => {
+    setDeletingFeedback(true);
+    try {
+      await api.delete(`/admin/feedbacks/${id}`);
+      navigate("/feedbacks");
+    } catch {
+      setDeletingFeedback(false);
+      setDeleteFeedbackConfirm(false);
+    }
+  };
+
+  const handleDeleteReply = async (replyId: string) => {
+    setDeletingReply(true);
+    try {
+      await api.delete(`/admin/feedbacks/${id}/replies/${replyId}`);
+      setDeleteReplyId(null);
+      fetchFeedback();
+    } catch {
+      /* ignore */
+    } finally {
+      setDeletingReply(false);
+    }
   };
 
   if (loading) {
@@ -238,7 +267,7 @@ export default function FeedbackDetail() {
               {feedback.replies.length > 0 ? (
                 <div className="space-y-1">
                   {feedback.replies.map((r, i) => (
-                    <div key={r.id} className="flex gap-3 pb-4">
+                    <div key={r.id} className="group/reply flex gap-3 pb-4">
                       <div className="flex flex-col items-center flex-shrink-0">
                         <Avatar name={r.user.name} avatarUrl={r.user.avatarUrl} size={32} />
                         {i < feedback.replies.length - 1 && (
@@ -250,6 +279,24 @@ export default function FeedbackDetail() {
                           <span className="text-sm font-semibold text-gray-900">{r.user.name}</span>
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700">Admin</span>
                           <span className="text-xs text-gray-400">{timeAgo(r.createdAt)}</span>
+                          {deleteReplyId === r.id ? (
+                            <span className="flex items-center gap-1 ml-auto">
+                              <button onClick={() => handleDeleteReply(r.id)} disabled={deletingReply}
+                                className="text-xs text-red-600 hover:text-red-700 font-medium">
+                                {deletingReply ? "..." : "Confirm"}
+                              </button>
+                              <button onClick={() => setDeleteReplyId(null)}
+                                className="text-xs text-gray-400 hover:text-gray-600 font-medium">Cancel</button>
+                            </span>
+                          ) : (
+                            <button onClick={() => setDeleteReplyId(r.id)}
+                              className="ml-auto opacity-0 group-hover/reply:opacity-100 text-gray-300 hover:text-red-500 transition-all"
+                              title="Delete reply">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          )}
                         </div>
                         <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
                           <p className="text-sm text-gray-700 whitespace-pre-wrap">{r.body}</p>
@@ -364,6 +411,38 @@ export default function FeedbackDetail() {
                 <span className="text-gray-500">Submitted</span>
                 <span className="font-medium text-gray-700">{new Date(feedback.createdAt).toLocaleDateString()}</span>
               </div>
+            </div>
+          </div>
+
+          {/* Delete Feedback */}
+          <div className="bg-white rounded-xl border border-red-200 overflow-hidden">
+            <div className="px-5 py-3.5 bg-red-50 border-b border-red-200">
+              <h3 className="text-xs font-semibold text-red-600 uppercase tracking-wider">Danger Zone</h3>
+            </div>
+            <div className="p-5">
+              {!deleteFeedbackConfirm ? (
+                <button onClick={() => setDeleteFeedbackConfirm(true)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Delete Feedback
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-xs text-red-600">This will permanently delete this feedback, all replies, and attachments.</p>
+                  <div className="flex gap-2">
+                    <button onClick={handleDeleteFeedback} disabled={deletingFeedback}
+                      className="flex-1 px-3 py-2 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 transition-colors">
+                      {deletingFeedback ? "Deleting..." : "Confirm"}
+                    </button>
+                    <button onClick={() => setDeleteFeedbackConfirm(false)}
+                      className="flex-1 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

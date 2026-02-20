@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import api from "../api";
+import Avatar from "../components/Avatar";
 import type { App } from "../types";
 
 interface FeedbackItem {
@@ -235,9 +236,7 @@ export default function FeedbackList() {
                 className="block bg-white rounded-xl border border-gray-200 p-5 hover:border-blue-300 hover:shadow-sm transition-all">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-violet-500 flex items-center justify-center text-sm font-bold text-white">
-                      {fb.user.name.charAt(0).toUpperCase()}
-                    </div>
+                    <Avatar name={fb.user.name} avatarUrl={fb.user.avatarUrl} size={36} />
                     <div>
                       <p className="text-sm font-medium text-gray-900">{fb.user.name}</p>
                       <p className="text-xs text-gray-400">{fb.user.email} · {fb.app.name}</p>

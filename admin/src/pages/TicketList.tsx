@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import api from "../api";
+import Avatar from "../components/Avatar";
 import type { Ticket, App } from "../types";
 
 const priorityColors: Record<string, string> = {
@@ -197,9 +198,7 @@ export default function TicketList() {
                         </td>
                         <td className="px-6 py-3.5">
                           <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-violet-500 flex items-center justify-center text-[10px] font-bold text-white">
-                              {t.user.name.charAt(0).toUpperCase()}
-                            </div>
+                            <Avatar name={t.user.name} avatarUrl={t.user.avatarUrl} size={24} />
                             <span className="text-gray-700">{t.user.name}</span>
                           </div>
                         </td>

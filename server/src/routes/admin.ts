@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { v4 as uuidv4 } from "uuid";
 import multer from "multer";
 import path from "path";
+import fs from "fs";
 import { authenticate } from "../middleware/auth";
 import { adminGuard } from "../middleware/adminGuard";
 import * as ticketService from "../services/ticket.service";
@@ -14,6 +15,14 @@ import { config } from "../config";
 
 const router = Router();
 const prisma = new PrismaClient();
+
+function deleteUploadedFile(fileUrl: string) {
+  try {
+    const filename = path.basename(fileUrl);
+    const filepath = path.join(config.uploadDir, filename);
+    if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+  } catch { /* ignore */ }
+}
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -143,7 +152,12 @@ router.get("/tickets/:id", async (req: Request, res: Response) => {
 // Delete ticket
 router.delete("/tickets/:id", async (req: Request, res: Response) => {
   try {
+    const attachments = await prisma.ticketAttachment.findMany({
+      where: { ticketId: req.params.id },
+      select: { fileUrl: true },
+    });
     await prisma.ticket.delete({ where: { id: req.params.id } });
+    attachments.forEach((a) => deleteUploadedFile(a.fileUrl));
     return res.json({ success: true });
   } catch (err) {
     console.error("Delete ticket error:", err);
@@ -436,7 +450,12 @@ router.post("/feedbacks/:id/attachments", upload.single("file"), async (req: Req
 // Delete feedback
 router.delete("/feedbacks/:id", async (req: Request, res: Response) => {
   try {
+    const attachments = await prisma.feedbackAttachment.findMany({
+      where: { feedbackId: req.params.id },
+      select: { fileUrl: true },
+    });
     await prisma.feedback.delete({ where: { id: req.params.id } });
+    attachments.forEach((a) => deleteUploadedFile(a.fileUrl));
     return res.json({ success: true });
   } catch (err) {
     console.error("Admin delete feedback error:", err);

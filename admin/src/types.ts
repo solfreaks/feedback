@@ -28,6 +28,7 @@ export interface App {
   createdAt: string;
   updatedAt: string;
   _count?: { tickets: number; feedbacks: number };
+  admins?: { id: string; name: string; avatarUrl?: string | null }[];
 }
 
 export interface Ticket {

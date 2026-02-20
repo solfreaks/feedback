@@ -60,6 +60,7 @@ model App {
   firebasePrivateKey   String?  @db.Text @map("firebase_private_key")
   feedbacks   Feedback[]
   deviceTokens DeviceToken[]
+  admins      AppAdmin[]
 
   @@map("apps")
 }
@@ -83,8 +84,18 @@ model User {
   feedbackReplies FeedbackReply[]
   notifications   Notification[]
   deviceTokens    DeviceToken[]
+  appAdmins       AppAdmin[]
 
   @@map("users")
+}
+
+model AppAdmin {
+  appId  String @map("app_id")
+  userId String @map("user_id")
+  app    App    @relation(fields: [appId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([appId, userId])
+  @@map("app_admins")
 }
 
 model Ticket {

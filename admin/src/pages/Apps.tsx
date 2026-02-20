@@ -1,6 +1,7 @@
 import { useState, useEffect, type FormEvent } from "react";
 import api from "../api";
 import type { App } from "../types";
+import Avatar from "../components/Avatar";
 
 const platformOptions = [
   { value: "", label: "Not specified" },
@@ -41,6 +42,8 @@ export default function Apps() {
   const [editApp, setEditApp] = useState<App | null>(null);
   const [saving, setSaving] = useState(false);
   const [editForm, setEditForm] = useState({ name: "", description: "", platform: "", bundleId: "", googleClientId: "", emailFrom: "", emailName: "", smtpHost: "", smtpPort: "", smtpUser: "", smtpPass: "", firebaseProjectId: "", firebaseClientEmail: "", firebasePrivateKey: "" });
+  const [allAdmins, setAllAdmins] = useState<{ id: string; name: string; avatarUrl?: string | null }[]>([]);
+  const [selectedAdminIds, setSelectedAdminIds] = useState<string[]>([]);
 
   // Delete confirm
   const [deleteApp, setDeleteApp] = useState<App | null>(null);
@@ -70,7 +73,10 @@ export default function Apps() {
     e.preventDefault();
     if (!editApp) return;
     setSaving(true);
-    await api.patch(`/admin/apps/${editApp.id}`, { ...editForm, smtpPort: editForm.smtpPort ? parseInt(editForm.smtpPort) : undefined });
+    await Promise.all([
+      api.patch(`/admin/apps/${editApp.id}`, { ...editForm, smtpPort: editForm.smtpPort ? parseInt(editForm.smtpPort) : undefined }),
+      api.put(`/admin/apps/${editApp.id}/admins`, { adminIds: selectedAdminIds }),
+    ]);
     setSaving(false);
     setEditApp(null);
     fetchApps();
@@ -78,7 +84,9 @@ export default function Apps() {
 
   const openEdit = (app: App) => {
     setEditForm({ name: app.name, description: app.description || "", platform: app.platform || "", bundleId: app.bundleId || "", googleClientId: app.googleClientId || "", emailFrom: app.emailFrom || "", emailName: app.emailName || "", smtpHost: app.smtpHost || "", smtpPort: app.smtpPort ? String(app.smtpPort) : "", smtpUser: app.smtpUser || "", smtpPass: app.smtpPass || "", firebaseProjectId: app.firebaseProjectId || "", firebaseClientEmail: app.firebaseClientEmail || "", firebasePrivateKey: app.firebasePrivateKey || "" });
+    setSelectedAdminIds((app.admins || []).map((a) => a.id));
     setEditApp(app);
+    api.get("/admin/admins").then((r) => setAllAdmins(r.data));
   };
 
   const uploadIcon = async (appId: string, file: File) => {
@@ -297,6 +305,25 @@ export default function Apps() {
                   {app._count?.feedbacks || 0} feedbacks
                 </span>
               </div>
+
+              {/* Assigned Admins */}
+              {app.admins && app.admins.length > 0 && (
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Assignees</span>
+                  <div className="flex items-center">
+                    {app.admins.slice(0, 5).map((admin, i) => (
+                      <div key={admin.id} className="ring-2 ring-white rounded-full" style={{ marginLeft: i === 0 ? 0 : -6 }}>
+                        <Avatar name={admin.name} avatarUrl={admin.avatarUrl} size={22} />
+                      </div>
+                    ))}
+                    {app.admins.length > 5 && (
+                      <div className="w-[22px] h-[22px] rounded-full bg-gray-200 flex items-center justify-center text-[9px] font-bold text-gray-600 ring-2 ring-white" style={{ marginLeft: -6 }}>
+                        +{app.admins.length - 5}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* API Key */}
               <div>
@@ -597,6 +624,31 @@ export default function Apps() {
                       className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 font-mono resize-none" />
                   </div>
                 </div>
+              </div>
+              <div className="border-t border-gray-100 pt-4 mt-2">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Assigned Admins <span className="font-normal normal-case text-gray-400">— responsible for tickets from this app</span></p>
+                {allAdmins.length === 0 ? (
+                  <p className="text-xs text-gray-400 italic">Loading admins...</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {allAdmins.map((admin) => {
+                      const selected = selectedAdminIds.includes(admin.id);
+                      return (
+                        <button key={admin.id} type="button"
+                          onClick={() => setSelectedAdminIds(selected ? selectedAdminIds.filter((id) => id !== admin.id) : [...selectedAdminIds, admin.id])}
+                          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${selected ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-700 border-gray-300 hover:border-blue-400"}`}>
+                          <Avatar name={admin.name} avatarUrl={admin.avatarUrl} size={18} />
+                          {admin.name}
+                          {selected && (
+                            <svg className="w-3 h-3 ml-0.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                            </svg>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button type="button" onClick={() => setEditApp(null)}

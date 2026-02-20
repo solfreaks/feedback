@@ -241,10 +241,14 @@ router.get("/analytics", async (req: Request, res: Response) => {
 router.get("/apps", async (_req: Request, res: Response) => {
   try {
     const apps = await prisma.app.findMany({
-      include: { _count: { select: { tickets: true, feedbacks: true } } },
+      include: {
+        _count: { select: { tickets: true, feedbacks: true } },
+        admins: { select: { user: { select: { id: true, name: true, avatarUrl: true } } } },
+      },
       orderBy: { createdAt: "desc" },
     });
-    return res.json(apps);
+    const result = apps.map((a) => ({ ...a, admins: a.admins.map((aa) => aa.user) }));
+    return res.json(result);
   } catch (err) {
     console.error("List apps error:", err);
     return res.status(500).json({ error: "Internal server error" });
@@ -354,6 +358,38 @@ router.delete("/apps/:id", async (req: Request, res: Response) => {
     return res.json({ success: true });
   } catch (err) {
     console.error("Delete app error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get admins assigned to an app
+router.get("/apps/:id/admins", async (req: Request, res: Response) => {
+  try {
+    const rows = await prisma.appAdmin.findMany({
+      where: { appId: req.params.id },
+      select: { user: { select: { id: true, name: true, avatarUrl: true, email: true } } },
+    });
+    return res.json(rows.map((r) => r.user));
+  } catch (err) {
+    console.error("Get app admins error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Replace admins assigned to an app
+router.put("/apps/:id/admins", async (req: Request, res: Response) => {
+  try {
+    const { adminIds } = req.body as { adminIds: string[] };
+    if (!Array.isArray(adminIds)) return res.status(400).json({ error: "adminIds must be an array" });
+    await prisma.$transaction([
+      prisma.appAdmin.deleteMany({ where: { appId: req.params.id } }),
+      ...(adminIds.length > 0 ? [prisma.appAdmin.createMany({
+        data: adminIds.map((userId) => ({ appId: req.params.id, userId })),
+      })] : []),
+    ]);
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Update app admins error:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 });

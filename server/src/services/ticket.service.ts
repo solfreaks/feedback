@@ -13,19 +13,29 @@ const ticketInclude = {
   _count: { select: { comments: true, attachments: true } },
 };
 
-async function getAutoAssignee(): Promise<string | null> {
-  // Find the admin with the fewest open/in_progress tickets (round-robin load balancing)
-  const admins = await prisma.user.findMany({
-    where: { role: { in: ["admin", "super_admin"] } },
-    select: { id: true },
+async function getAutoAssignee(appId: string): Promise<string | null> {
+  // Prefer admins assigned to this app, fall back to all admins
+  const appAdmins = await prisma.appAdmin.findMany({
+    where: { appId },
+    select: { userId: true },
   });
-  if (admins.length === 0) return null;
+  let candidateIds = appAdmins.map((a) => a.userId);
+
+  if (candidateIds.length === 0) {
+    const allAdmins = await prisma.user.findMany({
+      where: { role: { in: ["admin", "super_admin"] } },
+      select: { id: true },
+    });
+    candidateIds = allAdmins.map((a) => a.id);
+  }
+
+  if (candidateIds.length === 0) return null;
 
   const counts = await Promise.all(
-    admins.map(async (a) => ({
-      id: a.id,
+    candidateIds.map(async (id) => ({
+      id,
       count: await prisma.ticket.count({
-        where: { assignedTo: a.id, status: { in: ["open", "in_progress"] } },
+        where: { assignedTo: id, status: { in: ["open", "in_progress"] } },
       }),
     }))
   );
@@ -42,7 +52,7 @@ export async function createTicket(data: {
   priority?: Priority;
 }) {
   const priority = data.priority || "medium";
-  const assignedTo = await getAutoAssignee();
+  const assignedTo = await getAutoAssignee(data.appId);
   const ticket = await prisma.ticket.create({
     data: {
       appId: data.appId,

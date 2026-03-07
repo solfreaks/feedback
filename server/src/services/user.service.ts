@@ -2,9 +2,23 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+export async function getUserStats() {
+  const [total, admins, banned] = await Promise.all([
+    prisma.user.count(),
+    prisma.user.count({ where: { role: { in: ["admin", "super_admin"] } } }),
+    prisma.user.count({ where: { isBanned: true } }),
+  ]);
+  // Active in last 7 days
+  const activeRecent = await prisma.user.count({
+    where: { lastActiveAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
+  });
+  return { total, admins, banned, activeRecent };
+}
+
 export async function listUsers(opts: {
   role?: string;
   search?: string;
+  isBanned?: boolean;
   page?: number;
   limit?: number;
 }) {
@@ -13,6 +27,7 @@ export async function listUsers(opts: {
   const where: any = {};
 
   if (opts.role) where.role = opts.role;
+  if (opts.isBanned !== undefined) where.isBanned = opts.isBanned;
   if (opts.search) {
     where.OR = [
       { name: { contains: opts.search } },

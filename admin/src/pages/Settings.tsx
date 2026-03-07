@@ -28,9 +28,30 @@ export default function Settings() {
   // Test email state
   const [testEmailTo, setTestEmailTo] = useState(user.email || "");
   const [testEmailAppId, setTestEmailAppId] = useState("");
-  const [testEmailApps, setTestEmailApps] = useState<{ id: string; name: string }[]>([]);
+  const [testEmailApps, setTestEmailApps] = useState<{ id: string; name: string; smtpHost?: string; smtpPort?: number; smtpUser?: string; emailFrom?: string; emailName?: string }[]>([]);
   const [sendingTest, setSendingTest] = useState(false);
   const [testEmailMsg, setTestEmailMsg] = useState({ text: "", type: "" });
+  const [testEmailHistory, setTestEmailHistory] = useState<{ to: string; source: string; time: string; ok: boolean; error?: string }[]>([]);
+
+  // Avatar upload
+  const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl || "");
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  const handleAvatarUpload = async (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    setUploadingAvatar(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const { data } = await api.post("/admin/profile/avatar", fd);
+      setAvatarUrl(data.avatarUrl);
+      localStorage.setItem("user", JSON.stringify({ ...user, avatarUrl: data.avatarUrl }));
+    } catch {
+      setProfileMsg("Failed to upload avatar");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   const saveProfile = async (e: FormEvent) => {
     e.preventDefault();
@@ -105,6 +126,7 @@ export default function Settings() {
     e.preventDefault();
     setSendingTest(true);
     setTestEmailMsg({ text: "", type: "" });
+    const time = new Date().toLocaleTimeString();
     try {
       const { data } = await api.post("/admin/test-email", {
         to: testEmailTo,
@@ -112,12 +134,23 @@ export default function Settings() {
       });
       const source = data.source === "app" ? "per-app SMTP" : "global SMTP";
       setTestEmailMsg({ text: `Test email sent to ${data.to} via ${source}`, type: "success" });
-      setTimeout(() => setTestEmailMsg({ text: "", type: "" }), 5000);
+      setTestEmailHistory((prev) => [{ to: data.to, source, time, ok: true }, ...prev].slice(0, 10));
     } catch (err: any) {
-      setTestEmailMsg({ text: err.response?.data?.error || "Failed to send test email", type: "error" });
+      const errorMsg = err.response?.data?.error || "Failed to send test email";
+      setTestEmailMsg({ text: errorMsg, type: "error" });
+      const selectedApp = testEmailApps.find((a) => a.id === testEmailAppId);
+      setTestEmailHistory((prev) => [{ to: testEmailTo, source: selectedApp ? selectedApp.name : "global SMTP", time, ok: false, error: errorMsg }, ...prev].slice(0, 10));
     } finally {
       setSendingTest(false);
     }
+  };
+
+  const getSelectedSmtpInfo = () => {
+    if (!testEmailAppId) return { type: "global", host: "From server .env", port: "", user: "", from: "" };
+    const app = testEmailApps.find((a) => a.id === testEmailAppId);
+    if (!app) return { type: "global", host: "From server .env", port: "", user: "", from: "" };
+    if (app.smtpHost) return { type: "app", host: app.smtpHost, port: String(app.smtpPort || ""), user: app.smtpUser || "", from: app.emailFrom || "" };
+    return { type: "app-fallback", host: "Not configured — will use global", port: "", user: "", from: app.emailFrom || "" };
   };
 
   const tabs = [
@@ -180,16 +213,27 @@ export default function Settings() {
               <form onSubmit={saveProfile} className="p-6 space-y-5">
                 {/* Avatar */}
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-xl font-bold text-white">
-                    {(user.avatarUrl) ? (
-                      <img src={user.avatarUrl} alt={name} className="w-16 h-16 rounded-full object-cover" />
-                    ) : (
-                      name.charAt(0).toUpperCase()
-                    )}
-                  </div>
+                  <label className="relative w-16 h-16 rounded-full cursor-pointer group">
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => { if (e.target.files?.[0]) handleAvatarUpload(e.target.files[0]); }} />
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-xl font-bold text-white overflow-hidden">
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt={name} className="w-16 h-16 rounded-full object-cover" />
+                      ) : (
+                        name.charAt(0).toUpperCase()
+                      )}
+                    </div>
+                    <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      {uploadingAvatar ? (
+                        <svg className="w-5 h-5 text-white animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                      ) : (
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" /><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" /></svg>
+                      )}
+                    </div>
+                  </label>
                   <div>
                     <p className="text-sm font-medium text-gray-900">{name}</p>
                     <p className="text-xs text-gray-500">{user.role === "super_admin" ? "Super Admin" : "Admin"}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Click photo to change</p>
                   </div>
                 </div>
 
@@ -290,77 +334,273 @@ export default function Settings() {
 
           {/* Test Email Tab */}
           {activeTab === "email" && (
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-100">
-                <h2 className="text-base font-semibold text-gray-900">Test Email Configuration</h2>
-                <p className="text-sm text-gray-500 mt-0.5">Send a test email to verify your SMTP settings are working</p>
-              </div>
-              <form onSubmit={sendTestEmail} className="p-6 space-y-5">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Send To</label>
-                  <input type="email" value={testEmailTo} onChange={(e) => setTestEmailTo(e.target.value)}
-                    required placeholder="recipient@example.com"
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors" />
-                  <p className="text-xs text-gray-400 mt-1">Defaults to your account email if left unchanged</p>
+            <div className="space-y-5">
+              {/* Send Test Form */}
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100">
+                  <h2 className="text-base font-semibold text-gray-900">Test Email Configuration</h2>
+                  <p className="text-sm text-gray-500 mt-0.5">Send a test email to verify your SMTP settings are working</p>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">SMTP Source</label>
-                  <select value={testEmailAppId} onChange={(e) => setTestEmailAppId(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors bg-white">
-                    <option value="">Global SMTP (.env)</option>
-                    {testEmailApps.map((a) => (
-                      <option key={a.id} value={a.id}>{a.name} (per-app SMTP)</option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {testEmailAppId
-                      ? "Uses the SMTP settings configured for this app in Apps → Edit"
-                      : "Uses the global SMTP_HOST / SMTP_USER from the server .env file"}
-                  </p>
-                </div>
-
-                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
-                  <p className="text-sm text-blue-700 font-medium mb-1">What this sends</p>
-                  <p className="text-xs text-blue-600">A simple test email to verify your SMTP configuration is working. Select an app above to test its per-app SMTP, or leave on Global to test the server's <code className="bg-blue-100 px-1 rounded">.env</code> settings.</p>
-                </div>
-
-                {testEmailMsg.text && (
-                  <div className={`flex items-center gap-2 text-sm px-4 py-3 rounded-lg ${
-                    testEmailMsg.type === "error" ? "bg-red-50 text-red-700 border border-red-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                  }`}>
-                    {testEmailMsg.type === "error" ? (
-                      <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                    ) : (
-                      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                      </svg>
-                    )}
-                    {testEmailMsg.text}
+                <form onSubmit={sendTestEmail} className="p-6 space-y-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Send To</label>
+                      <input type="email" value={testEmailTo} onChange={(e) => setTestEmailTo(e.target.value)}
+                        required placeholder="recipient@example.com"
+                        className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors" />
+                      <p className="text-xs text-gray-400 mt-1">Defaults to your account email</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">SMTP Source</label>
+                      <select value={testEmailAppId} onChange={(e) => setTestEmailAppId(e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors bg-white">
+                        <option value="">Global SMTP (.env)</option>
+                        {testEmailApps.map((a) => (
+                          <option key={a.id} value={a.id}>{a.name}{a.smtpHost ? "" : " (no SMTP — uses global)"}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                )}
 
-                <div className="pt-2">
-                  <button type="submit" disabled={sendingTest}
-                    className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                    {sendingTest ? (
-                      <>
-                        <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
-                        Sending...
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  {/* SMTP Info Card */}
+                  {(() => {
+                    const info = getSelectedSmtpInfo();
+                    return (
+                      <div className={`rounded-lg border p-4 ${
+                        info.type === "app" ? "bg-emerald-50 border-emerald-200" : info.type === "app-fallback" ? "bg-amber-50 border-amber-200" : "bg-gray-50 border-gray-200"
+                      }`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          {info.type === "app" ? (
+                            <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          ) : info.type === "app-fallback" ? (
+                            <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z" />
+                            </svg>
+                          )}
+                          <p className={`text-sm font-medium ${
+                            info.type === "app" ? "text-emerald-800" : info.type === "app-fallback" ? "text-amber-800" : "text-gray-700"
+                          }`}>
+                            {info.type === "app" ? "Per-App SMTP" : info.type === "app-fallback" ? "App has no SMTP — falling back to global" : "Global SMTP Server"}
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Host:</span>
+                            <span className={`font-mono ${info.type === "app" ? "text-emerald-700" : info.type === "app-fallback" ? "text-amber-700" : "text-gray-600"}`}>{info.host || "—"}</span>
+                          </div>
+                          {info.port && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">Port:</span>
+                              <span className="font-mono text-gray-600">{info.port}</span>
+                            </div>
+                          )}
+                          {info.user && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">User:</span>
+                              <span className="font-mono text-gray-600">{info.user}</span>
+                            </div>
+                          )}
+                          {info.from && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">From:</span>
+                              <span className="font-mono text-gray-600">{info.from}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {testEmailMsg.text && (
+                    <div className={`flex items-start gap-2 text-sm px-4 py-3 rounded-lg ${
+                      testEmailMsg.type === "error" ? "bg-red-50 text-red-700 border border-red-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    }`}>
+                      {testEmailMsg.type === "error" ? (
+                        <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                         </svg>
-                        Send Test Email
-                      </>
-                    )}
-                  </button>
+                      ) : (
+                        <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        </svg>
+                      )}
+                      <div>
+                        <p>{testEmailMsg.text}</p>
+                        {testEmailMsg.type === "error" && (
+                          <p className="text-xs mt-1 opacity-75">Check the SMTP credentials and try again. Common issues: wrong password, port blocked, or 2FA requiring an app password.</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-2">
+                    <button type="submit" disabled={sendingTest}
+                      className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                      {sendingTest ? (
+                        <>
+                          <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                          </svg>
+                          Send Test Email
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Per-App SMTP Status */}
+              {testEmailApps.length > 0 && (
+                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-100">
+                    <h2 className="text-base font-semibold text-gray-900">App Email Configuration Status</h2>
+                    <p className="text-sm text-gray-500 mt-0.5">Overview of SMTP settings across your registered apps</p>
+                  </div>
+                  <div className="divide-y divide-gray-100">
+                    {testEmailApps.map((app) => {
+                      const hasSmtp = !!app.smtpHost;
+                      const hasFrom = !!app.emailFrom;
+                      return (
+                        <div key={app.id} className="px-6 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-2 h-2 rounded-full ${hasSmtp ? "bg-emerald-500" : hasFrom ? "bg-amber-400" : "bg-gray-300"}`} />
+                            <span className="text-sm font-medium text-gray-900">{app.name}</span>
+                          </div>
+                          <div className="flex items-center gap-4 text-xs">
+                            {hasSmtp ? (
+                              <span className="text-emerald-600 flex items-center gap-1">
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                                {app.smtpHost}:{app.smtpPort}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">No custom SMTP</span>
+                            )}
+                            {hasFrom ? (
+                              <span className="text-gray-500 font-mono">{app.emailFrom}</span>
+                            ) : (
+                              <span className="text-gray-400">No sender</span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => { setTestEmailAppId(app.id); }}
+                              className="text-blue-600 hover:text-blue-800 font-medium">
+                              Test
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </form>
+              )}
+
+              {/* Test History */}
+              {testEmailHistory.length > 0 && (
+                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-100">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-base font-semibold text-gray-900">Test History</h2>
+                        <p className="text-sm text-gray-500 mt-0.5">Results from this session</p>
+                      </div>
+                      <button onClick={() => setTestEmailHistory([])} className="text-xs text-gray-400 hover:text-gray-600">Clear</button>
+                    </div>
+                  </div>
+                  <div className="divide-y divide-gray-100">
+                    {testEmailHistory.map((entry, i) => (
+                      <div key={i} className="px-6 py-3 flex items-center gap-3">
+                        {entry.ok ? (
+                          <svg className="w-4 h-4 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        ) : (
+                          <svg className="w-4 h-4 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="font-medium text-gray-900 truncate">{entry.to}</span>
+                            <span className="text-gray-300">via</span>
+                            <span className="text-gray-500">{entry.source}</span>
+                          </div>
+                          {entry.error && <p className="text-xs text-red-500 mt-0.5 truncate">{entry.error}</p>}
+                        </div>
+                        <span className="text-[11px] text-gray-400 flex-shrink-0">{entry.time}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Troubleshooting */}
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100">
+                  <h2 className="text-base font-semibold text-gray-900">Troubleshooting</h2>
+                </div>
+                <div className="p-6 space-y-4 text-sm">
+                  <div className="flex gap-3">
+                    <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-xs font-bold text-red-600">!</span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">Authentication failed / Invalid credentials</p>
+                      <p className="text-gray-500 text-xs mt-0.5">
+                        If using Gmail, you need an <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">App Password</a> (not your regular password).
+                        Enable 2-Step Verification first, then generate an App Password for "Mail".
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-xs font-bold text-amber-600">!</span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">Connection timeout / ECONNREFUSED</p>
+                      <p className="text-gray-500 text-xs mt-0.5">
+                        Check that the SMTP host and port are correct. Common ports: <code className="bg-gray-100 px-1 rounded">587</code> (TLS/STARTTLS), <code className="bg-gray-100 px-1 rounded">465</code> (SSL), <code className="bg-gray-100 px-1 rounded">25</code> (unencrypted, often blocked).
+                        Make sure your server's firewall allows outbound connections on the port.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-xs font-bold text-blue-600">?</span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">Email sent but not received</p>
+                      <p className="text-gray-500 text-xs mt-0.5">
+                        Check the spam/junk folder. Emails from new SMTP sources often land in spam initially.
+                        For production, set up SPF, DKIM, and DMARC records on your sending domain to improve deliverability.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-xs font-bold text-gray-500">i</span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">Global vs Per-App SMTP</p>
+                      <p className="text-gray-500 text-xs mt-0.5">
+                        The global SMTP (from server <code className="bg-gray-100 px-1 rounded">.env</code>) is the fallback used when an app has no custom SMTP configured.
+                        Per-app SMTP lets each app send emails from its own domain (e.g. <code className="bg-gray-100 px-1 rounded">support@shopease.com</code>).
+                        Configure per-app SMTP in <strong>Apps → Edit → SMTP Settings</strong>.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

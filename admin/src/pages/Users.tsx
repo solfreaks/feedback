@@ -29,6 +29,13 @@ function FilterPill({ label, active, onClick, dot }: { label: string; active: bo
   );
 }
 
+interface UserStats {
+  total: number;
+  admins: number;
+  banned: number;
+  activeRecent: number;
+}
+
 export default function Users() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [users, setUsers] = useState<UserDetail[]>([]);
@@ -38,8 +45,10 @@ export default function Users() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
+  const [bannedFilter, setBannedFilter] = useState<string>("");
   const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [userStats, setUserStats] = useState<UserStats | null>(null);
 
   const [searchTrigger, setSearchTrigger] = useState(0);
 
@@ -48,6 +57,7 @@ export default function Users() {
     const params: any = { page, limit: 20 };
     if (search) params.search = search;
     if (roleFilter) params.role = roleFilter;
+    if (bannedFilter) params.isBanned = bannedFilter;
     api.get("/admin/users", { params }).then((r) => {
       setUsers(r.data.users);
       setTotal(r.data.total);
@@ -56,7 +66,12 @@ export default function Users() {
     });
   };
 
-  useEffect(() => { fetchUsers(); }, [page, roleFilter, searchTrigger]);
+  const fetchStats = () => {
+    api.get("/admin/user-stats").then((r) => setUserStats(r.data));
+  };
+
+  useEffect(() => { fetchStats(); }, []);
+  useEffect(() => { fetchUsers(); }, [page, roleFilter, bannedFilter, searchTrigger]);
 
   // Auto-open user detail from query param
   useEffect(() => {
@@ -80,12 +95,14 @@ export default function Users() {
   const updateRole = async (userId: string, role: string) => {
     await api.patch(`/admin/users/${userId}/role`, { role });
     fetchUsers();
+    fetchStats();
     if (selectedUser?.id === userId) viewUser(userId);
   };
 
   const toggleBan = async (userId: string, isBanned: boolean) => {
     await api.patch(`/admin/users/${userId}/ban`, { isBanned });
     fetchUsers();
+    fetchStats();
     if (selectedUser?.id === userId) viewUser(userId);
   };
 
@@ -99,6 +116,7 @@ export default function Users() {
       setSelectedUser(null);
       setDeleteConfirm(null);
       fetchUsers();
+      fetchStats();
     } catch (err: any) {
       alert(err.response?.data?.error || "Failed to delete user");
     } finally {
@@ -119,10 +137,18 @@ export default function Users() {
     if (!date) return "Never";
     const diff = Date.now() - new Date(date).getTime();
     const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "Just now";
     if (mins < 60) return `${mins}m ago`;
     const hrs = Math.floor(mins / 60);
     if (hrs < 24) return `${hrs}h ago`;
-    return `${Math.floor(hrs / 24)}d ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 30) return `${days}d ago`;
+    return `${Math.floor(days / 30)}mo ago`;
+  };
+
+  const memberSince = (date: string) => {
+    const d = new Date(date);
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   };
 
   const statusBadge: Record<string, string> = {
@@ -144,8 +170,32 @@ export default function Users() {
       <div className={selectedUser ? "flex-1 min-w-0" : "w-full"}>
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Users</h1>
-          <p className="text-sm text-gray-500 mt-1">{total} total users</p>
+          <p className="text-sm text-gray-500 mt-1">Manage all registered users</p>
         </div>
+
+        {/* Stats Cards */}
+        {userStats && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+            {[
+              { label: "Total Users", value: userStats.total, icon: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z", bg: "bg-blue-50", text: "text-blue-600" },
+              { label: "Admins", value: userStats.admins, icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z", bg: "bg-purple-50", text: "text-purple-600" },
+              { label: "Active (7d)", value: userStats.activeRecent, icon: "M13 10V3L4 14h7v7l9-11h-7z", bg: "bg-emerald-50", text: "text-emerald-600" },
+              { label: "Banned", value: userStats.banned, icon: "M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636", bg: "bg-red-50", text: "text-red-600" },
+            ].map((s) => (
+              <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${s.bg}`}>
+                  <svg className={`w-5 h-5 ${s.text}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={s.icon} />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{s.value}</p>
+                  <p className="text-[11px] text-gray-500 font-medium">{s.label}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Search + Filters */}
         <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 space-y-3">
@@ -170,10 +220,21 @@ export default function Users() {
             ))}
           </div>
 
-          {(roleFilter || search) && (
+          {/* Status pills */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-10 flex-shrink-0">Status</span>
+            <FilterPill label="Active" active={bannedFilter === "false"}
+              onClick={() => { setBannedFilter(bannedFilter === "false" ? "" : "false"); setPage(1); }}
+              dot="bg-emerald-500" />
+            <FilterPill label="Banned" active={bannedFilter === "true"}
+              onClick={() => { setBannedFilter(bannedFilter === "true" ? "" : "true"); setPage(1); }}
+              dot="bg-red-500" />
+          </div>
+
+          {(roleFilter || search || bannedFilter) && (
             <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
               <span className="text-xs text-gray-500">Filters active</span>
-              <button onClick={() => { setRoleFilter(""); setSearch(""); setPage(1); setSearchTrigger((t) => t + 1); }}
+              <button onClick={() => { setRoleFilter(""); setBannedFilter(""); setSearch(""); setPage(1); setSearchTrigger((t) => t + 1); }}
                 className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -244,7 +305,7 @@ export default function Users() {
                       )}
                     </td>
                     <td className="px-5 py-3.5 text-gray-500 text-xs">{timeAgo(u.lastActiveAt)}</td>
-                    <td className="px-5 py-3.5 text-gray-500 text-xs">{new Date(u.createdAt).toLocaleDateString()}</td>
+                    <td className="px-5 py-3.5 text-gray-500 text-xs">{memberSince(u.createdAt)}</td>
                     <td className="px-5 py-3.5">
                       <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -378,7 +439,7 @@ export default function Users() {
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-500">Joined</span>
-                    <span className="text-gray-700 font-medium">{new Date(selectedUser.createdAt).toLocaleDateString()}</span>
+                    <span className="text-gray-700 font-medium">{memberSince(selectedUser.createdAt)}</span>
                   </div>
                 </div>
 

@@ -8,6 +8,7 @@ interface FeedbackItem {
   id: string;
   rating: number;
   category: string;
+  status: string;
   comment?: string;
   createdAt: string;
   user: { id: string; name: string; email: string; avatarUrl?: string };
@@ -42,6 +43,25 @@ const categoryDot: Record<string, string> = {
   suggestion: "bg-teal-500",
   complaint: "bg-orange-500",
   general: "bg-gray-400",
+};
+
+const statusLabels: Record<string, string> = {
+  new: "New",
+  acknowledged: "Acknowledged",
+  in_progress: "In Progress",
+  resolved: "Resolved",
+};
+const statusColors: Record<string, string> = {
+  new: "bg-yellow-100 text-yellow-800",
+  acknowledged: "bg-blue-100 text-blue-700",
+  in_progress: "bg-purple-100 text-purple-700",
+  resolved: "bg-emerald-100 text-emerald-700",
+};
+const statusDot: Record<string, string> = {
+  new: "bg-yellow-500",
+  acknowledged: "bg-blue-500",
+  in_progress: "bg-purple-500",
+  resolved: "bg-emerald-500",
 };
 
 function Stars({ rating, size = "w-4 h-4" }: { rating: number; size?: string }) {
@@ -87,6 +107,7 @@ export default function FeedbackList() {
   const page = parseInt(searchParams.get("page") || "1");
   const appId = searchParams.get("appId") || "";
   const category = searchParams.get("category") || "";
+  const status = searchParams.get("status") || "";
   const rating = searchParams.get("rating") || "";
 
   useEffect(() => {
@@ -104,13 +125,14 @@ export default function FeedbackList() {
     const params: any = { page, limit: 20 };
     if (appId) params.appId = appId;
     if (category) params.category = category;
+    if (status) params.status = status;
     if (rating) params.rating = rating;
     api.get("/admin/feedbacks", { params }).then((r) => {
       setFeedbacks(r.data.feedbacks);
       setTotal(r.data.total);
       setLoading(false);
     });
-  }, [page, appId, category, rating]);
+  }, [page, appId, category, status, rating]);
 
   const toggleFilter = (key: string, value: string) => {
     const p = new URLSearchParams(searchParams);
@@ -120,7 +142,7 @@ export default function FeedbackList() {
   };
 
   const totalPages = Math.ceil(total / 20);
-  const activeFilters = [appId, category, rating].filter(Boolean).length;
+  const activeFilters = [appId, category, status, rating].filter(Boolean).length;
 
   return (
     <div>
@@ -187,6 +209,15 @@ export default function FeedbackList() {
           ))}
         </div>
 
+        {/* Status pills */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-16 flex-shrink-0">Status</span>
+          {Object.entries(statusLabels).map(([k, v]) => (
+            <FilterPill key={k} label={v} active={status === k}
+              onClick={() => toggleFilter("status", k)} dot={statusDot[k]} />
+          ))}
+        </div>
+
         {/* Rating pills */}
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-16 flex-shrink-0">Rating</span>
@@ -242,7 +273,10 @@ export default function FeedbackList() {
                       <p className="text-xs text-gray-400">{fb.user.email} · {fb.app.name}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${statusColors[fb.status] || "bg-gray-100 text-gray-600"}`}>
+                      {statusLabels[fb.status] || fb.status}
+                    </span>
                     <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${categoryColors[fb.category] || "bg-gray-100 text-gray-600"}`}>
                       {categoryLabels[fb.category] || fb.category}
                     </span>

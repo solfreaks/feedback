@@ -1,4 +1,4 @@
-import { PrismaClient, FeedbackCategory } from "@prisma/client";
+import { PrismaClient, FeedbackCategory, FeedbackStatus } from "@prisma/client";
 import { notifyAdmins } from "./notification.service";
 import { sendPushToUser } from "./fcm.service";
 
@@ -73,17 +73,33 @@ export async function getFeedbackDetail(feedbackId: string) {
   });
 }
 
+export async function updateFeedbackStatus(feedbackId: string, status: FeedbackStatus) {
+  return prisma.feedback.update({
+    where: { id: feedbackId },
+    data: { status },
+    include: feedbackInclude,
+  });
+}
+
 export async function addReply(data: { feedbackId: string; userId: string; body: string }) {
   const reply = await prisma.feedbackReply.create({
     data,
     include: { user: { select: { id: true, name: true, avatarUrl: true } } },
   });
 
-  // FCM push to feedback creator
+  // Auto-acknowledge on first reply
   const feedback = await prisma.feedback.findUnique({
     where: { id: data.feedbackId },
-    select: { userId: true, appId: true, rating: true },
+    select: { userId: true, appId: true, rating: true, status: true },
   });
+  if (feedback && feedback.status === "new") {
+    await prisma.feedback.update({
+      where: { id: data.feedbackId },
+      data: { status: "acknowledged" },
+    });
+  }
+
+  // FCM push to feedback creator
   if (feedback && feedback.userId !== data.userId) {
     sendPushToUser(feedback.userId, feedback.appId, {
       title: "Feedback Reply",
@@ -105,15 +121,19 @@ export async function addFeedbackAttachment(data: {
 
 export async function listAllFeedbacks(filters: {
   appId?: string;
+  appIds?: string[];
   category?: FeedbackCategory;
+  status?: FeedbackStatus;
   rating?: number;
   page?: number;
   limit?: number;
 }) {
-  const { appId, category, rating, page = 1, limit = 20 } = filters;
+  const { appId, appIds, category, status, rating, page = 1, limit = 20 } = filters;
   const where: any = {};
   if (appId) where.appId = appId;
+  else if (appIds) where.appId = { in: appIds };
   if (category) where.category = category;
+  if (status) where.status = status;
   if (rating) where.rating = rating;
 
   const [feedbacks, total] = await Promise.all([
@@ -130,8 +150,8 @@ export async function listAllFeedbacks(filters: {
   return { feedbacks, total, page, totalPages: Math.ceil(total / limit) };
 }
 
-export async function getFeedbackStats(appId?: string) {
-  const where: any = appId ? { appId } : {};
+export async function getFeedbackStats(appId?: string, appIds?: string[]) {
+  const where: any = appId ? { appId } : appIds ? { appId: { in: appIds } } : {};
 
   const [totalFeedbacks, avgRating, byCategory, byRating, byApp] = await Promise.all([
     prisma.feedback.count({ where }),
@@ -146,8 +166,8 @@ export async function getFeedbackStats(appId?: string) {
     }),
   ]);
 
-  const appIds = byApp.map((a) => a.appId);
-  const apps = await prisma.app.findMany({ where: { id: { in: appIds } }, select: { id: true, name: true } });
+  const byAppIds = byApp.map((a) => a.appId);
+  const apps = await prisma.app.findMany({ where: { id: { in: byAppIds } }, select: { id: true, name: true } });
   const appMap = Object.fromEntries(apps.map((a) => [a.id, a.name]));
 
   return {

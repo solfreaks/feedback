@@ -354,6 +354,7 @@ Content-Type: application/json
   "userId": "uuid",
   "rating": 4,
   "category": "suggestion",
+  "status": "new",
   "comment": "It would be great to have dark mode!",
   "createdAt": "2026-02-17T12:00:00.000Z",
   "user": { "id": "uuid", "name": "John Doe", "email": "john@gmail.com", "avatarUrl": null },
@@ -361,6 +362,8 @@ Content-Type: application/json
   "_count": { "replies": 0 }
 }
 ```
+
+**Status lifecycle:** Feedbacks start as `new` and are auto-changed to `acknowledged` when an admin sends the first reply. Admins can also manually update the status.
 
 ---
 
@@ -394,6 +397,7 @@ GET /feedbacks/:id
   "id": "uuid",
   "rating": 4,
   "category": "suggestion",
+  "status": "acknowledged",
   "comment": "It would be great to have dark mode!",
   "createdAt": "2026-02-17T12:00:00.000Z",
   "user": { "id": "uuid", "name": "John Doe", "email": "john@gmail.com", "avatarUrl": null },
@@ -574,7 +578,7 @@ file: <binary file>
 ### List All Feedbacks
 
 ```http
-GET /admin/feedbacks?appId=uuid&category=bug_report&rating=5&page=1&limit=20
+GET /admin/feedbacks?appId=uuid&category=bug_report&status=new&rating=5&page=1&limit=20
 ```
 
 **Query Parameters:**
@@ -582,6 +586,7 @@ GET /admin/feedbacks?appId=uuid&category=bug_report&rating=5&page=1&limit=20
 | ---------- | ------ | -------- | ---------------------------------------------------------------------------- |
 | `appId`    | string | No       | Filter by app                                                                |
 | `category` | enum   | No       | `bug_report` \| `feature_request` \| `suggestion` \| `complaint` \| `general` |
+| `status`   | enum   | No       | `new` \| `acknowledged` \| `in_progress` \| `resolved`                      |
 | `rating`   | number | No       | Filter by star rating (1-5)                                                  |
 | `page`     | number | No       | Page number (default: 1)                                                     |
 | `limit`    | number | No       | Items per page (default: 20)                                                 |
@@ -631,7 +636,51 @@ Content-Type: application/json
 }
 ```
 
-**Side effects:** Email notification sent to feedback submitter.
+**Side effects:**
+- Email notification sent to feedback submitter
+- If this is the first reply, feedback status is auto-changed from `new` to `acknowledged`
+
+---
+
+### Update Feedback Status
+
+```http
+PATCH /admin/feedbacks/:id/status
+Content-Type: application/json
+
+{
+  "status": "in_progress"
+}
+```
+
+**Request Body:**
+| Field    | Type | Required | Description                                            |
+| -------- | ---- | -------- | ------------------------------------------------------ |
+| `status` | enum | Yes      | `new` \| `acknowledged` \| `in_progress` \| `resolved` |
+
+**Response `200`:** Updated feedback object.
+
+---
+
+### Delete Feedback
+
+```http
+DELETE /admin/feedbacks/:id
+```
+
+Permanently deletes the feedback and all associated replies and attachments.
+
+**Response `200`:** `{ "success": true }`
+
+---
+
+### Delete Feedback Reply
+
+```http
+DELETE /admin/feedbacks/:id/replies/:replyId
+```
+
+**Response `200`:** `{ "success": true }`
 
 ---
 
@@ -1427,6 +1476,64 @@ fun uploadAttachment(ticketId: String, file: File) {
 
 ---
 
+## Admin — Profile
+
+### Update Profile
+
+```http
+PATCH /admin/profile
+Content-Type: application/json
+
+{
+  "name": "Updated Name"
+}
+```
+
+**Response `200`:**
+```json
+{ "id": "uuid", "email": "admin@feedback.app", "name": "Updated Name", "role": "admin", "avatarUrl": null }
+```
+
+---
+
+### Upload Avatar
+
+```http
+POST /admin/profile/avatar
+Content-Type: multipart/form-data
+
+file: <image file>
+```
+
+**Response `200`:**
+```json
+{ "id": "uuid", "email": "admin@feedback.app", "name": "Admin", "role": "admin", "avatarUrl": "/uploads/avatar.jpg" }
+```
+
+---
+
+### Delete Ticket
+
+```http
+DELETE /admin/tickets/:id
+```
+
+Permanently deletes the ticket and all associated comments, attachments, and history.
+
+**Response `200`:** `{ "success": true }`
+
+---
+
+### Delete Ticket Comment
+
+```http
+DELETE /admin/tickets/:id/comments/:commentId
+```
+
+**Response `200`:** `{ "success": true }`
+
+---
+
 ## All Endpoints Summary
 
 | Method  | Endpoint                              | Auth     | Role  | Description                  |
@@ -1452,17 +1559,28 @@ fun uploadAttachment(ticketId: String, file: File) {
 | `GET`   | `/admin/feedbacks`                    | Bearer   | admin | List all feedbacks           |
 | `GET`   | `/admin/feedbacks/:id`                | Bearer   | admin | Get feedback detail          |
 | `POST`  | `/admin/feedbacks/:id/reply`          | Bearer   | admin | Reply to feedback            |
+| `PATCH` | `/admin/feedbacks/:id/status`         | Bearer   | admin | Update feedback status       |
 | `POST`  | `/admin/feedbacks/:id/attachments`    | Bearer   | admin | Upload feedback attachment   |
+| `DELETE`| `/admin/feedbacks/:id`                | Bearer   | admin | Delete feedback              |
+| `DELETE`| `/admin/feedbacks/:id/replies/:replyId` | Bearer | admin | Delete feedback reply        |
 | `GET`   | `/admin/feedback-stats`               | Bearer   | admin | Feedback analytics           |
 | `GET`   | `/admin/analytics`                    | Bearer   | admin | Dashboard statistics         |
 | `GET`   | `/admin/apps`                         | Bearer   | admin | List apps                    |
 | `POST`  | `/admin/apps`                         | Bearer   | admin | Register new app             |
+| `PATCH` | `/admin/apps/:id`                     | Bearer   | admin | Update app                   |
+| `POST`  | `/admin/apps/:id/icon`                | Bearer   | admin | Upload app icon              |
+| `POST`  | `/admin/apps/:id/regenerate-key`      | Bearer   | admin | Regenerate API key           |
+| `DELETE`| `/admin/apps/:id`                     | Bearer   | admin | Delete app                   |
+| `DELETE`| `/admin/tickets/:id`                  | Bearer   | admin | Delete ticket                |
+| `DELETE`| `/admin/tickets/:id/comments/:id`     | Bearer   | admin | Delete ticket comment        |
 | `GET`   | `/admin/categories`                   | Bearer   | admin | List categories              |
 | `POST`  | `/admin/categories`                   | Bearer   | admin | Create category              |
 | `GET`   | `/admin/users`                        | Bearer   | admin | List users                   |
 | `GET`   | `/admin/users/:id`                    | Bearer   | admin | Get user detail              |
 | `PATCH` | `/admin/users/:id/role`               | Bearer   | admin | Update user role             |
 | `PATCH` | `/admin/users/:id/ban`                | Bearer   | admin | Ban/unban user               |
+| `PATCH` | `/admin/profile`                      | Bearer   | admin | Update own profile           |
+| `POST`  | `/admin/profile/avatar`               | Bearer   | admin | Upload avatar                |
 | `GET`   | `/notifications`                      | Bearer   | admin | List notifications           |
 | `GET`   | `/notifications/unread-count`         | Bearer   | admin | Get unread count             |
 | `PATCH` | `/notifications/:id/read`             | Bearer   | admin | Mark notification read       |

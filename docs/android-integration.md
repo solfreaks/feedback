@@ -59,9 +59,9 @@ Complete guide for integrating the Feedback & Tickets system into your Android a
 
 ```groovy
 plugins {
-    id 'com.android.application' version '8.2.0' apply false
-    id 'org.jetbrains.kotlin.android' version '1.9.22' apply false
-    id 'com.google.gms.google-services' version '4.4.0' apply false  // For FCM
+    id 'com.android.application' version '8.7.3' apply false
+    id 'org.jetbrains.kotlin.android' version '2.1.0' apply false
+    id 'com.google.gms.google-services' version '4.4.2' apply false  // For FCM
 }
 ```
 
@@ -76,12 +76,12 @@ plugins {
 
 android {
     namespace 'com.example.yourapp'
-    compileSdk 34
+    compileSdk 35
 
     defaultConfig {
         applicationId "com.example.yourapp"
         minSdk 24
-        targetSdk 34
+        targetSdk 35
         versionCode 1
         versionName "1.0"
     }
@@ -91,48 +91,52 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
     }
 
     kotlinOptions {
-        jvmTarget = "17"
+        jvmTarget = "21"
     }
 }
 
 dependencies {
     // Android core
-    implementation 'androidx.core:core-ktx:1.12.0'
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.11.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation 'androidx.recyclerview:recyclerview:1.3.2'
-    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+    implementation 'androidx.core:core-ktx:1.15.0'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.2.0'
+    implementation 'androidx.recyclerview:recyclerview:1.4.0'
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.2.0'
 
     // Lifecycle (ViewModel + LiveData)
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0'
-    implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.7.0'
-    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7'
+    implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.8.7'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
 
-    // Google Sign-In
-    implementation 'com.google.android.gms:play-services-auth:21.0.0'
+    // Google Sign-In (Credential Manager — replaces legacy play-services-auth)
+    implementation 'androidx.credentials:credentials:1.5.0'
+    implementation 'androidx.credentials:credentials-play-services-auth:1.5.0'
+    implementation 'com.google.android.libraries.identity.googleid:googleid:1.1.1'
+    // Legacy Sign-In (still supported, used in this guide for simplicity)
+    implementation 'com.google.android.gms:play-services-auth:21.3.0'
 
     // HTTP client
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'com.squareup.okhttp3:logging-interceptor:4.12.0'
 
     // JSON parsing
-    implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'com.google.code.gson:gson:2.11.0'
 
     // Coroutines
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0'
 
     // Image loading (for avatars)
-    implementation 'io.coil-kt:coil:2.5.0'
+    implementation 'io.coil-kt:coil:2.7.0'
 
     // Firebase (FCM)
-    implementation platform('com.google.firebase:firebase-bom:33.0.0')
+    implementation platform('com.google.firebase:firebase-bom:33.7.0')
     implementation 'com.google.firebase:firebase-messaging'
 }
 ```
@@ -379,6 +383,7 @@ data class Feedback(
     val userId: String,
     val rating: Int,
     val category: String,
+    val status: String,  // "new", "acknowledged", "in_progress", "resolved"
     val comment: String?,
     val createdAt: String,
     val user: TicketUser,
@@ -466,6 +471,17 @@ enum class FeedbackCategory(val value: String, val label: String) {
         fun fromValue(value: String) = entries.find { it.value == value } ?: GENERAL
     }
 }
+
+enum class FeedbackStatus(val value: String, val label: String) {
+    NEW("new", "New"),
+    ACKNOWLEDGED("acknowledged", "Acknowledged"),
+    IN_PROGRESS("in_progress", "In Progress"),
+    RESOLVED("resolved", "Resolved");
+
+    companion object {
+        fun fromValue(value: String) = entries.find { it.value == value } ?: NEW
+    }
+}
 ```
 
 ---
@@ -485,6 +501,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.logging.HttpLoggingInterceptor
@@ -499,14 +516,16 @@ object FeedbackApi {
     //  CONFIGURATION — Update these for your app
     // ══════════════════════════════════════════════════
 
-    private const val BASE_URL = "https://your-server.com"  // No trailing slash
-    private const val API_KEY = "fb_your_api_key_here"       // From admin panel
+    const val BASE_URL = "https://your-server.com"   // No trailing slash
+    private const val API_KEY = "fb_your_api_key_here" // From admin panel
 
     // ══════════════════════════════════════════════════
 
-    private var jwtToken: String? = null
+    var jwtToken: String? = null
+        private set
     var currentUser: User? = null
         private set
+    var onSessionExpired: (() -> Unit)? = null
 
     val isLoggedIn: Boolean get() = jwtToken != null
 
@@ -516,17 +535,31 @@ object FeedbackApi {
     private val client: OkHttpClient by lazy {
         OkHttpClient.Builder()
             .addInterceptor { chain ->
-                val builder = chain.request().newBuilder()
+                val original = chain.request()
+                val builder = original.newBuilder()
                     .addHeader("x-api-key", API_KEY)
-                    .addHeader("Content-Type", "application/json")
+                // Only set Content-Type for non-multipart requests
+                // (multipart/form-data is set automatically by OkHttp for MultipartBody)
+                if (original.body !is MultipartBody) {
+                    builder.addHeader("Content-Type", "application/json")
+                }
                 jwtToken?.let { builder.addHeader("Authorization", "Bearer $it") }
-                chain.proceed(builder.build())
+
+                val response = chain.proceed(builder.build())
+
+                // If 401, token has expired — clear session and notify
+                if (response.code == 401 && jwtToken != null) {
+                    jwtToken = null
+                    currentUser = null
+                    onSessionExpired?.invoke()
+                }
+
+                response
             }
             .addInterceptor(HttpLoggingInterceptor().apply {
-                level = if (BuildConfig.DEBUG)
-                    HttpLoggingInterceptor.Level.BODY
-                else
-                    HttpLoggingInterceptor.Level.NONE
+                // Import your app's BuildConfig:
+                // import com.example.yourapp.BuildConfig
+                level = HttpLoggingInterceptor.Level.BODY // Use NONE in production
             })
             .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
             .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
@@ -608,13 +641,13 @@ object FeedbackApi {
      * Call after Google Sign-In succeeds.
      *
      * @param googleIdToken The ID token from GoogleSignInAccount.idToken
-     * @return The authenticated User, or throws ApiException
+     * @return The AuthResponse containing both token and user, or throws ApiException
      */
-    suspend fun signIn(googleIdToken: String): User {
+    suspend fun signIn(googleIdToken: String): AuthResponse {
         val result: AuthResponse = post("/auth/google", mapOf("idToken" to googleIdToken))
         jwtToken = result.token
         currentUser = result.user
-        return result.user
+        return result
     }
 
     /**
@@ -841,7 +874,9 @@ package com.example.yourapp
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.Intent
 import android.os.Build
+import com.example.yourapp.api.FeedbackApi
 import com.example.yourapp.api.SessionManager
 
 class FeedbackApp : Application() {
@@ -851,6 +886,15 @@ class FeedbackApp : Application() {
 
         // Initialize session manager
         SessionManager.init(this)
+
+        // Handle session expiry (401 from server)
+        FeedbackApi.onSessionExpired = {
+            SessionManager.clearSession()
+            val intent = Intent(this, com.example.yourapp.ui.LoginActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+            startActivity(intent)
+        }
 
         // Create notification channel for FCM
         createNotificationChannel()
@@ -1068,15 +1112,15 @@ class LoginActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                val user = FeedbackApi.signIn(idToken)
+                val authResult = FeedbackApi.signIn(idToken)
 
-                // Save session
-                SessionManager.saveSession(FeedbackApi.jwtToken ?: "", user)
+                // Save session (token + user)
+                SessionManager.saveSession(authResult.token, authResult.user)
 
                 // Register FCM token for push notifications
                 registerFcmToken()
 
-                Toast.makeText(this@LoginActivity, "Welcome, ${user.name}!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@LoginActivity, "Welcome, ${authResult.user.name}!", Toast.LENGTH_SHORT).show()
                 navigateToMain()
 
             } catch (e: FeedbackApi.ApiException) {
@@ -1127,11 +1171,7 @@ class LoginActivity : AppCompatActivity() {
 }
 ```
 
-> **Note about `FeedbackApi.jwtToken`:** The `jwtToken` in our FeedbackApi is private. To make `saveSession` work, either add a `getToken()` method to FeedbackApi, or save the token directly in `signIn()`. Here's the quick fix — add this to `FeedbackApi`:
-> ```kotlin
-> fun getToken(): String? = jwtToken
-> ```
-> Then use `FeedbackApi.getToken() ?: ""` in `saveSession`.
+> **Note:** `signIn()` returns an `AuthResponse` containing both `token` and `user`. The `jwtToken` property on `FeedbackApi` has a public getter so you can read it (e.g., for `SessionManager`), but only `FeedbackApi` can set it internally.
 
 ---
 
@@ -2159,6 +2199,37 @@ class CommentAdapter : ListAdapter<Comment, CommentAdapter.ViewHolder>(DiffCallb
 </shape>
 ```
 
+### Drawable: `res/drawable/ic_arrow_back_24.xml`
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?attr/colorOnSurface">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M20,11H7.83l5.59,-5.59L12,4l-8,8 8,8 1.41,-1.41L7.83,13H20v-2z"/>
+</vector>
+```
+
+### Drawable: `res/drawable/ic_notification.xml`
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M12,22c1.1,0 2,-0.9 2,-2h-4c0,1.1 0.89,2 2,2zM18,16v-5c0,-3.07 -1.64,-5.64 -4.5,-6.32L13.5,4c0,-0.83 -0.67,-1.5 -1.5,-1.5s-1.5,0.67 -1.5,1.5v0.68C7.63,5.36 6,7.92 6,11v5l-2,2v1h16v-1l-2,-2z"/>
+</vector>
+```
+
 ---
 
 ## Step 8: Feedback — Submit & List
@@ -2453,12 +2524,20 @@ private fun getFileName(uri: Uri): String? {
 
 ```kotlin
 // Attachments have a relative fileUrl like "/uploads/1234-file.pdf"
-// Build the full URL:
+// Build the full URL using the public BASE_URL constant:
 val fullUrl = "${FeedbackApi.BASE_URL}${attachment.fileUrl}"
 
-// Open in browser or download manager:
+// Open in browser:
 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(fullUrl))
 startActivity(intent)
+
+// Or download with DownloadManager for large files:
+val request = DownloadManager.Request(Uri.parse(fullUrl))
+    .setTitle(attachment.fileName)
+    .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+    .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, attachment.fileName)
+val dm = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+dm.enqueue(request)
 ```
 
 ---
@@ -2653,36 +2732,9 @@ The server sends these data fields with each push notification:
 
 ### Centralized Error Handling
 
-```kotlin
-// Add to FeedbackApi — a global 401 handler:
-private val client: OkHttpClient by lazy {
-    OkHttpClient.Builder()
-        .addInterceptor { chain ->
-            val builder = chain.request().newBuilder()
-                .addHeader("x-api-key", API_KEY)
-            jwtToken?.let { builder.addHeader("Authorization", "Bearer $it") }
-            val response = chain.proceed(builder.build())
+The `FeedbackApi` class (Step 4) already includes 401 detection in its OkHttp interceptor. When a 401 response is received, it clears the JWT token and invokes the `onSessionExpired` callback.
 
-            // If 401, token has expired
-            if (response.code == 401 && jwtToken != null) {
-                jwtToken = null
-                // Post an event to navigate to login
-                // Use an EventBus, LiveData, or callback
-            }
-
-            response
-        }
-        .addInterceptor(HttpLoggingInterceptor().apply {
-            level = if (BuildConfig.DEBUG)
-                HttpLoggingInterceptor.Level.BODY
-            else
-                HttpLoggingInterceptor.Level.NONE
-        })
-        .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-        .build()
-}
-```
+The `FeedbackApp` Application class (Step 5) sets up this callback to navigate users back to the login screen and clear the session. This means expired tokens are handled automatically across the entire app.
 
 ### Network Connectivity Check
 
@@ -2756,7 +2808,8 @@ Add to `proguard-rules.pro`:
 
 ## Quick Checklist
 
-- [ ] Add all dependencies (play-services-auth, okhttp, gson, material, lifecycle, coil, firebase)
+- [ ] Add all dependencies (play-services-auth, okhttp, gson, material, lifecycle, coil, firebase, credentials)
+- [ ] Set `compileSdk 35`, `targetSdk 35`, `minSdk 24`, `jvmTarget = "21"`
 - [ ] Create Android OAuth client ID with package name + SHA-1 (debug AND release)
 - [ ] Create Web OAuth client ID in the same Google Cloud project
 - [ ] Enter the Web Client ID in the admin panel (Apps → Edit → Google Client ID)
@@ -2765,6 +2818,7 @@ Add to `proguard-rules.pro`:
 - [ ] Use Web Client ID in `GoogleSignInOptions.requestIdToken()`
 - [ ] Add `google-services.json` from Firebase Console
 - [ ] Add `network_security_config.xml` for local development
+- [ ] Create required drawables (`ic_arrow_back_24`, `ic_notification`, `bg_avatar_circle`)
 - [ ] Create the `FeedbackApp` Application class and register in manifest
 - [ ] Set up data models in `models/FeedbackModels.kt`
 - [ ] Implement login flow: Google Sign-In → server auth → save session
@@ -2773,6 +2827,10 @@ Add to `proguard-rules.pro`:
 - [ ] Set up FCM: add Firebase config in admin panel + implement `FeedbackFcmService`
 - [ ] Register FCM token after login, remove on logout
 - [ ] Request POST_NOTIFICATIONS permission on Android 13+
+- [ ] Set up `FeedbackApi.onSessionExpired` callback for 401 handling
 - [ ] Test: Sign in → Create ticket → Add comment → Submit feedback → Receive push notification
 - [ ] Add ProGuard rules for release builds
+- [ ] Set `HttpLoggingInterceptor.Level.NONE` in production
 - [ ] Update server URL to production before release
+
+> **Migration note:** Google is deprecating the legacy `play-services-auth` Sign-In API in favor of [Credential Manager](https://developer.android.com/identity/sign-in/credential-manager-siwg). The dependencies for Credential Manager are included above. This guide uses the legacy API for simplicity, but new projects should consider using Credential Manager directly.

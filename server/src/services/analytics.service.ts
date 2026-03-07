@@ -2,8 +2,8 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-export async function getDashboardStats(appId?: string) {
-  const where: any = appId ? { appId } : {};
+export async function getDashboardStats(appId?: string, appIds?: string[]) {
+  const where: any = appId ? { appId } : appIds ? { appId: { in: appIds } } : {};
 
   const [
     totalTickets,
@@ -48,8 +48,8 @@ export async function getDashboardStats(appId?: string) {
   ]);
 
   // Resolve app names for byApp
-  const appIds = byApp.map((a) => a.appId);
-  const apps = await prisma.app.findMany({ where: { id: { in: appIds } }, select: { id: true, name: true } });
+  const byAppIds = byApp.map((a) => a.appId);
+  const apps = await prisma.app.findMany({ where: { id: { in: byAppIds } }, select: { id: true, name: true } });
   const appMap = Object.fromEntries(apps.map((a) => [a.id, a.name]));
 
   return {

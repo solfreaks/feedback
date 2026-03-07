@@ -44,6 +44,7 @@ router.get("/tickets", async (req: Request, res: Response) => {
     const status = req.query.status as string | undefined;
     const priority = req.query.priority as string | undefined;
     const assignedTo = req.query.assignedTo as string | undefined;
+    const search = req.query.search as string | undefined;
     const page = parseInt((req.query.page as string) || "1");
     const limit = parseInt((req.query.limit as string) || "20");
 
@@ -51,14 +52,22 @@ router.get("/tickets", async (req: Request, res: Response) => {
     if (appId) where.appId = appId;
     if (status) where.status = status;
     if (priority) where.priority = priority;
-    if (assignedTo) where.assignedTo = assignedTo;
+    if (assignedTo) {
+      where.assignedTo = assignedTo === "unassigned" ? null : assignedTo;
+    }
+    if (search) {
+      where.OR = [
+        { title: { contains: search } },
+        { description: { contains: search } },
+      ];
+    }
 
     const [tickets, total] = await Promise.all([
       prisma.ticket.findMany({
         where,
         include: {
-          user: { select: { id: true, name: true, email: true } },
-          assignee: { select: { id: true, name: true } },
+          user: { select: { id: true, name: true, email: true, avatarUrl: true } },
+          assignee: { select: { id: true, name: true, avatarUrl: true } },
           app: { select: { id: true, name: true } },
           _count: { select: { comments: true, attachments: true } },
         },
@@ -226,10 +235,145 @@ router.get("/admins", async (_req: Request, res: Response) => {
   }
 });
 
+// Get logged-in admin's personalized dashboard data
+router.get("/my-dashboard", async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const role = req.user!.role;
+    const days = parseInt((req.query.days as string) || "7");
+    const now = new Date();
+    const periodStart = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    const prevPeriodStart = new Date(now.getTime() - days * 2 * 24 * 60 * 60 * 1000);
+
+    // Get admin's assigned apps (only relevant for non-super_admin)
+    let assignedAppIds: string[] | null = null;
+    if (role !== "super_admin") {
+      const assignments = await prisma.appAdmin.findMany({
+        where: { userId },
+        select: { appId: true },
+      });
+      assignedAppIds = assignments.map((a) => a.appId);
+    }
+
+    // Build scope filter for app-scoped data
+    const scopeWhere: any = assignedAppIds ? { appId: { in: assignedAppIds } } : {};
+
+    // Tickets assigned to this admin
+    const myTickets = await prisma.ticket.findMany({
+      where: { assignedTo: userId, status: { in: ["open", "in_progress"] } },
+      include: {
+        user: { select: { id: true, name: true, avatarUrl: true } },
+        app: { select: { id: true, name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    });
+
+    const [myOpenCount, myTotalAssigned, myResolvedCount] = await Promise.all([
+      prisma.ticket.count({ where: { assignedTo: userId, status: { in: ["open", "in_progress"] } } }),
+      prisma.ticket.count({ where: { assignedTo: userId } }),
+      prisma.ticket.count({ where: { assignedTo: userId, status: { in: ["resolved", "closed"] } } }),
+    ]);
+
+    // SLA breached tickets assigned to this admin
+    const mySlaBreached = await prisma.ticket.count({
+      where: {
+        assignedTo: userId,
+        status: { in: ["open", "in_progress"] },
+        slaDeadline: { lt: now },
+      },
+    });
+
+    // Trend data: current period vs previous period
+    const [ticketsCurrent, ticketsPrev, feedbacksCurrent, feedbacksPrev] = await Promise.all([
+      prisma.ticket.count({ where: { ...scopeWhere, createdAt: { gte: periodStart } } }),
+      prisma.ticket.count({ where: { ...scopeWhere, createdAt: { gte: prevPeriodStart, lt: periodStart } } }),
+      prisma.feedback.count({ where: { ...scopeWhere, createdAt: { gte: periodStart } } }),
+      prisma.feedback.count({ where: { ...scopeWhere, createdAt: { gte: prevPeriodStart, lt: periodStart } } }),
+    ]);
+
+    // Unassigned tickets count
+    const unassignedCount = await prisma.ticket.count({
+      where: { ...scopeWhere, assignedTo: null, status: { in: ["open", "in_progress"] } },
+    });
+
+    // SLA compliance (scoped)
+    const [totalActive, slaMet] = await Promise.all([
+      prisma.ticket.count({ where: { ...scopeWhere, status: { in: ["open", "in_progress"] }, slaDeadline: { not: null } } }),
+      prisma.ticket.count({ where: { ...scopeWhere, status: { in: ["open", "in_progress"] }, slaDeadline: { gte: now } } }),
+    ]);
+
+    // Workload: tickets per admin (open/in_progress)
+    const workloadRaw = await prisma.ticket.groupBy({
+      by: ["assignedTo"],
+      _count: true,
+      where: { ...scopeWhere, status: { in: ["open", "in_progress"] }, assignedTo: { not: null } },
+    });
+    const adminIds = workloadRaw.map((w) => w.assignedTo!).filter(Boolean);
+    const adminUsers = adminIds.length > 0
+      ? await prisma.user.findMany({ where: { id: { in: adminIds } }, select: { id: true, name: true } })
+      : [];
+    const adminNameMap = Object.fromEntries(adminUsers.map((u) => [u.id, u.name]));
+    const workload = workloadRaw.map((w) => ({
+      adminId: w.assignedTo,
+      name: adminNameMap[w.assignedTo!] || "Unknown",
+      count: w._count,
+    })).sort((a, b) => b.count - a.count);
+
+    // Activity timeline: recent ticket history changes
+    const activityWhere: any = {};
+    if (assignedAppIds) {
+      activityWhere.ticket = { appId: { in: assignedAppIds } };
+    }
+    const activity = await prisma.ticketHistory.findMany({
+      where: activityWhere,
+      include: {
+        user: { select: { id: true, name: true, avatarUrl: true } },
+        ticket: { select: { id: true, title: true, app: { select: { name: true } } } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 15,
+    });
+
+    return res.json({
+      role,
+      assignedAppIds,
+      myTickets,
+      myOpenCount,
+      myTotalAssigned,
+      myResolvedCount,
+      mySlaBreached,
+      trends: {
+        ticketsCurrent,
+        ticketsPrev,
+        ticketsChange: ticketsPrev > 0 ? Math.round(((ticketsCurrent - ticketsPrev) / ticketsPrev) * 100) : ticketsCurrent > 0 ? 100 : 0,
+        feedbacksCurrent,
+        feedbacksPrev,
+        feedbacksChange: feedbacksPrev > 0 ? Math.round(((feedbacksCurrent - feedbacksPrev) / feedbacksPrev) * 100) : feedbacksCurrent > 0 ? 100 : 0,
+      },
+      unassignedCount,
+      slaCompliance: {
+        total: totalActive,
+        met: slaMet,
+        breached: totalActive - slaMet,
+        rate: totalActive > 0 ? Math.round((slaMet / totalActive) * 100) : 100,
+      },
+      workload,
+      activity,
+    });
+  } catch (err) {
+    console.error("My dashboard error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Analytics dashboard
 router.get("/analytics", async (req: Request, res: Response) => {
   try {
-    const stats = await analyticsService.getDashboardStats(req.query.appId as string | undefined);
+    const appId = req.query.appId as string | undefined;
+    const appIdsParam = req.query.appIds as string | undefined;
+    const appIds = appIdsParam ? appIdsParam.split(",") : undefined;
+    const stats = await analyticsService.getDashboardStats(appId, appIds);
     return res.json(stats);
   } catch (err) {
     console.error("Analytics error:", err);
@@ -351,6 +495,27 @@ router.post("/apps/:id/regenerate-key", async (req: Request, res: Response) => {
   }
 });
 
+// Validate Firebase credentials
+router.post("/apps/validate-firebase", async (req: Request, res: Response) => {
+  try {
+    const { firebaseProjectId, firebaseClientEmail, firebasePrivateKey } = req.body;
+    if (!firebaseProjectId || !firebaseClientEmail || !firebasePrivateKey) {
+      return res.status(400).json({ error: "All Firebase fields are required", valid: false });
+    }
+    // Validate format
+    if (!firebaseClientEmail.includes("@") || !firebaseClientEmail.includes("iam.gserviceaccount.com")) {
+      return res.status(400).json({ error: "Client email should be a service account email (ending in iam.gserviceaccount.com)", valid: false });
+    }
+    if (!firebasePrivateKey.includes("BEGIN PRIVATE KEY") || !firebasePrivateKey.includes("END PRIVATE KEY")) {
+      return res.status(400).json({ error: "Private key must be in PEM format (BEGIN/END PRIVATE KEY)", valid: false });
+    }
+    return res.json({ valid: true, message: "Firebase credentials format looks valid" });
+  } catch (err) {
+    console.error("Validate Firebase error:", err);
+    return res.status(500).json({ error: "Validation failed", valid: false });
+  }
+});
+
 // Delete app
 router.delete("/apps/:id", async (req: Request, res: Response) => {
   try {
@@ -423,9 +588,12 @@ router.post("/categories", async (req: Request, res: Response) => {
 // List all feedbacks with filters
 router.get("/feedbacks", async (req: Request, res: Response) => {
   try {
+    const appIdsParam = req.query.appIds as string | undefined;
     const result = await feedbackService.listAllFeedbacks({
       appId: req.query.appId as string | undefined,
+      appIds: appIdsParam ? appIdsParam.split(",") : undefined,
       category: req.query.category as any,
+      status: req.query.status as any,
       rating: req.query.rating ? parseInt(req.query.rating as string) : undefined,
       page: parseInt((req.query.page as string) || "1"),
       limit: parseInt((req.query.limit as string) || "20"),
@@ -445,6 +613,20 @@ router.get("/feedbacks/:id", async (req: Request, res: Response) => {
     return res.json(feedback);
   } catch (err) {
     console.error("Admin get feedback error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Update feedback status
+router.patch("/feedbacks/:id/status", async (req: Request, res: Response) => {
+  try {
+    const { status } = req.body;
+    const validStatuses = ["new", "acknowledged", "in_progress", "resolved"];
+    if (!validStatuses.includes(status)) return res.status(400).json({ error: "Invalid status" });
+    const feedback = await feedbackService.updateFeedbackStatus(req.params.id, status);
+    return res.json(feedback);
+  } catch (err) {
+    console.error("Update feedback status error:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -513,7 +695,11 @@ router.delete("/feedbacks/:id/replies/:replyId", async (req: Request, res: Respo
 // Feedback analytics
 router.get("/feedback-stats", async (req: Request, res: Response) => {
   try {
-    const stats = await feedbackService.getFeedbackStats(req.query.appId as string | undefined);
+    const appIdsParam = req.query.appIds as string | undefined;
+    const stats = await feedbackService.getFeedbackStats(
+      req.query.appId as string | undefined,
+      appIdsParam ? appIdsParam.split(",") : undefined,
+    );
     return res.json(stats);
   } catch (err) {
     console.error("Feedback stats error:", err);
@@ -536,6 +722,23 @@ router.patch("/profile", async (req: Request, res: Response) => {
     return res.json(user);
   } catch (err) {
     console.error("Update profile error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Upload avatar
+router.post("/profile/avatar", upload.single("file"), async (req: Request, res: Response) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    const avatarUrl = `/uploads/${req.file.filename}`;
+    const user = await prisma.user.update({
+      where: { id: req.user!.id },
+      data: { avatarUrl },
+      select: { id: true, email: true, name: true, role: true, avatarUrl: true },
+    });
+    return res.json(user);
+  } catch (err) {
+    console.error("Upload avatar error:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -574,12 +777,24 @@ router.post("/test-email", async (req: Request, res: Response) => {
 
 // ==================== USERS ====================
 
+// User stats
+router.get("/user-stats", async (_req: Request, res: Response) => {
+  try {
+    const stats = await userService.getUserStats();
+    return res.json(stats);
+  } catch (err) {
+    console.error("User stats error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // List users
 router.get("/users", async (req: Request, res: Response) => {
   try {
     const result = await userService.listUsers({
       role: req.query.role as string | undefined,
       search: req.query.search as string | undefined,
+      isBanned: req.query.isBanned !== undefined ? req.query.isBanned === "true" : undefined,
       page: parseInt((req.query.page as string) || "1"),
       limit: parseInt((req.query.limit as string) || "20"),
     });

@@ -27,6 +27,13 @@ enum TicketStatus {
   closed
 }
 
+enum FeedbackStatus {
+  new
+  acknowledged
+  in_progress
+  resolved
+}
+
 enum FeedbackCategory {
   bug_report
   feature_request
@@ -185,6 +192,7 @@ model Feedback {
   userId      String               @map("user_id")
   rating      Int                  // 1-5 stars
   category    FeedbackCategory     @default(general)
+  status      FeedbackStatus       @default(new)
   comment     String?              @db.Text
   createdAt   DateTime             @default(now()) @map("created_at")
   app         App                  @relation(fields: [appId], references: [id])

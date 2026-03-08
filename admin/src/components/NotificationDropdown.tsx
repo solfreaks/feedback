@@ -30,7 +30,7 @@ export default function NotificationDropdown() {
     fetchNotifications();
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.hostname}:3000/ws?token=${token}`;
+    const wsUrl = `${protocol}//${window.location.host}/ws?token=${token}`;
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 

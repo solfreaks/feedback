@@ -45,7 +45,7 @@ export interface Ticket {
   createdAt: string;
   updatedAt: string;
   user: { id: string; name: string; email: string; avatarUrl?: string };
-  assignee?: { id: string; name: string; email?: string };
+  assignee?: { id: string; name: string; email?: string; avatarUrl?: string };
   app: { id: string; name: string };
   _count: { comments: number; attachments: number };
   comments?: Comment[];

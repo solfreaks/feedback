@@ -145,7 +145,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState(7);
   const [lastRefresh, setLastRefresh] = useState(new Date());
-  const timerRef = useRef<ReturnType<typeof setInterval>>();
+  const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
   const navigate = useNavigate();
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");

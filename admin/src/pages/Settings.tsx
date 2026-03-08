@@ -544,6 +544,85 @@ export default function Settings() {
                   </div>
                 </div>
               )}
+
+              {/* Email Template Previews */}
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <SectionHeader title="Email Templates" desc="Preview all email templates sent to users" />
+                <div className="p-6 space-y-4">
+                  <div className="flex items-center gap-3 mb-2">
+                    <label className="text-sm font-medium text-gray-700">Preview as:</label>
+                    <select value={testEmailAppId} onChange={(e) => setTestEmailAppId(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400">
+                      <option value="">SupportDesk (default)</option>
+                      {testEmailApps.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                    </select>
+                  </div>
+                  {(() => {
+                    const previewAppName = testEmailAppId ? (testEmailApps.find((a) => a.id === testEmailAppId)?.name || "SupportDesk") : "SupportDesk";
+                    const hdr = (n: string) => `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;background:#fff;border-radius:10px;overflow:hidden;border:1px solid #e5e7eb;"><div style="background:linear-gradient(135deg,#059669,#0d9488);padding:20px;text-align:center;"><span style="color:#fff;font-size:16px;font-weight:700;">${n}</span></div>`;
+                    const ftr = (n: string, note?: string) => `<div style="padding:16px 24px;border-top:1px solid #e5e7eb;text-align:center;">${note ? `<p style="margin:0 0 8px;font-size:11px;color:#9ca3af;">${note}</p>` : ""}<p style="margin:0;font-size:11px;color:#9ca3af;">Sent by ${n}</p></div></div>`;
+                    return [
+                      { name: "Welcome Email", desc: "Sent when a new user signs up", preview: `${hdr(previewAppName)}<div style="padding:24px;">
+<h2 style="margin:0 0 6px;font-size:18px;color:#111827;">Welcome, John!</h2>
+<p style="margin:0 0 16px;font-size:13px;color:#6b7280;">Your account has been created successfully.</p>
+<div style="padding:12px;background:#ecfdf5;border-radius:6px;border:1px solid #a7f3d0;margin-bottom:8px;"><span style="font-size:16px;">🎧</span> <span style="font-size:13px;color:#065f46;font-weight:600;">Submit Support Tickets</span><br/><span style="font-size:12px;color:#047857;">Get help from our team with any issues.</span></div>
+<div style="padding:12px;background:#eff6ff;border-radius:6px;border:1px solid #bfdbfe;margin-bottom:8px;"><span style="font-size:16px;">⭐</span> <span style="font-size:13px;color:#1e40af;font-weight:600;">Share Feedback</span><br/><span style="font-size:12px;color:#1d4ed8;">Rate your experience and help us improve.</span></div>
+<div style="padding:12px;background:#fefce8;border-radius:6px;border:1px solid #fde68a;"><span style="font-size:16px;">🔔</span> <span style="font-size:13px;color:#92400e;font-weight:600;">Stay Updated</span><br/><span style="font-size:12px;color:#a16207;">Receive notifications on your tickets.</span></div>
+</div>${ftr(previewAppName, "Thank you for joining us!")}` },
+                      { name: "Ticket Created", desc: "Sent when a user submits a new ticket", preview: `${hdr(previewAppName)}<div style="padding:24px;">
+<h2 style="margin:0 0 6px;font-size:18px;color:#111827;">Ticket Created</h2>
+<p style="margin:0 0 16px;font-size:13px;color:#6b7280;">Your support request has been received.</p>
+<div style="background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb;padding:16px;">
+<table style="width:100%;font-size:13px;"><tr><td style="color:#6b7280;padding:4px 0;">Title</td><td style="color:#111827;font-weight:500;padding:4px 0;">App crashes on login</td></tr>
+<tr><td style="color:#6b7280;padding:4px 0;">Ticket ID</td><td style="padding:4px 0;"><code style="background:#e5e7eb;padding:2px 6px;border-radius:3px;font-size:12px;">a1b2c3d4</code></td></tr>
+<tr><td style="color:#6b7280;padding:4px 0;">Status</td><td style="padding:4px 0;"><span style="background:#3b82f6;color:#fff;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;">Open</span></td></tr>
+<tr><td style="color:#6b7280;padding:4px 0;">Created</td><td style="color:#111827;font-weight:500;padding:4px 0;">March 8, 2026</td></tr></table>
+</div>
+<p style="margin:16px 0 0;font-size:12px;color:#6b7280;">You'll receive updates when there's activity.</p>
+</div>${ftr(previewAppName, "We'll get back to you as soon as possible.")}` },
+                      { name: "Status Change", desc: "Sent when ticket status is updated", preview: `${hdr(previewAppName)}<div style="padding:24px;">
+<h2 style="margin:0 0 6px;font-size:18px;color:#111827;">Ticket Updated</h2>
+<p style="margin:0 0 16px;font-size:13px;color:#6b7280;">The status of your support ticket has been updated.</p>
+<div style="background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb;padding:16px;">
+<table style="width:100%;font-size:13px;"><tr><td style="color:#6b7280;padding:4px 0;">Title</td><td style="color:#111827;font-weight:500;padding:4px 0;">App crashes on login</td></tr>
+<tr><td style="color:#6b7280;padding:4px 0;">Status</td><td style="padding:4px 0;"><span style="background:#e5e7eb;color:#374151;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;">Open</span> <span style="color:#9ca3af;margin:0 4px;">→</span> <span style="background:#10b981;color:#fff;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;">Resolved</span></td></tr></table>
+</div>
+<div style="margin-top:16px;padding:12px;background:#ecfdf5;border-radius:6px;border:1px solid #a7f3d0;"><p style="margin:0;font-size:13px;color:#065f46;">✓ Your ticket has been marked as resolved.</p></div>
+</div>${ftr(previewAppName)}` },
+                      { name: "New Comment", desc: "Sent when someone comments on a ticket", preview: `${hdr(previewAppName)}<div style="padding:24px;">
+<h2 style="margin:0 0 6px;font-size:18px;color:#111827;">New Comment</h2>
+<p style="margin:0 0 16px;font-size:13px;color:#6b7280;">Someone has commented on your support ticket.</p>
+<div style="background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb;padding:16px;">
+<table style="width:100%;font-size:13px;"><tr><td style="color:#6b7280;padding:4px 0;">Ticket</td><td style="color:#111827;font-weight:500;padding:4px 0;">App crashes on login</td></tr>
+<tr><td style="color:#6b7280;padding:4px 0;">Comment by</td><td style="padding:4px 0;"><span style="color:#059669;font-weight:600;">Admin User</span></td></tr></table>
+</div>
+<p style="margin:16px 0 0;font-size:12px;color:#6b7280;">Open your ticket to view the full comment.</p>
+</div>${ftr(previewAppName)}` },
+                      { name: "Feedback Reply", desc: "Sent when admin replies to user feedback", preview: `${hdr(previewAppName)}<div style="padding:24px;">
+<h2 style="margin:0 0 6px;font-size:18px;color:#111827;">Feedback Reply</h2>
+<p style="margin:0 0 16px;font-size:13px;color:#6b7280;">Your feedback has received a response from our team.</p>
+<div style="background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb;padding:16px;">
+<table style="width:100%;font-size:13px;"><tr><td style="color:#6b7280;padding:4px 0;">Your Rating</td><td style="padding:4px 0;"><span style="font-size:16px;color:#f59e0b;letter-spacing:2px;">★★★★☆</span></td></tr>
+<tr><td style="color:#6b7280;padding:4px 0;">Reply by</td><td style="padding:4px 0;"><span style="color:#059669;font-weight:600;">Admin User</span></td></tr></table>
+</div>
+<p style="margin:16px 0 0;font-size:12px;color:#6b7280;">Open the app to view the full reply.</p>
+</div>${ftr(previewAppName)}` },
+                    ].map((tmpl, i) => (
+                      <details key={i} className="group border border-gray-200 rounded-lg overflow-hidden">
+                        <summary className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors">
+                          <div>
+                            <h3 className="text-sm font-semibold text-gray-900">{tmpl.name}</h3>
+                            <p className="text-xs text-gray-500">{tmpl.desc}</p>
+                          </div>
+                          <svg className="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                        </summary>
+                        <div className="p-4 bg-gray-50 border-t border-gray-200">
+                          <div className="flex justify-center" dangerouslySetInnerHTML={{ __html: tmpl.preview }} />
+                        </div>
+                      </details>
+                    ));
+                  })()}
+                </div>
+              </div>
             </div>
           )}
 

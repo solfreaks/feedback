@@ -344,34 +344,42 @@ export default function Apps() {
     );
   };
 
-  // Setup completeness ring SVG
+  // Setup progress badge with tooltip
   const SetupRing = ({ app }: { app: App }) => {
-    const { checks, pct } = getSetupScore(app);
-    const r = 14;
-    const circ = 2 * Math.PI * r;
-    const offset = circ - (pct / 100) * circ;
-    const color = pct === 100 ? "#10B981" : pct >= 60 ? "#F59E0B" : "#EF4444";
+    const { checks, pct, done, total } = getSetupScore(app);
+    const color = pct === 100 ? "text-emerald-600" : pct >= 60 ? "text-amber-600" : "text-red-500";
+    const bg = pct === 100 ? "bg-emerald-50 ring-emerald-200" : pct >= 60 ? "bg-amber-50 ring-amber-200" : "bg-red-50 ring-red-200";
+    const barColor = pct === 100 ? "bg-emerald-500" : pct >= 60 ? "bg-amber-500" : "bg-red-500";
+    const tipBg = pct === 100 ? "bg-emerald-50 border-emerald-200" : pct >= 60 ? "bg-amber-50 border-amber-200" : "bg-red-50 border-red-200";
     return (
-      <div className="group relative">
-        <svg width="36" height="36" className="transform -rotate-90">
-          <circle cx="18" cy="18" r={r} fill="none" stroke="#E5E7EB" strokeWidth="3" />
-          <circle cx="18" cy="18" r={r} fill="none" stroke={color} strokeWidth="3"
-            strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
-            className="transition-all duration-500" />
-        </svg>
-        <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold" style={{ color }}>{pct}%</span>
+      <div className="group relative cursor-pointer">
+        <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full ring-1 ${bg}`}>
+          {pct === 100
+            ? <svg className="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+            : <div className="w-8 h-1.5 rounded-full bg-gray-200 overflow-hidden">
+                <div className={`h-full rounded-full ${barColor} transition-all duration-500`} style={{ width: `${pct}%` }} />
+              </div>}
+          <span className={`text-[11px] font-semibold ${color}`}>{done}/{total}</span>
+        </div>
         {/* Tooltip */}
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
-          <div className="bg-gray-900 text-white rounded-lg px-3 py-2 text-[11px] whitespace-nowrap shadow-lg">
-            <p className="font-semibold mb-1">Setup Progress</p>
-            {checks.map((c) => (
-              <div key={c.key} className="flex items-center gap-1.5">
-                {c.done
-                  ? <svg className="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                  : <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>}
-                <span className={c.done ? "text-gray-300" : "text-gray-500"}>{c.label}</span>
-              </div>
-            ))}
+        <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block z-10">
+          <div className={`rounded-xl border px-4 py-3 shadow-lg min-w-[200px] ${tipBg}`}>
+            <div className="flex items-center justify-between mb-2.5">
+              <p className="text-xs font-semibold text-gray-800">Setup Progress</p>
+              <span className={`text-[11px] font-bold ${color}`}>{pct}%</span>
+            </div>
+            <div className="space-y-1.5">
+              {checks.map((c) => (
+                <div key={c.key} className="flex items-center gap-2">
+                  {c.done
+                    ? <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                      </div>
+                    : <div className="w-4 h-4 rounded-full border-2 border-gray-300 flex-shrink-0" />}
+                  <span className={`text-xs ${c.done ? "text-gray-700 font-medium" : "text-gray-400"}`}>{c.label}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

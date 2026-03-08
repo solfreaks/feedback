@@ -783,13 +783,42 @@ router.post("/test-email", async (req: Request, res: Response) => {
       app = found;
     }
 
+    const appName = app?.name || "SupportDesk";
+    const testHtml = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/></head>
+<body style="margin:0;padding:0;background-color:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f4f6;">
+<tr><td align="center" style="padding:32px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+<tr><td style="background:linear-gradient(135deg,#059669,#0d9488);padding:28px 32px;text-align:center;">
+<span style="color:#fff;font-size:20px;font-weight:700;">${appName}</span>
+</td></tr>
+<tr><td style="padding:32px;">
+<div style="text-align:center;margin-bottom:24px;">
+<div style="display:inline-block;width:56px;height:56px;background:#ecfdf5;border-radius:50%;line-height:56px;font-size:28px;">&#10003;</div>
+</div>
+<h1 style="margin:0 0 8px;font-size:22px;color:#111827;font-weight:700;text-align:center;">SMTP is Working!</h1>
+<p style="margin:0 0 24px;font-size:15px;color:#6b7280;text-align:center;">Your email configuration has been verified successfully.</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">
+<tr><td style="padding:20px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+<tr><td style="padding:6px 0;font-size:13px;color:#6b7280;">Source</td><td style="padding:6px 0;font-size:13px;color:#111827;font-weight:500;">${app ? "Per-app SMTP" : "Global SMTP"}</td></tr>
+<tr><td style="padding:6px 0;font-size:13px;color:#6b7280;">Sent to</td><td style="padding:6px 0;font-size:13px;color:#111827;font-weight:500;">${recipient}</td></tr>
+<tr><td style="padding:6px 0;font-size:13px;color:#6b7280;">Time</td><td style="padding:6px 0;font-size:13px;color:#111827;font-weight:500;">${new Date().toLocaleString()}</td></tr>
+</table>
+</td></tr></table>
+</td></tr>
+<tr><td style="padding:0 32px 28px;border-top:1px solid #e5e7eb;">
+<p style="padding-top:20px;margin:0;font-size:12px;color:#9ca3af;text-align:center;">Sent by ${appName}</p>
+</td></tr>
+</table>
+</td></tr></table>
+</body></html>`;
+
     const smtpResult = await emailService.sendEmailWithResponse(
       recipient,
-      `Test Email – ${app?.name || "SupportDesk"}`,
-      `<h2>Test Email</h2>
-       <p>This is a test email sent from <strong>${app?.name || "SupportDesk"}</strong> to verify your SMTP configuration is working correctly.</p>
-       <p>If you received this, your ${app ? "per-app" : "global"} email setup is working!</p>
-       <p style="color:#888;font-size:12px">Sent at ${new Date().toLocaleString()}</p>`,
+      `Test Email – ${appName}`,
+      testHtml,
       app
     );
     return res.json({ success: true, to: recipient, source: app ? "app" : "global", smtp: smtpResult });

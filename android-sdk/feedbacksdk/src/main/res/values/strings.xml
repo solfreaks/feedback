@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sdk_app_name">Feedback SDK</string>
+    <string name="sdk_create_ticket">Create Ticket</string>
+    <string name="sdk_my_tickets">My Tickets</string>
+    <string name="sdk_ticket_detail">Ticket Detail</string>
+    <string name="sdk_submit_feedback">Submit Feedback</string>
+    <string name="sdk_title">Title</string>
+    <string name="sdk_description">Description</string>
+    <string name="sdk_category">Category</string>
+    <string name="sdk_priority">Priority</string>
+    <string name="sdk_submit">Submit</string>
+    <string name="sdk_send">Send</string>
+    <string name="sdk_cancel">Cancel</string>
+    <string name="sdk_loading">Loading…</string>
+    <string name="sdk_no_tickets">No tickets yet</string>
+    <string name="sdk_no_comments">No comments yet</string>
+    <string name="sdk_write_comment">Write a comment…</string>
+    <string name="sdk_rate_experience">Rate your experience</string>
+    <string name="sdk_comment_optional">Comment (optional)</string>
+    <string name="sdk_feedback_submitted">Feedback submitted!</string>
+    <string name="sdk_ticket_created">Ticket created!</string>
+    <string name="sdk_error_title_required">Title is required</string>
+    <string name="sdk_error_desc_required">Description is required</string>
+    <string name="sdk_error_rating_required">Please select a rating</string>
+    <string name="sdk_error_not_logged_in">Please log in first</string>
+    <string name="sdk_title_hint">Brief summary of the issue</string>
+    <string name="sdk_description_hint">Describe the issue in detail…</string>
+</resources>

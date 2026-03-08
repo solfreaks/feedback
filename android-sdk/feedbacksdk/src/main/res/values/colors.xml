@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="sdk_primary">#3B82F6</color>
+    <color name="sdk_primary_dark">#2563EB</color>
+    <color name="sdk_on_primary">#FFFFFF</color>
+    <color name="sdk_background">#F9FAFB</color>
+    <color name="sdk_surface">#FFFFFF</color>
+    <color name="sdk_on_surface">#111827</color>
+    <color name="sdk_text_secondary">#6B7280</color>
+    <color name="sdk_border">#E5E7EB</color>
+    <color name="sdk_error">#EF4444</color>
+    <color name="sdk_success">#10B981</color>
+    <color name="sdk_star_active">#F59E0B</color>
+    <color name="sdk_star_inactive">#D1D5DB</color>
+
+    <!-- Status colors -->
+    <color name="sdk_status_open">#3B82F6</color>
+    <color name="sdk_status_in_progress">#F59E0B</color>
+    <color name="sdk_status_resolved">#10B981</color>
+    <color name="sdk_status_closed">#6B7280</color>
+
+    <!-- Priority colors -->
+    <color name="sdk_priority_low">#6B7280</color>
+    <color name="sdk_priority_medium">#3B82F6</color>
+    <color name="sdk_priority_high">#F59E0B</color>
+    <color name="sdk_priority_critical">#EF4444</color>
+</resources>

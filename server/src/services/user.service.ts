@@ -45,6 +45,7 @@ export async function listUsers(opts: {
         tickets: { select: { app: { select: { id: true, name: true } } }, distinct: ["appId"], take: 10 },
         feedbacks: { select: { app: { select: { id: true, name: true } } }, distinct: ["appId"], take: 10 },
         appAdmins: { select: { app: { select: { id: true, name: true } } } },
+        deviceTokens: { select: { app: { select: { id: true, name: true } } }, distinct: ["appId"], take: 10 },
       },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * limit,
@@ -53,13 +54,14 @@ export async function listUsers(opts: {
     prisma.user.count({ where }),
   ]);
 
-  // Deduplicate apps from tickets, feedbacks, and admin assignments
+  // Deduplicate apps from device tokens, tickets, feedbacks, and admin assignments
   const result = users.map((u) => {
     const appMap = new Map<string, string>();
     u.appAdmins.forEach((aa) => appMap.set(aa.app.id, aa.app.name));
+    u.deviceTokens.forEach((dt) => appMap.set(dt.app.id, dt.app.name));
     u.tickets.forEach((t) => appMap.set(t.app.id, t.app.name));
     u.feedbacks.forEach((f) => appMap.set(f.app.id, f.app.name));
-    const { tickets: _t, feedbacks: _f, appAdmins: _aa, ...rest } = u;
+    const { tickets: _t, feedbacks: _f, appAdmins: _aa, deviceTokens: _dt, ...rest } = u;
     return { ...rest, apps: Array.from(appMap, ([id, name]) => ({ id, name })) };
   });
 
@@ -76,13 +78,15 @@ export async function getUserDetail(userId: string) {
       tickets: { select: { app: { select: { id: true, name: true } } }, distinct: ["appId"], take: 20 },
       feedbacks: { select: { app: { select: { id: true, name: true } } }, distinct: ["appId"], take: 20 },
       appAdmins: { select: { app: { select: { id: true, name: true } } } },
+      deviceTokens: { select: { app: { select: { id: true, name: true } } }, distinct: ["appId"], take: 20 },
     },
   });
   if (!user) return null;
 
-  // Deduplicate apps from admin assignments, tickets, and feedbacks
+  // Deduplicate apps from admin assignments, device tokens, tickets, and feedbacks
   const appMap = new Map<string, string>();
   user.appAdmins.forEach((aa) => appMap.set(aa.app.id, aa.app.name));
+  user.deviceTokens.forEach((dt) => appMap.set(dt.app.id, dt.app.name));
   user.tickets.forEach((t) => appMap.set(t.app.id, t.app.name));
   user.feedbacks.forEach((f) => appMap.set(f.app.id, f.app.name));
   const apps = Array.from(appMap, ([id, name]) => ({ id, name }));

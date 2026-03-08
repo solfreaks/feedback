@@ -583,6 +583,30 @@ router.post("/categories", async (req: Request, res: Response) => {
   }
 });
 
+router.patch("/categories/:id", async (req: Request, res: Response) => {
+  try {
+    const { name, description } = req.body;
+    const category = await prisma.category.update({
+      where: { id: req.params.id },
+      data: { ...(name !== undefined && { name }), ...(description !== undefined && { description }) },
+    });
+    return res.json(category);
+  } catch (err) {
+    console.error("Update category error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/categories/:id", async (req: Request, res: Response) => {
+  try {
+    await prisma.category.delete({ where: { id: req.params.id } });
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Delete category error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ==================== FEEDBACK ====================
 
 // List all feedbacks with filters
@@ -855,6 +879,78 @@ router.delete("/users/:id", async (req: Request, res: Response) => {
     return res.json({ success: true });
   } catch (err) {
     console.error("Delete user error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ==================== NOTIFICATION PREFERENCES ====================
+
+router.get("/notification-preferences", async (req: Request, res: Response) => {
+  try {
+    const prefs = await prisma.notificationPreference.findMany({
+      where: { userId: req.user!.id },
+    });
+    // Return all types with defaults for missing ones
+    const allTypes = ["new_ticket", "ticket_update", "new_feedback", "new_comment", "feedback_reply"];
+    const result = allTypes.map((type) => {
+      const existing = prefs.find((p) => p.type === type);
+      return { type, inApp: existing ? existing.inApp : true, email: existing ? existing.email : true };
+    });
+    return res.json(result);
+  } catch (err) {
+    console.error("Get notification prefs error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.put("/notification-preferences", async (req: Request, res: Response) => {
+  try {
+    const { preferences } = req.body as { preferences: { type: string; inApp: boolean; email: boolean }[] };
+    if (!Array.isArray(preferences)) return res.status(400).json({ error: "preferences must be an array" });
+    const validTypes = ["new_ticket", "ticket_update", "new_feedback", "new_comment", "feedback_reply"];
+    await Promise.all(
+      preferences
+        .filter((p) => validTypes.includes(p.type))
+        .map((p) =>
+          prisma.notificationPreference.upsert({
+            where: { userId_type: { userId: req.user!.id, type: p.type as any } },
+            create: { userId: req.user!.id, type: p.type as any, inApp: p.inApp, email: p.email },
+            update: { inApp: p.inApp, email: p.email },
+          })
+        )
+    );
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Update notification prefs error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ==================== SYSTEM INFO (super_admin only) ====================
+
+router.get("/system-info", async (req: Request, res: Response) => {
+  try {
+    if (req.user!.role !== "super_admin") return res.status(403).json({ error: "Forbidden" });
+    const [totalApps, totalAdmins, totalUsers, totalTickets, totalFeedbacks, totalCategories,
+      appsWithSmtp, lastTicket, lastFeedback] = await Promise.all([
+      prisma.app.count(),
+      prisma.user.count({ where: { role: { in: ["admin", "super_admin"] } } }),
+      prisma.user.count({ where: { role: "user" } }),
+      prisma.ticket.count(),
+      prisma.feedback.count(),
+      prisma.category.count(),
+      prisma.app.count({ where: { smtpHost: { not: null } } }),
+      prisma.ticket.findFirst({ orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
+      prisma.feedback.findFirst({ orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
+    ]);
+    return res.json({
+      counts: { totalApps, totalAdmins, totalUsers, totalTickets, totalFeedbacks, totalCategories },
+      smtp: { appsWithSmtp, globalConfigured: !!(process.env.SMTP_HOST && process.env.SMTP_USER) },
+      lastActivity: { lastTicket: lastTicket?.createdAt, lastFeedback: lastFeedback?.createdAt },
+      server: { nodeVersion: process.version, uptime: Math.floor(process.uptime()), platform: process.platform },
+    });
+  } catch (err) {
+    console.error("System info error:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 });

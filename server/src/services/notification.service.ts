@@ -29,7 +29,7 @@ export async function createNotification(data: {
   return notification;
 }
 
-// Notify all admins
+// Notify all admins (respects notification preferences)
 export async function notifyAdmins(data: {
   type: NotificationType;
   title: string;
@@ -41,16 +41,27 @@ export async function notifyAdmins(data: {
     select: { id: true },
   });
 
+  // Load preferences for all admins in one query
+  const prefs = await prisma.notificationPreference.findMany({
+    where: { userId: { in: admins.map((a) => a.id) }, type: data.type },
+  });
+  const prefMap = new Map(prefs.map((p) => [p.userId, p]));
+
   const notifications = await Promise.all(
-    admins.map((admin) =>
-      createNotification({
-        userId: admin.id,
-        type: data.type,
-        title: data.title,
-        message: data.message,
-        link: data.link,
+    admins
+      .filter((admin) => {
+        const pref = prefMap.get(admin.id);
+        return !pref || pref.inApp; // default is enabled
       })
-    )
+      .map((admin) =>
+        createNotification({
+          userId: admin.id,
+          type: data.type,
+          title: data.title,
+          message: data.message,
+          link: data.link,
+        })
+      )
   );
 
   return notifications;

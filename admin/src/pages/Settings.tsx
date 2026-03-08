@@ -1,15 +1,37 @@
 import { useState, useEffect, type FormEvent } from "react";
 import api from "../api";
+import Avatar from "../components/Avatar";
+
+type TabKey = "profile" | "security" | "email" | "notifications" | "admins" | "categories" | "system";
+type AdminItem = { id: string; name: string; email: string; avatarUrl?: string; role: string };
+type CategoryItem = { id: string; appId: string; name: string; description?: string };
+type NotifPref = { type: string; inApp: boolean; email: boolean };
+type SystemInfo = {
+  counts: { totalApps: number; totalAdmins: number; totalUsers: number; totalTickets: number; totalFeedbacks: number; totalCategories: number };
+  smtp: { appsWithSmtp: number; globalConfigured: boolean };
+  lastActivity: { lastTicket?: string; lastFeedback?: string };
+  server: { nodeVersion: string; uptime: number; platform: string };
+};
+
+const notifTypeLabels: Record<string, { label: string; desc: string }> = {
+  new_ticket: { label: "New Ticket", desc: "When a user submits a new support ticket" },
+  ticket_update: { label: "Ticket Update", desc: "When a ticket status or priority changes" },
+  new_feedback: { label: "New Feedback", desc: "When a user submits new feedback" },
+  new_comment: { label: "New Comment", desc: "When someone comments on a ticket" },
+  feedback_reply: { label: "Feedback Reply", desc: "When someone replies to feedback" },
+};
 
 export default function Settings() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const [activeTab, setActiveTab] = useState<"profile" | "admins" | "security" | "email">("profile");
+  const [activeTab, setActiveTab] = useState<TabKey>("profile");
 
   // Profile state
   const [name, setName] = useState(user.name || "");
   const [email] = useState(user.email || "");
   const [saving, setSaving] = useState(false);
   const [profileMsg, setProfileMsg] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl || "");
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   // Password state
   const [currentPassword, setCurrentPassword] = useState("");
@@ -18,12 +40,16 @@ export default function Settings() {
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMsg, setPwMsg] = useState({ text: "", type: "" });
 
-  // Admin registration state
+  // Admin management state
   const [adminName, setAdminName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [registering, setRegistering] = useState(false);
   const [regMsg, setRegMsg] = useState({ text: "", type: "" });
+  const [adminList, setAdminList] = useState<AdminItem[]>([]);
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [showRegForm, setShowRegForm] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   // Test email state
   const [testEmailTo, setTestEmailTo] = useState(user.email || "");
@@ -33,10 +59,29 @@ export default function Settings() {
   const [testEmailMsg, setTestEmailMsg] = useState({ text: "", type: "" });
   const [testEmailHistory, setTestEmailHistory] = useState<{ to: string; source: string; time: string; ok: boolean; error?: string }[]>([]);
 
-  // Avatar upload
-  const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl || "");
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  // Notification preferences state
+  const [notifPrefs, setNotifPrefs] = useState<NotifPref[]>([]);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [notifSaving, setNotifSaving] = useState(false);
+  const [notifMsg, setNotifMsg] = useState("");
 
+  // Categories state
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const [catLoading, setCatLoading] = useState(false);
+  const [catAppId, setCatAppId] = useState("");
+  const [catApps, setCatApps] = useState<{ id: string; name: string }[]>([]);
+  const [newCatName, setNewCatName] = useState("");
+  const [newCatDesc, setNewCatDesc] = useState("");
+  const [addingCat, setAddingCat] = useState(false);
+  const [editCat, setEditCat] = useState<CategoryItem | null>(null);
+  const [editCatName, setEditCatName] = useState("");
+  const [editCatDesc, setEditCatDesc] = useState("");
+
+  // System info state
+  const [sysInfo, setSysInfo] = useState<SystemInfo | null>(null);
+  const [sysLoading, setSysLoading] = useState(false);
+
+  // Avatar upload
   const handleAvatarUpload = async (file: File) => {
     if (!file.type.startsWith("image/")) return;
     setUploadingAvatar(true);
@@ -71,21 +116,13 @@ export default function Settings() {
 
   const changePassword = async (e: FormEvent) => {
     e.preventDefault();
-    if (newPassword !== confirmPassword) {
-      setPwMsg({ text: "Passwords do not match", type: "error" });
-      return;
-    }
-    if (newPassword.length < 6) {
-      setPwMsg({ text: "Password must be at least 6 characters", type: "error" });
-      return;
-    }
+    if (newPassword !== confirmPassword) { setPwMsg({ text: "Passwords do not match", type: "error" }); return; }
+    if (newPassword.length < 6) { setPwMsg({ text: "Password must be at least 6 characters", type: "error" }); return; }
     setPwSaving(true);
     setPwMsg({ text: "", type: "" });
     try {
       await api.patch("/auth/admin/password", { currentPassword, newPassword });
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
+      setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
       setPwMsg({ text: "Password changed successfully", type: "success" });
       setTimeout(() => setPwMsg({ text: "", type: "" }), 3000);
     } catch (err: any) {
@@ -95,21 +132,23 @@ export default function Settings() {
     }
   };
 
+  // Admin management
+  const fetchAdmins = () => {
+    setAdminLoading(true);
+    api.get("/admin/admins").then((r) => setAdminList(r.data)).finally(() => setAdminLoading(false));
+  };
+
   const registerAdmin = async (e: FormEvent) => {
     e.preventDefault();
     if (!adminName || !adminEmail || !adminPassword) return;
     setRegistering(true);
     setRegMsg({ text: "", type: "" });
     try {
-      await api.post("/auth/admin/register", {
-        name: adminName,
-        email: adminEmail,
-        password: adminPassword,
-      });
-      setAdminName("");
-      setAdminEmail("");
-      setAdminPassword("");
+      await api.post("/auth/admin/register", { name: adminName, email: adminEmail, password: adminPassword });
+      setAdminName(""); setAdminEmail(""); setAdminPassword("");
       setRegMsg({ text: "Admin registered successfully!", type: "success" });
+      setShowRegForm(false);
+      fetchAdmins();
       setTimeout(() => setRegMsg({ text: "", type: "" }), 3000);
     } catch (err: any) {
       setRegMsg({ text: err.response?.data?.error || "Registration failed", type: "error" });
@@ -118,6 +157,22 @@ export default function Settings() {
     }
   };
 
+  const changeAdminRole = async (id: string, role: string) => {
+    try {
+      await api.patch(`/admin/users/${id}/role`, { role });
+      setAdminList((prev) => prev.map((a) => a.id === id ? { ...a, role } : a));
+    } catch {}
+  };
+
+  const deleteAdmin = async (id: string) => {
+    try {
+      await api.delete(`/admin/users/${id}`);
+      setAdminList((prev) => prev.filter((a) => a.id !== id));
+      setDeleteConfirm(null);
+    } catch {}
+  };
+
+  // Test email
   useEffect(() => {
     api.get("/admin/apps").then((r) => setTestEmailApps(r.data));
   }, []);
@@ -128,10 +183,7 @@ export default function Settings() {
     setTestEmailMsg({ text: "", type: "" });
     const time = new Date().toLocaleTimeString();
     try {
-      const { data } = await api.post("/admin/test-email", {
-        to: testEmailTo,
-        ...(testEmailAppId ? { appId: testEmailAppId } : {}),
-      });
+      const { data } = await api.post("/admin/test-email", { to: testEmailTo, ...(testEmailAppId ? { appId: testEmailAppId } : {}) });
       const source = data.source === "app" ? "per-app SMTP" : "global SMTP";
       setTestEmailMsg({ text: `Test email sent to ${data.to} via ${source}`, type: "success" });
       setTestEmailHistory((prev) => [{ to: data.to, source, time, ok: true }, ...prev].slice(0, 10));
@@ -153,28 +205,115 @@ export default function Settings() {
     return { type: "app-fallback", host: "Not configured — will use global", port: "", user: "", from: app.emailFrom || "" };
   };
 
-  const tabs = [
-    { key: "profile" as const, label: "Profile", icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-      </svg>
-    )},
-    { key: "security" as const, label: "Security", icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-      </svg>
-    )},
-    { key: "email" as const, label: "Test Email", icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-      </svg>
-    )},
-    ...(user.role === "super_admin" ? [{ key: "admins" as const, label: "Admin Registration", icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM4 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 0110.374 21c-2.331 0-4.512-.645-6.374-1.766z" />
-      </svg>
-    )}] : []),
+  // Notification preferences
+  const fetchNotifPrefs = () => {
+    setNotifLoading(true);
+    api.get("/admin/notification-preferences").then((r) => setNotifPrefs(r.data)).finally(() => setNotifLoading(false));
+  };
+
+  const saveNotifPrefs = async () => {
+    setNotifSaving(true);
+    try {
+      await api.put("/admin/notification-preferences", { preferences: notifPrefs });
+      setNotifMsg("Preferences saved");
+      setTimeout(() => setNotifMsg(""), 3000);
+    } catch {
+      setNotifMsg("Failed to save");
+    } finally {
+      setNotifSaving(false);
+    }
+  };
+
+  const togglePref = (type: string, field: "inApp" | "email") => {
+    setNotifPrefs((prev) => prev.map((p) => p.type === type ? { ...p, [field]: !p[field] } : p));
+  };
+
+  // Categories
+  const fetchCategories = (appId: string) => {
+    if (!appId) { setCategories([]); return; }
+    setCatLoading(true);
+    api.get("/admin/categories", { params: { appId } }).then((r) => setCategories(r.data)).finally(() => setCatLoading(false));
+  };
+
+  const addCategory = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!catAppId || !newCatName.trim()) return;
+    setAddingCat(true);
+    try {
+      const { data } = await api.post("/admin/categories", { appId: catAppId, name: newCatName.trim(), description: newCatDesc.trim() || undefined });
+      setCategories((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+      setNewCatName(""); setNewCatDesc("");
+    } catch {}
+    setAddingCat(false);
+  };
+
+  const saveEditCat = async () => {
+    if (!editCat) return;
+    try {
+      const { data } = await api.patch(`/admin/categories/${editCat.id}`, { name: editCatName.trim(), description: editCatDesc.trim() || null });
+      setCategories((prev) => prev.map((c) => c.id === editCat.id ? data : c));
+      setEditCat(null);
+    } catch {}
+  };
+
+  const deleteCat = async (id: string) => {
+    try {
+      await api.delete(`/admin/categories/${id}`);
+      setCategories((prev) => prev.filter((c) => c.id !== id));
+    } catch {}
+  };
+
+  // System info
+  const fetchSysInfo = () => {
+    setSysLoading(true);
+    api.get("/admin/system-info").then((r) => setSysInfo(r.data)).catch(() => {}).finally(() => setSysLoading(false));
+  };
+
+  // Tab change handlers
+  useEffect(() => {
+    if (activeTab === "admins" && user.role === "super_admin") fetchAdmins();
+    if (activeTab === "notifications") fetchNotifPrefs();
+    if (activeTab === "categories") { setCatApps(testEmailApps); if (testEmailApps.length > 0 && !catAppId) { setCatAppId(testEmailApps[0].id); fetchCategories(testEmailApps[0].id); } }
+    if (activeTab === "system" && user.role === "super_admin") fetchSysInfo();
+  }, [activeTab]);
+
+  const inputCls = "w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors";
+  const btnPrimary = "bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors";
+
+  const MsgBox = ({ text, type }: { text: string; type: string }) => (
+    <div className={`flex items-center gap-2 text-sm px-4 py-3 rounded-lg ${type === "error" ? "bg-red-50 text-red-700 border border-red-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"}`}>
+      {type === "error" ? (
+        <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+      ) : (
+        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+      )}
+      {text}
+    </div>
+  );
+
+  const SectionHeader = ({ title, desc }: { title: string; desc: string }) => (
+    <div className="px-6 py-4 border-b border-gray-100">
+      <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+      <p className="text-sm text-gray-500 mt-0.5">{desc}</p>
+    </div>
+  );
+
+  const tabs: { key: TabKey; label: string; icon: string; superOnly?: boolean }[] = [
+    { key: "profile", label: "Profile", icon: "M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" },
+    { key: "security", label: "Security", icon: "M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" },
+    { key: "notifications", label: "Notifications", icon: "M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" },
+    { key: "email", label: "Test Email", icon: "M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" },
+    { key: "categories", label: "Categories", icon: "M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z M6 6h.008v.008H6V6z" },
+    { key: "admins", label: "Manage Admins", icon: "M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z", superOnly: true },
+    { key: "system", label: "System Info", icon: "M11.42 15.17l-5.1-3.07a2.25 2.25 0 01-1.07-1.916V6.75m0 0l5.1-3.07a2.25 2.25 0 012.14 0l5.1 3.07M3.25 6.75l8.75 5.25m0 0l8.75-5.25M12 12v9.75m-4.13-4.92l-3.62-2.17a2.25 2.25 0 01-1.07-1.916V6.75", superOnly: true },
   ];
+
+  const visibleTabs = tabs.filter((t) => !t.superOnly || user.role === "super_admin");
+
+  const formatUptime = (s: number) => {
+    const d = Math.floor(s / 86400); const h = Math.floor((s % 86400) / 3600); const m = Math.floor((s % 3600) / 60);
+    return d > 0 ? `${d}d ${h}h ${m}m` : h > 0 ? `${h}h ${m}m` : `${m}m`;
+  };
 
   return (
     <div>
@@ -187,14 +326,14 @@ export default function Settings() {
         {/* Sidebar tabs */}
         <div className="w-56 flex-shrink-0">
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            {tabs.map((tab) => (
+            {visibleTabs.map((tab) => (
               <button key={tab.key} onClick={() => setActiveTab(tab.key)}
                 className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors border-b border-gray-100 last:border-b-0 ${
-                  activeTab === tab.key
-                    ? "bg-blue-50 text-blue-600 font-medium"
-                    : "text-gray-600 hover:bg-gray-50"
+                  activeTab === tab.key ? "bg-blue-50 text-blue-600 font-medium" : "text-gray-600 hover:bg-gray-50"
                 }`}>
-                {tab.icon}
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} />
+                </svg>
                 {tab.label}
               </button>
             ))}
@@ -206,21 +345,13 @@ export default function Settings() {
           {/* Profile Tab */}
           {activeTab === "profile" && (
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-100">
-                <h2 className="text-base font-semibold text-gray-900">Profile Information</h2>
-                <p className="text-sm text-gray-500 mt-0.5">Update your personal details</p>
-              </div>
+              <SectionHeader title="Profile Information" desc="Update your personal details" />
               <form onSubmit={saveProfile} className="p-6 space-y-5">
-                {/* Avatar */}
                 <div className="flex items-center gap-4">
                   <label className="relative w-16 h-16 rounded-full cursor-pointer group">
                     <input type="file" accept="image/*" className="hidden" onChange={(e) => { if (e.target.files?.[0]) handleAvatarUpload(e.target.files[0]); }} />
                     <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-xl font-bold text-white overflow-hidden">
-                      {avatarUrl ? (
-                        <img src={avatarUrl} alt={name} className="w-16 h-16 rounded-full object-cover" />
-                      ) : (
-                        name.charAt(0).toUpperCase()
-                      )}
+                      {avatarUrl ? <img src={avatarUrl} alt={name} className="w-16 h-16 rounded-full object-cover" /> : name.charAt(0).toUpperCase()}
                     </div>
                     <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                       {uploadingAvatar ? (
@@ -236,20 +367,15 @@ export default function Settings() {
                     <p className="text-xs text-gray-400 mt-0.5">Click photo to change</p>
                   </div>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
-                  <input type="text" value={name} onChange={(e) => setName(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors" />
+                  <input type="text" value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
-                  <input type="email" value={email} disabled
-                    className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm bg-gray-50 text-gray-500 cursor-not-allowed" />
+                  <input type="email" value={email} disabled className={`${inputCls} !bg-gray-50 !text-gray-500 cursor-not-allowed !border-gray-200`} />
                   <p className="text-xs text-gray-400 mt-1">Email cannot be changed</p>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
                   <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-sm font-medium">
@@ -259,17 +385,11 @@ export default function Settings() {
                     {user.role === "super_admin" ? "Super Admin" : "Admin"}
                   </div>
                 </div>
-
                 <div className="pt-2 flex items-center gap-3">
-                  <button type="submit" disabled={saving}
-                    className="bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                    {saving ? "Saving..." : "Save Changes"}
-                  </button>
+                  <button type="submit" disabled={saving} className={btnPrimary}>{saving ? "Saving..." : "Save Changes"}</button>
                   {profileMsg && (
                     <span className="text-sm text-emerald-600 flex items-center gap-1">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                      </svg>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
                       {profileMsg}
                     </span>
                   )}
@@ -281,254 +401,134 @@ export default function Settings() {
           {/* Security Tab */}
           {activeTab === "security" && (
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-100">
-                <h2 className="text-base font-semibold text-gray-900">Change Password</h2>
-                <p className="text-sm text-gray-500 mt-0.5">Update your password to keep your account secure</p>
-              </div>
+              <SectionHeader title="Change Password" desc="Update your password to keep your account secure" />
               <form onSubmit={changePassword} className="p-6 space-y-5">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Current Password</label>
-                  <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)}
-                    required placeholder="Enter current password"
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors" />
+                  <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required placeholder="Enter current password" className={inputCls} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">New Password</label>
-                  <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
-                    required placeholder="Enter new password" minLength={6}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors" />
+                  <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required placeholder="Enter new password" minLength={6} className={inputCls} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Confirm New Password</label>
-                  <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
-                    required placeholder="Confirm new password" minLength={6}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors" />
+                  <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required placeholder="Confirm new password" minLength={6} className={inputCls} />
                 </div>
-
-                {pwMsg.text && (
-                  <div className={`flex items-center gap-2 text-sm px-4 py-3 rounded-lg ${
-                    pwMsg.type === "error" ? "bg-red-50 text-red-700 border border-red-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                  }`}>
-                    {pwMsg.type === "error" ? (
-                      <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                    ) : (
-                      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                      </svg>
-                    )}
-                    {pwMsg.text}
-                  </div>
-                )}
-
+                {pwMsg.text && <MsgBox text={pwMsg.text} type={pwMsg.type} />}
                 <div className="pt-2">
-                  <button type="submit" disabled={pwSaving}
-                    className="bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                    {pwSaving ? "Changing..." : "Change Password"}
-                  </button>
+                  <button type="submit" disabled={pwSaving} className={btnPrimary}>{pwSaving ? "Changing..." : "Change Password"}</button>
                 </div>
               </form>
+            </div>
+          )}
+
+          {/* Notifications Tab */}
+          {activeTab === "notifications" && (
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <SectionHeader title="Notification Preferences" desc="Choose which notifications you receive" />
+              {notifLoading ? (
+                <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" /></div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {notifPrefs.map((pref) => {
+                    const info = notifTypeLabels[pref.type];
+                    return (
+                      <div key={pref.type} className="px-6 py-4 flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">{info?.label || pref.type}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{info?.desc || ""}</p>
+                        </div>
+                        <div className="flex items-center gap-6">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <span className="text-xs text-gray-500">In-App</span>
+                            <button type="button" onClick={() => togglePref(pref.type, "inApp")}
+                              className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full transition-colors ${pref.inApp ? "bg-blue-600" : "bg-gray-200"}`}>
+                              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform mt-0.5 ${pref.inApp ? "translate-x-4 ml-0.5" : "translate-x-0.5"}`} />
+                            </button>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <span className="text-xs text-gray-500">Email</span>
+                            <button type="button" onClick={() => togglePref(pref.type, "email")}
+                              className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full transition-colors ${pref.email ? "bg-blue-600" : "bg-gray-200"}`}>
+                              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform mt-0.5 ${pref.email ? "translate-x-4 ml-0.5" : "translate-x-0.5"}`} />
+                            </button>
+                          </label>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className="px-6 py-4 flex items-center gap-3">
+                    <button onClick={saveNotifPrefs} disabled={notifSaving} className={btnPrimary}>{notifSaving ? "Saving..." : "Save Preferences"}</button>
+                    {notifMsg && <span className="text-sm text-emerald-600">{notifMsg}</span>}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           {/* Test Email Tab */}
           {activeTab === "email" && (
             <div className="space-y-5">
-              {/* Send Test Form */}
               <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-100">
-                  <h2 className="text-base font-semibold text-gray-900">Test Email Configuration</h2>
-                  <p className="text-sm text-gray-500 mt-0.5">Send a test email to verify your SMTP settings are working</p>
-                </div>
+                <SectionHeader title="Test Email Configuration" desc="Send a test email to verify your SMTP settings are working" />
                 <form onSubmit={sendTestEmail} className="p-6 space-y-5">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">Send To</label>
-                      <input type="email" value={testEmailTo} onChange={(e) => setTestEmailTo(e.target.value)}
-                        required placeholder="recipient@example.com"
-                        className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors" />
+                      <input type="email" value={testEmailTo} onChange={(e) => setTestEmailTo(e.target.value)} required placeholder="recipient@example.com" className={inputCls} />
                       <p className="text-xs text-gray-400 mt-1">Defaults to your account email</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">SMTP Source</label>
-                      <select value={testEmailAppId} onChange={(e) => setTestEmailAppId(e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors bg-white">
+                      <select value={testEmailAppId} onChange={(e) => setTestEmailAppId(e.target.value)} className={`${inputCls} bg-white`}>
                         <option value="">Global SMTP (.env)</option>
-                        {testEmailApps.map((a) => (
-                          <option key={a.id} value={a.id}>{a.name}{a.smtpHost ? "" : " (no SMTP — uses global)"}</option>
-                        ))}
+                        {testEmailApps.map((a) => <option key={a.id} value={a.id}>{a.name}{a.smtpHost ? "" : " (no SMTP)"}</option>)}
                       </select>
                     </div>
                   </div>
-
-                  {/* SMTP Info Card */}
                   {(() => {
                     const info = getSelectedSmtpInfo();
                     return (
-                      <div className={`rounded-lg border p-4 ${
-                        info.type === "app" ? "bg-emerald-50 border-emerald-200" : info.type === "app-fallback" ? "bg-amber-50 border-amber-200" : "bg-gray-50 border-gray-200"
-                      }`}>
-                        <div className="flex items-center gap-2 mb-2">
-                          {info.type === "app" ? (
-                            <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          ) : info.type === "app-fallback" ? (
-                            <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                            </svg>
-                          ) : (
-                            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z" />
-                            </svg>
-                          )}
-                          <p className={`text-sm font-medium ${
-                            info.type === "app" ? "text-emerald-800" : info.type === "app-fallback" ? "text-amber-800" : "text-gray-700"
-                          }`}>
-                            {info.type === "app" ? "Per-App SMTP" : info.type === "app-fallback" ? "App has no SMTP — falling back to global" : "Global SMTP Server"}
-                          </p>
-                        </div>
+                      <div className={`rounded-lg border p-4 ${info.type === "app" ? "bg-emerald-50 border-emerald-200" : info.type === "app-fallback" ? "bg-amber-50 border-amber-200" : "bg-gray-50 border-gray-200"}`}>
+                        <p className={`text-sm font-medium mb-2 ${info.type === "app" ? "text-emerald-800" : info.type === "app-fallback" ? "text-amber-800" : "text-gray-700"}`}>
+                          {info.type === "app" ? "Per-App SMTP" : info.type === "app-fallback" ? "No SMTP — fallback to global" : "Global SMTP Server"}
+                        </p>
                         <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">Host:</span>
-                            <span className={`font-mono ${info.type === "app" ? "text-emerald-700" : info.type === "app-fallback" ? "text-amber-700" : "text-gray-600"}`}>{info.host || "—"}</span>
-                          </div>
-                          {info.port && (
-                            <div className="flex justify-between">
-                              <span className="text-gray-500">Port:</span>
-                              <span className="font-mono text-gray-600">{info.port}</span>
-                            </div>
-                          )}
-                          {info.user && (
-                            <div className="flex justify-between">
-                              <span className="text-gray-500">User:</span>
-                              <span className="font-mono text-gray-600">{info.user}</span>
-                            </div>
-                          )}
-                          {info.from && (
-                            <div className="flex justify-between">
-                              <span className="text-gray-500">From:</span>
-                              <span className="font-mono text-gray-600">{info.from}</span>
-                            </div>
-                          )}
+                          <div className="flex justify-between"><span className="text-gray-500">Host:</span><span className="font-mono text-gray-600">{info.host || "—"}</span></div>
+                          {info.port && <div className="flex justify-between"><span className="text-gray-500">Port:</span><span className="font-mono text-gray-600">{info.port}</span></div>}
+                          {info.user && <div className="flex justify-between"><span className="text-gray-500">User:</span><span className="font-mono text-gray-600">{info.user}</span></div>}
+                          {info.from && <div className="flex justify-between"><span className="text-gray-500">From:</span><span className="font-mono text-gray-600">{info.from}</span></div>}
                         </div>
                       </div>
                     );
                   })()}
-
                   {testEmailMsg.text && (
-                    <div className={`flex items-start gap-2 text-sm px-4 py-3 rounded-lg ${
-                      testEmailMsg.type === "error" ? "bg-red-50 text-red-700 border border-red-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                    }`}>
-                      {testEmailMsg.type === "error" ? (
-                        <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                      ) : (
-                        <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                        </svg>
-                      )}
+                    <div className={`flex items-start gap-2 text-sm px-4 py-3 rounded-lg ${testEmailMsg.type === "error" ? "bg-red-50 text-red-700 border border-red-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"}`}>
                       <div>
                         <p>{testEmailMsg.text}</p>
-                        {testEmailMsg.type === "error" && (
-                          <p className="text-xs mt-1 opacity-75">Check the SMTP credentials and try again. Common issues: wrong password, port blocked, or 2FA requiring an app password.</p>
-                        )}
+                        {testEmailMsg.type === "error" && <p className="text-xs mt-1 opacity-75">Check SMTP credentials. Common issues: wrong password, port blocked, 2FA requiring an app password.</p>}
                       </div>
                     </div>
                   )}
-
                   <div className="pt-2">
-                    <button type="submit" disabled={sendingTest}
-                      className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                      {sendingTest ? (
-                        <>
-                          <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
-                          Sending...
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                          </svg>
-                          Send Test Email
-                        </>
-                      )}
+                    <button type="submit" disabled={sendingTest} className={`inline-flex items-center gap-2 ${btnPrimary}`}>
+                      {sendingTest ? (<><div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />Sending...</>) : "Send Test Email"}
                     </button>
                   </div>
                 </form>
               </div>
 
-              {/* Per-App SMTP Status */}
-              {testEmailApps.length > 0 && (
-                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                  <div className="px-6 py-4 border-b border-gray-100">
-                    <h2 className="text-base font-semibold text-gray-900">App Email Configuration Status</h2>
-                    <p className="text-sm text-gray-500 mt-0.5">Overview of SMTP settings across your registered apps</p>
-                  </div>
-                  <div className="divide-y divide-gray-100">
-                    {testEmailApps.map((app) => {
-                      const hasSmtp = !!app.smtpHost;
-                      const hasFrom = !!app.emailFrom;
-                      return (
-                        <div key={app.id} className="px-6 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-2 h-2 rounded-full ${hasSmtp ? "bg-emerald-500" : hasFrom ? "bg-amber-400" : "bg-gray-300"}`} />
-                            <span className="text-sm font-medium text-gray-900">{app.name}</span>
-                          </div>
-                          <div className="flex items-center gap-4 text-xs">
-                            {hasSmtp ? (
-                              <span className="text-emerald-600 flex items-center gap-1">
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                                {app.smtpHost}:{app.smtpPort}
-                              </span>
-                            ) : (
-                              <span className="text-gray-400">No custom SMTP</span>
-                            )}
-                            {hasFrom ? (
-                              <span className="text-gray-500 font-mono">{app.emailFrom}</span>
-                            ) : (
-                              <span className="text-gray-400">No sender</span>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => { setTestEmailAppId(app.id); }}
-                              className="text-blue-600 hover:text-blue-800 font-medium">
-                              Test
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Test History */}
               {testEmailHistory.length > 0 && (
                 <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                  <div className="px-6 py-4 border-b border-gray-100">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h2 className="text-base font-semibold text-gray-900">Test History</h2>
-                        <p className="text-sm text-gray-500 mt-0.5">Results from this session</p>
-                      </div>
-                      <button onClick={() => setTestEmailHistory([])} className="text-xs text-gray-400 hover:text-gray-600">Clear</button>
-                    </div>
+                  <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <h2 className="text-base font-semibold text-gray-900">Test History</h2>
+                    <button onClick={() => setTestEmailHistory([])} className="text-xs text-gray-400 hover:text-gray-600">Clear</button>
                   </div>
                   <div className="divide-y divide-gray-100">
                     {testEmailHistory.map((entry, i) => (
                       <div key={i} className="px-6 py-3 flex items-center gap-3">
-                        {entry.ok ? (
-                          <svg className="w-4 h-4 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        ) : (
-                          <svg className="w-4 h-4 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        )}
+                        <div className={`w-2 h-2 rounded-full ${entry.ok ? "bg-emerald-500" : "bg-red-500"}`} />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 text-sm">
                             <span className="font-medium text-gray-900 truncate">{entry.to}</span>
@@ -543,119 +543,241 @@ export default function Settings() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
 
-              {/* Troubleshooting */}
+          {/* Categories Tab */}
+          {activeTab === "categories" && (
+            <div className="space-y-5">
               <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-100">
-                  <h2 className="text-base font-semibold text-gray-900">Troubleshooting</h2>
-                </div>
-                <div className="p-6 space-y-4 text-sm">
-                  <div className="flex gap-3">
-                    <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-xs font-bold text-red-600">!</span>
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">Authentication failed / Invalid credentials</p>
-                      <p className="text-gray-500 text-xs mt-0.5">
-                        If using Gmail, you need an <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">App Password</a> (not your regular password).
-                        Enable 2-Step Verification first, then generate an App Password for "Mail".
-                      </p>
-                    </div>
+                <SectionHeader title="Manage Categories" desc="Organize tickets and feedback with app-specific categories" />
+                <div className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Select App</label>
+                    <select value={catAppId} onChange={(e) => { setCatAppId(e.target.value); fetchCategories(e.target.value); }} className={`${inputCls} bg-white`}>
+                      <option value="">Choose an app...</option>
+                      {catApps.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                    </select>
                   </div>
-                  <div className="flex gap-3">
-                    <div className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-xs font-bold text-amber-600">!</span>
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">Connection timeout / ECONNREFUSED</p>
-                      <p className="text-gray-500 text-xs mt-0.5">
-                        Check that the SMTP host and port are correct. Common ports: <code className="bg-gray-100 px-1 rounded">587</code> (TLS/STARTTLS), <code className="bg-gray-100 px-1 rounded">465</code> (SSL), <code className="bg-gray-100 px-1 rounded">25</code> (unencrypted, often blocked).
-                        Make sure your server's firewall allows outbound connections on the port.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex gap-3">
-                    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-xs font-bold text-blue-600">?</span>
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">Email sent but not received</p>
-                      <p className="text-gray-500 text-xs mt-0.5">
-                        Check the spam/junk folder. Emails from new SMTP sources often land in spam initially.
-                        For production, set up SPF, DKIM, and DMARC records on your sending domain to improve deliverability.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex gap-3">
-                    <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-xs font-bold text-gray-500">i</span>
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">Global vs Per-App SMTP</p>
-                      <p className="text-gray-500 text-xs mt-0.5">
-                        The global SMTP (from server <code className="bg-gray-100 px-1 rounded">.env</code>) is the fallback used when an app has no custom SMTP configured.
-                        Per-app SMTP lets each app send emails from its own domain (e.g. <code className="bg-gray-100 px-1 rounded">support@shopease.com</code>).
-                        Configure per-app SMTP in <strong>Apps → Edit → SMTP Settings</strong>.
-                      </p>
-                    </div>
-                  </div>
+
+                  {catAppId && (
+                    <>
+                      {catLoading ? (
+                        <div className="flex justify-center py-6"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" /></div>
+                      ) : categories.length === 0 ? (
+                        <p className="text-sm text-gray-400 text-center py-6">No categories yet for this app</p>
+                      ) : (
+                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                          {categories.map((cat, i) => (
+                            <div key={cat.id} className={`flex items-center justify-between px-4 py-3 ${i > 0 ? "border-t border-gray-100" : ""}`}>
+                              {editCat?.id === cat.id ? (
+                                <div className="flex-1 flex items-center gap-2">
+                                  <input type="text" value={editCatName} onChange={(e) => setEditCatName(e.target.value)} className="border border-gray-300 rounded px-2 py-1 text-sm flex-1" />
+                                  <input type="text" value={editCatDesc} onChange={(e) => setEditCatDesc(e.target.value)} placeholder="Description" className="border border-gray-300 rounded px-2 py-1 text-sm flex-1" />
+                                  <button onClick={saveEditCat} className="text-blue-600 text-xs font-medium hover:text-blue-800">Save</button>
+                                  <button onClick={() => setEditCat(null)} className="text-gray-400 text-xs hover:text-gray-600">Cancel</button>
+                                </div>
+                              ) : (
+                                <>
+                                  <div>
+                                    <p className="text-sm font-medium text-gray-900">{cat.name}</p>
+                                    {cat.description && <p className="text-xs text-gray-500">{cat.description}</p>}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <button onClick={() => { setEditCat(cat); setEditCatName(cat.name); setEditCatDesc(cat.description || ""); }}
+                                      className="text-gray-400 hover:text-blue-600 transition-colors">
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" /></svg>
+                                    </button>
+                                    <button onClick={() => deleteCat(cat.id)} className="text-gray-400 hover:text-red-600 transition-colors">
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Add category form */}
+                      <form onSubmit={addCategory} className="flex items-end gap-2">
+                        <div className="flex-1">
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Name</label>
+                          <input type="text" value={newCatName} onChange={(e) => setNewCatName(e.target.value)} required placeholder="e.g. Billing" className={inputCls} />
+                        </div>
+                        <div className="flex-1">
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Description (optional)</label>
+                          <input type="text" value={newCatDesc} onChange={(e) => setNewCatDesc(e.target.value)} placeholder="Brief description" className={inputCls} />
+                        </div>
+                        <button type="submit" disabled={addingCat} className={`${btnPrimary} whitespace-nowrap`}>{addingCat ? "Adding..." : "Add"}</button>
+                      </form>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
           )}
 
-          {/* Admin Registration Tab (super_admin only) */}
+          {/* Manage Admins Tab (super_admin only) */}
           {activeTab === "admins" && user.role === "super_admin" && (
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-100">
-                <h2 className="text-base font-semibold text-gray-900">Register New Admin</h2>
-                <p className="text-sm text-gray-500 mt-0.5">Create a new admin account for your team</p>
-              </div>
-              <form onSubmit={registerAdmin} className="p-6 space-y-5">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
-                  <input type="text" value={adminName} onChange={(e) => setAdminName(e.target.value)}
-                    required placeholder="Enter admin name"
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
-                  <input type="email" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)}
-                    required placeholder="admin@yourcompany.com"
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
-                  <input type="password" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)}
-                    required placeholder="Create a password" minLength={6}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors" />
-                  <p className="text-xs text-gray-400 mt-1">Minimum 6 characters</p>
-                </div>
-
-                {regMsg.text && (
-                  <div className={`flex items-center gap-2 text-sm px-4 py-3 rounded-lg ${
-                    regMsg.type === "error" ? "bg-red-50 text-red-700 border border-red-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                  }`}>
-                    {regMsg.type === "error" ? (
-                      <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                    ) : (
-                      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                      </svg>
-                    )}
-                    {regMsg.text}
+            <div className="space-y-5">
+              {/* Admin List */}
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-base font-semibold text-gray-900">Admin Team</h2>
+                    <p className="text-sm text-gray-500 mt-0.5">{adminList.length} admin{adminList.length !== 1 ? "s" : ""} registered</p>
                   </div>
-                )}
-
-                <div className="pt-2">
-                  <button type="submit" disabled={registering}
-                    className="bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                    {registering ? "Registering..." : "Register Admin"}
+                  <button onClick={() => setShowRegForm(!showRegForm)}
+                    className="inline-flex items-center gap-1.5 bg-blue-600 text-white px-3.5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                    Add Admin
                   </button>
                 </div>
-              </form>
+
+                {adminLoading ? (
+                  <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" /></div>
+                ) : (
+                  <div className="divide-y divide-gray-100">
+                    {adminList.map((admin) => (
+                      <div key={admin.id} className="px-6 py-3.5 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <Avatar name={admin.name} avatarUrl={admin.avatarUrl} size={36} />
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{admin.name} {admin.id === user.id && <span className="text-xs text-gray-400">(you)</span>}</p>
+                            <p className="text-xs text-gray-500">{admin.email}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {admin.id === user.id ? (
+                            <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                              {admin.role === "super_admin" ? "Super Admin" : "Admin"}
+                            </span>
+                          ) : (
+                            <select value={admin.role} onChange={(e) => changeAdminRole(admin.id, e.target.value)}
+                              className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+                              <option value="admin">Admin</option>
+                              <option value="super_admin">Super Admin</option>
+                            </select>
+                          )}
+                          {admin.id !== user.id && (
+                            deleteConfirm === admin.id ? (
+                              <div className="flex items-center gap-1">
+                                <button onClick={() => deleteAdmin(admin.id)} className="text-xs text-red-600 font-medium hover:text-red-800">Confirm</button>
+                                <button onClick={() => setDeleteConfirm(null)} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+                              </div>
+                            ) : (
+                              <button onClick={() => setDeleteConfirm(admin.id)} className="text-gray-400 hover:text-red-600 transition-colors">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                              </button>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Register New Admin (collapsible) */}
+              {showRegForm && (
+                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                  <SectionHeader title="Register New Admin" desc="Create a new admin account for your team" />
+                  <form onSubmit={registerAdmin} className="p-6 space-y-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
+                        <input type="text" value={adminName} onChange={(e) => setAdminName(e.target.value)} required placeholder="Enter admin name" className={inputCls} />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
+                        <input type="email" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} required placeholder="admin@company.com" className={inputCls} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+                      <input type="password" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} required placeholder="Create a password" minLength={6} className={inputCls} />
+                      <p className="text-xs text-gray-400 mt-1">Minimum 6 characters</p>
+                    </div>
+                    {regMsg.text && <MsgBox text={regMsg.text} type={regMsg.type} />}
+                    <div className="pt-2 flex items-center gap-3">
+                      <button type="submit" disabled={registering} className={btnPrimary}>{registering ? "Registering..." : "Register Admin"}</button>
+                      <button type="button" onClick={() => setShowRegForm(false)} className="text-sm text-gray-500 hover:text-gray-700">Cancel</button>
+                    </div>
+                  </form>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* System Info Tab (super_admin only) */}
+          {activeTab === "system" && user.role === "super_admin" && (
+            <div className="space-y-5">
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-base font-semibold text-gray-900">System Overview</h2>
+                    <p className="text-sm text-gray-500 mt-0.5">Platform statistics and server information</p>
+                  </div>
+                  <button onClick={fetchSysInfo} className="text-xs text-blue-600 hover:text-blue-800 font-medium">Refresh</button>
+                </div>
+                {sysLoading || !sysInfo ? (
+                  <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" /></div>
+                ) : (
+                  <div className="p-6 space-y-6">
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-3 gap-4">
+                      {[
+                        { label: "Apps", value: sysInfo.counts.totalApps, color: "bg-blue-50 text-blue-700" },
+                        { label: "Admins", value: sysInfo.counts.totalAdmins, color: "bg-violet-50 text-violet-700" },
+                        { label: "Users", value: sysInfo.counts.totalUsers, color: "bg-emerald-50 text-emerald-700" },
+                        { label: "Tickets", value: sysInfo.counts.totalTickets, color: "bg-amber-50 text-amber-700" },
+                        { label: "Feedbacks", value: sysInfo.counts.totalFeedbacks, color: "bg-pink-50 text-pink-700" },
+                        { label: "Categories", value: sysInfo.counts.totalCategories, color: "bg-gray-50 text-gray-700" },
+                      ].map((s) => (
+                        <div key={s.label} className={`rounded-lg p-4 ${s.color}`}>
+                          <p className="text-2xl font-bold">{s.value}</p>
+                          <p className="text-xs font-medium mt-0.5 opacity-75">{s.label}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Server Info */}
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900 mb-3">Server</h3>
+                      <div className="bg-gray-50 rounded-lg border border-gray-200 divide-y divide-gray-200">
+                        {[
+                          { label: "Node.js", value: sysInfo.server.nodeVersion },
+                          { label: "Platform", value: sysInfo.server.platform },
+                          { label: "Uptime", value: formatUptime(sysInfo.server.uptime) },
+                          { label: "Global SMTP", value: sysInfo.smtp.globalConfigured ? "Configured" : "Not configured" },
+                          { label: "Apps with SMTP", value: `${sysInfo.smtp.appsWithSmtp} / ${sysInfo.counts.totalApps}` },
+                        ].map((row) => (
+                          <div key={row.label} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                            <span className="text-gray-500">{row.label}</span>
+                            <span className="font-medium text-gray-900 font-mono text-xs">{row.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Last Activity */}
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900 mb-3">Last Activity</h3>
+                      <div className="bg-gray-50 rounded-lg border border-gray-200 divide-y divide-gray-200">
+                        <div className="flex items-center justify-between px-4 py-2.5 text-sm">
+                          <span className="text-gray-500">Last Ticket</span>
+                          <span className="text-gray-900 text-xs">{sysInfo.lastActivity.lastTicket ? new Date(sysInfo.lastActivity.lastTicket).toLocaleString() : "None"}</span>
+                        </div>
+                        <div className="flex items-center justify-between px-4 py-2.5 text-sm">
+                          <span className="text-gray-500">Last Feedback</span>
+                          <span className="text-gray-900 text-xs">{sysInfo.lastActivity.lastFeedback ? new Date(sysInfo.lastActivity.lastFeedback).toLocaleString() : "None"}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

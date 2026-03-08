@@ -92,6 +92,7 @@ model User {
   notifications   Notification[]
   deviceTokens    DeviceToken[]
   appAdmins       AppAdmin[]
+  notificationPreferences NotificationPreference[]
 
   @@map("users")
 }
@@ -255,6 +256,18 @@ model Notification {
   @@index([userId, isRead])
   @@index([createdAt])
   @@map("notifications")
+}
+
+model NotificationPreference {
+  id     String           @id @default(uuid())
+  userId String           @map("user_id")
+  type   NotificationType
+  inApp  Boolean          @default(true) @map("in_app")
+  email  Boolean          @default(true)
+  user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type])
+  @@map("notification_preferences")
 }
 
 model DeviceToken {

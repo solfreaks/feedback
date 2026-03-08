@@ -1,9 +1,6 @@
 import nodemailer, { Transporter } from "nodemailer";
 import { config } from "../config";
 
-import dns from "dns";
-dns.setDefaultResultOrder("ipv4first");
-
 const defaultTransporter = nodemailer.createTransport({
   host: config.smtp.host,
   port: config.smtp.port,

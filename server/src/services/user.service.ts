@@ -42,6 +42,9 @@ export async function listUsers(opts: {
         id: true, email: true, name: true, avatarUrl: true, role: true,
         isBanned: true, lastActiveAt: true, createdAt: true,
         _count: { select: { tickets: true, feedbacks: true } },
+        tickets: { select: { app: { select: { id: true, name: true } } }, distinct: ["appId"], take: 10 },
+        feedbacks: { select: { app: { select: { id: true, name: true } } }, distinct: ["appId"], take: 10 },
+        appAdmins: { select: { app: { select: { id: true, name: true } } } },
       },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * limit,
@@ -50,7 +53,17 @@ export async function listUsers(opts: {
     prisma.user.count({ where }),
   ]);
 
-  return { users, total, page, totalPages: Math.ceil(total / limit) };
+  // Deduplicate apps from tickets, feedbacks, and admin assignments
+  const result = users.map((u) => {
+    const appMap = new Map<string, string>();
+    u.appAdmins.forEach((aa) => appMap.set(aa.app.id, aa.app.name));
+    u.tickets.forEach((t) => appMap.set(t.app.id, t.app.name));
+    u.feedbacks.forEach((f) => appMap.set(f.app.id, f.app.name));
+    const { tickets: _t, feedbacks: _f, appAdmins: _aa, ...rest } = u;
+    return { ...rest, apps: Array.from(appMap, ([id, name]) => ({ id, name })) };
+  });
+
+  return { users: result, total, page, totalPages: Math.ceil(total / limit) };
 }
 
 export async function getUserDetail(userId: string) {
@@ -60,9 +73,19 @@ export async function getUserDetail(userId: string) {
       id: true, email: true, name: true, avatarUrl: true, role: true,
       googleId: true, isBanned: true, lastActiveAt: true, createdAt: true,
       _count: { select: { tickets: true, feedbacks: true, comments: true } },
+      tickets: { select: { app: { select: { id: true, name: true } } }, distinct: ["appId"], take: 20 },
+      feedbacks: { select: { app: { select: { id: true, name: true } } }, distinct: ["appId"], take: 20 },
+      appAdmins: { select: { app: { select: { id: true, name: true } } } },
     },
   });
   if (!user) return null;
+
+  // Deduplicate apps from admin assignments, tickets, and feedbacks
+  const appMap = new Map<string, string>();
+  user.appAdmins.forEach((aa) => appMap.set(aa.app.id, aa.app.name));
+  user.tickets.forEach((t) => appMap.set(t.app.id, t.app.name));
+  user.feedbacks.forEach((f) => appMap.set(f.app.id, f.app.name));
+  const apps = Array.from(appMap, ([id, name]) => ({ id, name }));
 
   const [recentTickets, recentFeedbacks] = await Promise.all([
     prisma.ticket.findMany({
@@ -79,7 +102,8 @@ export async function getUserDetail(userId: string) {
     }),
   ]);
 
-  return { ...user, recentTickets, recentFeedbacks };
+  const { tickets: _t, feedbacks: _f, appAdmins: _aa, ...userRest } = user;
+  return { ...userRest, apps, recentTickets, recentFeedbacks };
 }
 
 export async function updateUserRole(userId: string, role: string) {

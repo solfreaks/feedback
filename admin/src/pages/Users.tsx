@@ -257,6 +257,7 @@ export default function Users() {
                 <tr>
                   <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
                   <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                  <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Apps</th>
                   <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Activity</th>
                   <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Last Active</th>
@@ -281,6 +282,20 @@ export default function Users() {
                       </div>
                     </td>
                     <td className="px-5 py-3.5">{roleBadge(u.role)}</td>
+                    <td className="px-5 py-3.5">
+                      {(u as any).apps?.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {(u as any).apps.slice(0, 3).map((a: { id: string; name: string }) => (
+                            <span key={a.id} className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-100">{a.name}</span>
+                          ))}
+                          {(u as any).apps.length > 3 && (
+                            <span className="px-1.5 py-0.5 rounded-full text-[10px] text-gray-400">+{(u as any).apps.length - 3}</span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-300">None</span>
+                      )}
+                    </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3 text-xs text-gray-500">
                         <span className="flex items-center gap-1">
@@ -314,7 +329,7 @@ export default function Users() {
                   </tr>
                 ))}
                 {users.length === 0 && (
-                  <tr><td colSpan={7} className="px-5 py-12 text-center text-gray-400">No users found</td></tr>
+                  <tr><td colSpan={8} className="px-5 py-12 text-center text-gray-400">No users found</td></tr>
                 )}
               </tbody>
             </table>
@@ -442,6 +457,21 @@ export default function Users() {
                     <span className="text-gray-700 font-medium">{memberSince(selectedUser.createdAt)}</span>
                   </div>
                 </div>
+
+                {/* Linked Apps */}
+                {(selectedUser as any).apps?.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Linked Apps</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(selectedUser as any).apps.map((a: { id: string; name: string }) => (
+                        <Link key={a.id} to={`/apps?id=${a.id}`} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100 hover:bg-blue-100 transition-colors">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 16.875h3.375m0 0h3.375m-3.375 0V13.5m0 3.375v3.375M6 10.5h2.25a2.25 2.25 0 002.25-2.25V6a2.25 2.25 0 00-2.25-2.25H6A2.25 2.25 0 003.75 6v2.25A2.25 2.25 0 006 10.5zm0 9.75h2.25A2.25 2.25 0 0010.5 18v-2.25a2.25 2.25 0 00-2.25-2.25H6a2.25 2.25 0 00-2.25 2.25V18A2.25 2.25 0 006 20.25zm9.75-9.75H18a2.25 2.25 0 002.25-2.25V6A2.25 2.25 0 0018 3.75h-2.25A2.25 2.25 0 0013.5 6v2.25a2.25 2.25 0 002.25 2.25z" /></svg>
+                          {a.name}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Actions */}
                 <div className="space-y-2">

@@ -26,7 +26,7 @@ export default function Avatar({ name, avatarUrl, size = 32, className = "" }: A
 
   return (
     <div
-      className={`rounded-full bg-gradient-to-br from-blue-400 to-violet-500 flex items-center justify-center font-bold text-white flex-shrink-0 ${fontSize} ${className}`}
+      className={`rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center font-bold text-white flex-shrink-0 ${fontSize} ${className}`}
       style={{ width: size, height: size }}
     >
       {name.charAt(0).toUpperCase()}

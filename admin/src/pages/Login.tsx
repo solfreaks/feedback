@@ -29,29 +29,33 @@ export default function Login() {
   return (
     <div className="min-h-screen flex bg-gray-900">
       {/* Left side - branding */}
-      <div className="hidden lg:flex lg:w-1/2 items-center justify-center bg-gradient-to-br from-blue-600 to-violet-700 p-12">
+      <div className="hidden lg:flex lg:w-1/2 items-center justify-center bg-gradient-to-br from-emerald-600 to-teal-700 p-12">
         <div className="max-w-md text-white">
           <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center mb-8">
-            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none">
+              <path d="M4 13V12C4 7.58 7.58 4 12 4C16.42 4 20 7.58 20 12V13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <rect x="2" y="13" width="4" height="6" rx="1.5" fill="currentColor" opacity="0.3" stroke="currentColor" strokeWidth="1.2" />
+              <rect x="18" y="13" width="4" height="6" rx="1.5" fill="currentColor" opacity="0.3" stroke="currentColor" strokeWidth="1.2" />
+              <path d="M20 19V19.5C20 20.88 18.88 22 17.5 22H14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              <rect x="11" y="21" width="3" height="2" rx="1" fill="currentColor" />
             </svg>
           </div>
-          <h1 className="text-3xl font-bold mb-4">Feedback Hub</h1>
-          <p className="text-blue-100 text-lg leading-relaxed">
+          <h1 className="text-3xl font-bold mb-4">SupportDesk</h1>
+          <p className="text-emerald-100 text-lg leading-relaxed">
             Manage feedback and support tickets across all your applications from one centralized dashboard.
           </p>
           <div className="mt-8 flex gap-4">
             <div className="bg-white/10 rounded-lg px-4 py-3">
               <p className="text-2xl font-bold">Tickets</p>
-              <p className="text-blue-200 text-sm">Support & SLA</p>
+              <p className="text-emerald-200 text-sm">Support & SLA</p>
             </div>
             <div className="bg-white/10 rounded-lg px-4 py-3">
               <p className="text-2xl font-bold">Feedback</p>
-              <p className="text-blue-200 text-sm">Ratings & Reviews</p>
+              <p className="text-emerald-200 text-sm">Ratings & Reviews</p>
             </div>
             <div className="bg-white/10 rounded-lg px-4 py-3">
               <p className="text-2xl font-bold">Analytics</p>
-              <p className="text-blue-200 text-sm">Insights & Stats</p>
+              <p className="text-emerald-200 text-sm">Insights & Stats</p>
             </div>
           </div>
         </div>
@@ -61,7 +65,7 @@ export default function Login() {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-sm">
           <div className="lg:hidden mb-8 text-center">
-            <h1 className="text-2xl font-bold text-white">Feedback Hub</h1>
+            <h1 className="text-2xl font-bold text-white">SupportDesk</h1>
             <p className="text-gray-400 text-sm mt-1">Admin Dashboard</p>
           </div>
 
@@ -83,16 +87,16 @@ export default function Login() {
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Email address</label>
                 <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                   required autoFocus placeholder="admin@yourapp.com"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" />
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors" />
               </div>
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
                 <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
                   required placeholder="Enter your password"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" />
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors" />
               </div>
               <button type="submit" disabled={loading}
-                className="w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm">
+                className="w-full bg-emerald-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-sm">
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />

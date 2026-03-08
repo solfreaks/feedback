@@ -65,6 +65,26 @@ export async function sendEmail(to: string, subject: string, html: string, app?:
   }
 }
 
+/** Send email and return the SMTP response (for test/debug — errors propagate) */
+export async function sendEmailWithResponse(to: string, subject: string, html: string, app?: AppEmail) {
+  const transport = getTransporter(app);
+  if (transport === defaultTransporter && !config.smtp.user) {
+    throw new Error("No SMTP configured");
+  }
+  const info = await transport.sendMail({
+    from: getFrom(app),
+    to,
+    subject,
+    html,
+  });
+  return {
+    messageId: info.messageId,
+    response: info.response,
+    accepted: info.accepted,
+    rejected: info.rejected,
+  };
+}
+
 export async function notifyTicketCreated(userEmail: string, ticketTitle: string, ticketId: string, app?: AppEmail) {
   await sendEmail(
     userEmail,
@@ -100,7 +120,7 @@ export async function notifyNewComment(userEmail: string, ticketTitle: string, c
 }
 
 export async function sendWelcomeEmail(userEmail: string, userName: string, app?: AppEmail) {
-  const appName = app?.name || "Feedback Hub";
+  const appName = app?.name || "SupportDesk";
   await sendEmail(
     userEmail,
     `Welcome to ${appName}!`,

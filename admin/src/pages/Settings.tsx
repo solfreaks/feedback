@@ -185,7 +185,8 @@ export default function Settings() {
     try {
       const { data } = await api.post("/admin/test-email", { to: testEmailTo, ...(testEmailAppId ? { appId: testEmailAppId } : {}) });
       const source = data.source === "app" ? "per-app SMTP" : "global SMTP";
-      setTestEmailMsg({ text: `Test email sent to ${data.to} via ${source}`, type: "success" });
+      const smtpInfo = data.smtp ? `\nSMTP: ${data.smtp.response || "OK"}\nMessage ID: ${data.smtp.messageId || "N/A"}${data.smtp.rejected?.length ? `\nRejected: ${data.smtp.rejected.join(", ")}` : ""}` : "";
+      setTestEmailMsg({ text: `Test email sent to ${data.to} via ${source}${smtpInfo}`, type: "success" });
       setTestEmailHistory((prev) => [{ to: data.to, source, time, ok: true }, ...prev].slice(0, 10));
     } catch (err: any) {
       const errorMsg = err.response?.data?.error || "Failed to send test email";
@@ -506,7 +507,7 @@ export default function Settings() {
                   {testEmailMsg.text && (
                     <div className={`flex items-start gap-2 text-sm px-4 py-3 rounded-lg ${testEmailMsg.type === "error" ? "bg-red-50 text-red-700 border border-red-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"}`}>
                       <div>
-                        <p>{testEmailMsg.text}</p>
+                        <p className="whitespace-pre-line">{testEmailMsg.text}</p>
                         {testEmailMsg.type === "error" && <p className="text-xs mt-1 opacity-75">Check SMTP credentials. Common issues: wrong password, port blocked, 2FA requiring an app password.</p>}
                       </div>
                     </div>

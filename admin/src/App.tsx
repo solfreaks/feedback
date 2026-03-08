@@ -169,7 +169,7 @@ function Layout({ children }: { children: React.ReactNode }) {
           collapsed ? "justify-center px-0 py-2.5 mx-auto w-11 h-11" : "px-3 py-2"
         } ${
           active
-            ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md shadow-blue-600/20"
+            ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-md shadow-emerald-600/20"
             : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
         }`}>
         <span className="flex-shrink-0">{item.icon}</span>
@@ -196,14 +196,18 @@ function Layout({ children }: { children: React.ReactNode }) {
     <>
       {/* Logo */}
       <div className={`h-16 flex items-center border-b border-gray-100 flex-shrink-0 ${collapsed ? "justify-center px-0" : "px-5"}`}>
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-600/20">
-          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-emerald-600/20">
+          <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none">
+            <path d="M4 13V12C4 7.58 7.58 4 12 4C16.42 4 20 7.58 20 12V13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <rect x="2" y="13" width="4" height="6" rx="1.5" fill="currentColor" opacity="0.3" stroke="currentColor" strokeWidth="1.2" />
+            <rect x="18" y="13" width="4" height="6" rx="1.5" fill="currentColor" opacity="0.3" stroke="currentColor" strokeWidth="1.2" />
+            <path d="M20 19V19.5C20 20.88 18.88 22 17.5 22H14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            <rect x="11" y="21" width="3" height="2" rx="1" fill="currentColor" />
           </svg>
         </div>
         {!collapsed && (
           <div className="ml-3">
-            <h1 className="text-[15px] font-bold text-gray-900 leading-tight">Feedback Hub</h1>
+            <h1 className="text-[15px] font-bold text-gray-900 leading-tight">SupportDesk</h1>
             <p className="text-[10px] text-gray-400 font-medium tracking-wide">ADMIN PANEL</p>
           </div>
         )}
@@ -339,7 +343,7 @@ function Layout({ children }: { children: React.ReactNode }) {
 
               {/* Mobile title */}
               <span className="sm:hidden text-sm font-semibold text-gray-900 truncate">
-                {pageTitles[`/${location.pathname.split("/")[1]}`] || "Feedback Hub"}
+                {pageTitles[`/${location.pathname.split("/")[1]}`] || "SupportDesk"}
               </span>
             </div>
 

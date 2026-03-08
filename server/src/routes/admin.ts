@@ -783,16 +783,16 @@ router.post("/test-email", async (req: Request, res: Response) => {
       app = found;
     }
 
-    await emailService.sendEmail(
+    const smtpResult = await emailService.sendEmailWithResponse(
       recipient,
-      `Test Email – ${app?.name || "Feedback Hub"}`,
+      `Test Email – ${app?.name || "SupportDesk"}`,
       `<h2>Test Email</h2>
-       <p>This is a test email sent from <strong>${app?.name || "Feedback Hub"}</strong> to verify your SMTP configuration is working correctly.</p>
+       <p>This is a test email sent from <strong>${app?.name || "SupportDesk"}</strong> to verify your SMTP configuration is working correctly.</p>
        <p>If you received this, your ${app ? "per-app" : "global"} email setup is working!</p>
        <p style="color:#888;font-size:12px">Sent at ${new Date().toLocaleString()}</p>`,
       app
     );
-    return res.json({ success: true, to: recipient, source: app ? "app" : "global" });
+    return res.json({ success: true, to: recipient, source: app ? "app" : "global", smtp: smtpResult });
   } catch (err: any) {
     console.error("Test email error:", err);
     return res.status(500).json({ error: err.message || "Failed to send test email" });

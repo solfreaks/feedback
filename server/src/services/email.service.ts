@@ -286,6 +286,50 @@ export async function sendWelcomeEmail(userEmail: string, userName: string, app?
   await sendEmail(userEmail, `Welcome to ${appName}!`, emailLayout(appName, content, "Thank you for joining us!"), app);
 }
 
+export async function notifyAdminNewTicket(adminEmail: string, userName: string, ticketTitle: string, ticketId: string, priority: string, app?: AppEmail) {
+  const appName = getAppName(app);
+  const priColor = priority === "urgent" ? "#EF4444" : priority === "high" ? "#F59E0B" : priority === "medium" ? "#3B82F6" : "#6B7280";
+  const content = `
+    <h1 style="margin:0 0 8px;font-size:22px;color:#111827;font-weight:700;">New Ticket Submitted</h1>
+    <p style="margin:0 0 24px;font-size:15px;color:#6b7280;">A new support ticket has been submitted and needs attention.</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">
+      <tr><td style="padding:20px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+          ${infoRow("Title", ticketTitle)}
+          ${infoRow("Submitted by", `<span style="color:#059669;font-weight:600;">${userName}</span>`)}
+          ${infoRow("Ticket ID", `<code style="background:#e5e7eb;padding:2px 8px;border-radius:4px;font-size:13px;">${ticketId.slice(0, 8)}</code>`)}
+          ${infoRow("Priority", badge(formatStatus(priority), priColor))}
+          ${infoRow("Status", badge("Open", "#3b82f6"))}
+        </table>
+      </td></tr>
+    </table>
+    <p style="margin:24px 0 0;font-size:14px;color:#6b7280;">Log in to the admin panel to review and respond to this ticket.</p>`;
+
+  await sendEmail(adminEmail, `New Ticket: ${ticketTitle}`, emailLayout(appName, content, "Please review this ticket promptly."), app);
+}
+
+export async function notifyAdminNewFeedback(adminEmail: string, userName: string, rating: number, category: string, comment: string | null, app?: AppEmail) {
+  const appName = getAppName(app);
+  const stars = "&#9733;".repeat(rating) + "&#9734;".repeat(5 - rating);
+  const ratingColor = rating >= 4 ? "#10B981" : rating >= 3 ? "#F59E0B" : "#EF4444";
+  const content = `
+    <h1 style="margin:0 0 8px;font-size:22px;color:#111827;font-weight:700;">New Feedback Received</h1>
+    <p style="margin:0 0 24px;font-size:15px;color:#6b7280;">A user has submitted new feedback for your app.</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">
+      <tr><td style="padding:20px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+          ${infoRow("From", `<span style="color:#059669;font-weight:600;">${userName}</span>`)}
+          ${infoRow("Rating", `<span style="font-size:18px;color:${ratingColor};letter-spacing:2px;">${stars}</span>`)}
+          ${infoRow("Category", badge(formatStatus(category), "#6B7280"))}
+          ${comment ? infoRow("Comment", `<span style="color:#374151;font-style:italic;">"${comment.length > 100 ? comment.slice(0, 100) + "..." : comment}"</span>`) : ""}
+        </table>
+      </td></tr>
+    </table>
+    <p style="margin:24px 0 0;font-size:14px;color:#6b7280;">Log in to the admin panel to view and reply to this feedback.</p>`;
+
+  await sendEmail(adminEmail, `New ${rating}★ Feedback from ${userName}`, emailLayout(appName, content), app);
+}
+
 export async function sendFeedbackReplyNotification(userEmail: string, rating: number, replyBy: string, app?: AppEmail) {
   const appName = getAppName(app);
   const stars = "&#9733;".repeat(rating) + "&#9734;".repeat(5 - rating);

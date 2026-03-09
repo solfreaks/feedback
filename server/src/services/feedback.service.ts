@@ -1,12 +1,13 @@
 import { PrismaClient, FeedbackCategory, FeedbackStatus } from "@prisma/client";
 import { notifyAdmins } from "./notification.service";
+import { notifyAdminNewFeedback } from "./email.service";
 import { sendPushToUser } from "./fcm.service";
 
 const prisma = new PrismaClient();
 
 const feedbackInclude = {
   user: { select: { id: true, name: true, email: true, avatarUrl: true } },
-  app: { select: { id: true, name: true } },
+  app: { select: { id: true, name: true, emailFrom: true, emailName: true, smtpHost: true, smtpPort: true, smtpUser: true, smtpPass: true } },
   _count: { select: { replies: true } },
 };
 
@@ -30,7 +31,16 @@ export async function createFeedback(data: {
     include: feedbackInclude,
   });
 
-  // Notify admins
+  // Email all app admins about the new feedback
+  const appAdmins = await prisma.appAdmin.findMany({
+    where: { appId: data.appId },
+    include: { user: { select: { email: true } } },
+  });
+  for (const aa of appAdmins) {
+    notifyAdminNewFeedback(aa.user.email!, feedback.user.name, data.rating, data.category || "general", data.comment || null, feedback.app as any);
+  }
+
+  // Notify admins in real-time
   notifyAdmins({
     type: "new_feedback",
     title: "New Feedback",

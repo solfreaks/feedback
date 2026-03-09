@@ -1,6 +1,6 @@
 import { PrismaClient, Priority, TicketStatus } from "@prisma/client";
 import { calculateSlaDeadline } from "../utils/sla";
-import { notifyTicketCreated, notifyStatusChange, notifyNewComment } from "./email.service";
+import { notifyTicketCreated, notifyStatusChange, notifyNewComment, notifyAdminNewTicket } from "./email.service";
 import { notifyAdmins } from "./notification.service";
 import { sendPushToUser } from "./fcm.service";
 
@@ -67,8 +67,17 @@ export async function createTicket(data: {
     include: ticketInclude,
   });
 
-  // Send email notification (from app-specific sender if configured)
+  // Send email notification to user (from app-specific sender if configured)
   notifyTicketCreated(ticket.user.email, ticket.title, ticket.id, ticket.app);
+
+  // Email all app admins about the new ticket
+  const appAdmins = await prisma.appAdmin.findMany({
+    where: { appId: data.appId },
+    include: { user: { select: { email: true } } },
+  });
+  for (const aa of appAdmins) {
+    notifyAdminNewTicket(aa.user.email!, ticket.user.name, ticket.title, ticket.id, priority, ticket.app);
+  }
 
   // Notify admins in real-time
   notifyAdmins({

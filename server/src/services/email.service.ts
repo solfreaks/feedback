@@ -286,48 +286,93 @@ export async function sendWelcomeEmail(userEmail: string, userName: string, app?
   await sendEmail(userEmail, `Welcome to ${appName}!`, emailLayout(appName, content, "Thank you for joining us!"), app);
 }
 
-export async function notifyAdminNewTicket(adminEmail: string, userName: string, ticketTitle: string, ticketId: string, priority: string, app?: AppEmail) {
+interface AdminTicketInfo {
+  userName: string;
+  userEmail: string;
+  ticketTitle: string;
+  ticketId: string;
+  description: string;
+  priority: string;
+  category?: string;
+  assigneeName?: string;
+  slaDeadline?: Date;
+}
+
+export async function notifyAdminNewTicket(adminEmail: string, info: AdminTicketInfo, app?: AppEmail) {
   const appName = getAppName(app);
-  const priColor = priority === "urgent" ? "#EF4444" : priority === "high" ? "#F59E0B" : priority === "medium" ? "#3B82F6" : "#6B7280";
+  const priColor = info.priority === "urgent" ? "#EF4444" : info.priority === "high" ? "#F59E0B" : info.priority === "medium" ? "#3B82F6" : "#6B7280";
+  const descPreview = info.description.length > 150 ? info.description.slice(0, 150) + "..." : info.description;
+  const slaText = info.slaDeadline ? new Date(info.slaDeadline).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : null;
   const content = `
     <h1 style="margin:0 0 8px;font-size:22px;color:#111827;font-weight:700;">New Ticket Submitted</h1>
     <p style="margin:0 0 24px;font-size:15px;color:#6b7280;">A new support ticket has been submitted and needs attention.</p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">
       <tr><td style="padding:20px;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-          ${infoRow("Title", ticketTitle)}
-          ${infoRow("Submitted by", `<span style="color:#059669;font-weight:600;">${userName}</span>`)}
-          ${infoRow("Ticket ID", `<code style="background:#e5e7eb;padding:2px 8px;border-radius:4px;font-size:13px;">${ticketId.slice(0, 8)}</code>`)}
-          ${infoRow("Priority", badge(formatStatus(priority), priColor))}
+          ${infoRow("Title", ticketTitle(info.ticketTitle))}
+          ${infoRow("Submitted by", `<span style="color:#059669;font-weight:600;">${info.userName}</span> <span style="color:#9ca3af;font-size:12px;">(${info.userEmail})</span>`)}
+          ${infoRow("Ticket ID", `<code style="background:#e5e7eb;padding:2px 8px;border-radius:4px;font-size:13px;">${info.ticketId.slice(0, 8)}</code>`)}
+          ${infoRow("Priority", badge(formatStatus(info.priority), priColor))}
+          ${info.category ? infoRow("Category", badge(formatStatus(info.category), "#6366F1")) : ""}
           ${infoRow("Status", badge("Open", "#3b82f6"))}
+          ${info.assigneeName ? infoRow("Assigned to", `<span style="color:#2563EB;font-weight:600;">${info.assigneeName}</span>`) : ""}
+          ${slaText ? infoRow("SLA Deadline", `<span style="color:#DC2626;font-weight:500;">${slaText}</span>`) : ""}
+          ${infoRow("Created", new Date().toLocaleString("en-US", { month: "long", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }))}
         </table>
       </td></tr>
     </table>
+    ${descPreview ? `<div style="margin-top:20px;padding:16px;background-color:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">
+      <p style="margin:0 0 6px;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Description</p>
+      <p style="margin:0;font-size:14px;color:#374151;line-height:1.5;">${descPreview}</p>
+    </div>` : ""}
     <p style="margin:24px 0 0;font-size:14px;color:#6b7280;">Log in to the admin panel to review and respond to this ticket.</p>`;
 
-  await sendEmail(adminEmail, `New Ticket: ${ticketTitle}`, emailLayout(appName, content, "Please review this ticket promptly."), app);
+  await sendEmail(adminEmail, `New Ticket: ${info.ticketTitle}`, emailLayout(appName, content, "Please review this ticket promptly."), app);
 }
 
-export async function notifyAdminNewFeedback(adminEmail: string, userName: string, rating: number, category: string, comment: string | null, app?: AppEmail) {
+// Helper to avoid naming conflict with the interface field
+function ticketTitle(title: string): string {
+  return `<span style="color:#111827;font-weight:600;">${title}</span>`;
+}
+
+interface AdminFeedbackInfo {
+  userName: string;
+  userEmail: string;
+  rating: number;
+  category: string;
+  comment: string | null;
+}
+
+export async function notifyAdminNewFeedback(adminEmail: string, info: AdminFeedbackInfo, app?: AppEmail) {
   const appName = getAppName(app);
-  const stars = "&#9733;".repeat(rating) + "&#9734;".repeat(5 - rating);
-  const ratingColor = rating >= 4 ? "#10B981" : rating >= 3 ? "#F59E0B" : "#EF4444";
+  const stars = "&#9733;".repeat(info.rating) + "&#9734;".repeat(5 - info.rating);
+  const ratingColor = info.rating >= 4 ? "#10B981" : info.rating >= 3 ? "#F59E0B" : "#EF4444";
+  const ratingLabel = info.rating >= 4 ? "Positive" : info.rating >= 3 ? "Neutral" : "Negative";
+  const ratingBg = info.rating >= 4 ? "#ECFDF5" : info.rating >= 3 ? "#FFFBEB" : "#FEF2F2";
+  const ratingBorder = info.rating >= 4 ? "#A7F3D0" : info.rating >= 3 ? "#FDE68A" : "#FECACA";
   const content = `
     <h1 style="margin:0 0 8px;font-size:22px;color:#111827;font-weight:700;">New Feedback Received</h1>
     <p style="margin:0 0 24px;font-size:15px;color:#6b7280;">A user has submitted new feedback for your app.</p>
+    <div style="margin-bottom:20px;padding:16px;background-color:${ratingBg};border-radius:8px;border:1px solid ${ratingBorder};text-align:center;">
+      <p style="margin:0 0 4px;font-size:24px;color:${ratingColor};letter-spacing:3px;">${stars}</p>
+      <p style="margin:0;font-size:13px;font-weight:600;color:${ratingColor};">${info.rating}/5 — ${ratingLabel}</p>
+    </div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">
       <tr><td style="padding:20px;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-          ${infoRow("From", `<span style="color:#059669;font-weight:600;">${userName}</span>`)}
-          ${infoRow("Rating", `<span style="font-size:18px;color:${ratingColor};letter-spacing:2px;">${stars}</span>`)}
-          ${infoRow("Category", badge(formatStatus(category), "#6B7280"))}
-          ${comment ? infoRow("Comment", `<span style="color:#374151;font-style:italic;">"${comment.length > 100 ? comment.slice(0, 100) + "..." : comment}"</span>`) : ""}
+          ${infoRow("From", `<span style="color:#059669;font-weight:600;">${info.userName}</span> <span style="color:#9ca3af;font-size:12px;">(${info.userEmail})</span>`)}
+          ${infoRow("Category", badge(formatStatus(info.category), "#6366F1"))}
+          ${infoRow("Submitted", new Date().toLocaleString("en-US", { month: "long", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }))}
         </table>
       </td></tr>
     </table>
+    ${info.comment ? `<div style="margin-top:20px;padding:16px;background-color:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">
+      <p style="margin:0 0 6px;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">User Comment</p>
+      <p style="margin:0;font-size:14px;color:#374151;line-height:1.5;font-style:italic;">"${info.comment.length > 300 ? info.comment.slice(0, 300) + "..." : info.comment}"</p>
+    </div>` : ""}
     <p style="margin:24px 0 0;font-size:14px;color:#6b7280;">Log in to the admin panel to view and reply to this feedback.</p>`;
 
-  await sendEmail(adminEmail, `New ${rating}★ Feedback from ${userName}`, emailLayout(appName, content), app);
+  await sendEmail(adminEmail, `New ${info.rating}★ Feedback from ${info.userName}`, emailLayout(appName, content), app);
 }
 
 export async function sendFeedbackReplyNotification(userEmail: string, rating: number, replyBy: string, app?: AppEmail) {

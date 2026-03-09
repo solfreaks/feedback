@@ -37,7 +37,13 @@ export async function createFeedback(data: {
     include: { user: { select: { email: true } } },
   });
   for (const aa of appAdmins) {
-    notifyAdminNewFeedback(aa.user.email!, feedback.user.name, data.rating, data.category || "general", data.comment || null, feedback.app as any);
+    notifyAdminNewFeedback(aa.user.email!, {
+      userName: feedback.user.name,
+      userEmail: feedback.user.email,
+      rating: data.rating,
+      category: data.category || "general",
+      comment: data.comment || null,
+    }, feedback.app as any);
   }
 
   // Notify admins in real-time

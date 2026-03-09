@@ -75,8 +75,19 @@ export async function createTicket(data: {
     where: { appId: data.appId },
     include: { user: { select: { email: true } } },
   });
+  const assigneeName = ticket.assignee?.name;
   for (const aa of appAdmins) {
-    notifyAdminNewTicket(aa.user.email!, ticket.user.name, ticket.title, ticket.id, priority, ticket.app);
+    notifyAdminNewTicket(aa.user.email!, {
+      userName: ticket.user.name,
+      userEmail: ticket.user.email,
+      ticketTitle: ticket.title,
+      ticketId: ticket.id,
+      description: data.description,
+      priority,
+      category: data.category,
+      assigneeName,
+      slaDeadline: ticket.slaDeadline || undefined,
+    }, ticket.app);
   }
 
   // Notify admins in real-time

@@ -610,22 +610,37 @@ export default function Settings() {
 <h2 style="margin:0 0 6px;font-size:18px;color:#111827;">New Ticket Submitted</h2>
 <p style="margin:0 0 16px;font-size:13px;color:#6b7280;">A new support ticket has been submitted and needs attention.</p>
 <div style="background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb;padding:16px;">
-<table style="width:100%;font-size:13px;"><tr><td style="color:#6b7280;padding:4px 0;">Title</td><td style="color:#111827;font-weight:500;padding:4px 0;">App crashes on login</td></tr>
-<tr><td style="color:#6b7280;padding:4px 0;">Submitted by</td><td style="padding:4px 0;"><span style="color:#059669;font-weight:600;">John Doe</span></td></tr>
+<table style="width:100%;font-size:13px;"><tr><td style="color:#6b7280;padding:4px 0;width:100px;">Title</td><td style="color:#111827;font-weight:600;padding:4px 0;">App crashes on login</td></tr>
+<tr><td style="color:#6b7280;padding:4px 0;">Submitted by</td><td style="padding:4px 0;"><span style="color:#059669;font-weight:600;">John Doe</span> <span style="color:#9ca3af;font-size:11px;">(john@example.com)</span></td></tr>
 <tr><td style="color:#6b7280;padding:4px 0;">Ticket ID</td><td style="padding:4px 0;"><code style="background:#e5e7eb;padding:2px 6px;border-radius:3px;font-size:12px;">a1b2c3d4</code></td></tr>
 <tr><td style="color:#6b7280;padding:4px 0;">Priority</td><td style="padding:4px 0;"><span style="background:#F59E0B;color:#fff;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;">High</span></td></tr>
-<tr><td style="color:#6b7280;padding:4px 0;">Status</td><td style="padding:4px 0;"><span style="background:#3b82f6;color:#fff;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;">Open</span></td></tr></table>
+<tr><td style="color:#6b7280;padding:4px 0;">Category</td><td style="padding:4px 0;"><span style="background:#6366F1;color:#fff;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;">Bug Report</span></td></tr>
+<tr><td style="color:#6b7280;padding:4px 0;">Status</td><td style="padding:4px 0;"><span style="background:#3b82f6;color:#fff;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;">Open</span></td></tr>
+<tr><td style="color:#6b7280;padding:4px 0;">Assigned to</td><td style="padding:4px 0;"><span style="color:#2563EB;font-weight:600;">Admin User</span></td></tr>
+<tr><td style="color:#6b7280;padding:4px 0;">SLA Deadline</td><td style="padding:4px 0;"><span style="color:#DC2626;font-weight:500;">Mar 10, 02:30 PM</span></td></tr>
+<tr><td style="color:#6b7280;padding:4px 0;">Created</td><td style="color:#111827;font-weight:500;padding:4px 0;">March 9, 2026, 10:30 AM</td></tr></table>
+</div>
+<div style="margin-top:14px;padding:14px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb;">
+<p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Description</p>
+<p style="margin:0;font-size:13px;color:#374151;line-height:1.5;">The app crashes immediately after entering credentials and tapping the login button. Happens every time on Android 14...</p>
 </div>
 <p style="margin:16px 0 0;font-size:12px;color:#6b7280;">Log in to the admin panel to review and respond.</p>
 </div>${ftr(previewAppName, "Please review this ticket promptly.")}` },
                       { name: "Admin: New Feedback", desc: "Sent to app admins when new feedback is received", preview: `${hdr(previewAppName)}<div style="padding:24px;">
 <h2 style="margin:0 0 6px;font-size:18px;color:#111827;">New Feedback Received</h2>
 <p style="margin:0 0 16px;font-size:13px;color:#6b7280;">A user has submitted new feedback for your app.</p>
+<div style="margin-bottom:14px;padding:14px;background:#FEF2F2;border-radius:6px;border:1px solid #FECACA;text-align:center;">
+<p style="margin:0 0 2px;font-size:20px;color:#EF4444;letter-spacing:3px;">★★☆☆☆</p>
+<p style="margin:0;font-size:12px;font-weight:600;color:#EF4444;">2/5 — Negative</p>
+</div>
 <div style="background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb;padding:16px;">
-<table style="width:100%;font-size:13px;"><tr><td style="color:#6b7280;padding:4px 0;">From</td><td style="padding:4px 0;"><span style="color:#059669;font-weight:600;">John Doe</span></td></tr>
-<tr><td style="color:#6b7280;padding:4px 0;">Rating</td><td style="padding:4px 0;"><span style="font-size:16px;color:#EF4444;letter-spacing:2px;">★★☆☆☆</span></td></tr>
-<tr><td style="color:#6b7280;padding:4px 0;">Category</td><td style="padding:4px 0;"><span style="background:#6B7280;color:#fff;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;">Bug Report</span></td></tr>
-<tr><td style="color:#6b7280;padding:4px 0;">Comment</td><td style="padding:4px 0;"><span style="color:#374151;font-style:italic;">"The app keeps freezing when I try to upload..."</span></td></tr></table>
+<table style="width:100%;font-size:13px;"><tr><td style="color:#6b7280;padding:4px 0;width:100px;">From</td><td style="padding:4px 0;"><span style="color:#059669;font-weight:600;">John Doe</span> <span style="color:#9ca3af;font-size:11px;">(john@example.com)</span></td></tr>
+<tr><td style="color:#6b7280;padding:4px 0;">Category</td><td style="padding:4px 0;"><span style="background:#6366F1;color:#fff;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;">Bug Report</span></td></tr>
+<tr><td style="color:#6b7280;padding:4px 0;">Submitted</td><td style="color:#111827;font-weight:500;padding:4px 0;">March 9, 2026, 10:30 AM</td></tr></table>
+</div>
+<div style="margin-top:14px;padding:14px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb;">
+<p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">User Comment</p>
+<p style="margin:0;font-size:13px;color:#374151;line-height:1.5;font-style:italic;">"The app keeps freezing when I try to upload photos. Very frustrating experience, please fix this issue."</p>
 </div>
 <p style="margin:16px 0 0;font-size:12px;color:#6b7280;">Log in to the admin panel to view and reply.</p>
 </div>${ftr(previewAppName)}` },

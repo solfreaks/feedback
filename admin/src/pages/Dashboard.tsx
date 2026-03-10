@@ -201,6 +201,28 @@ export default function Dashboard() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [dateRange, fetchData]);
 
+  // Derived values (safe to compute even while loading, using nullish defaults)
+  const overview = stats?.overview;
+  const totalTickets = overview?.totalTickets ?? 0;
+  const resolvedClosed = (overview?.resolvedTickets ?? 0) + (overview?.closedTickets ?? 0);
+  const resolutionRate = totalTickets > 0 ? Math.round((resolvedClosed / totalTickets) * 100) : 0;
+  const sla = myDash?.slaCompliance;
+  const slaRate = sla?.rate ?? 100;
+
+  // Animated counters — must be called unconditionally before any early return
+  const cMyOpen = useCountUp(myDash?.myOpenCount ?? 0, 600, animated);
+  const cMyTotal = useCountUp(myDash?.myTotalAssigned ?? 0, 600, animated);
+  const cMyResolved = useCountUp(myDash?.myResolvedCount ?? 0, 600, animated);
+  const cMySla = useCountUp(myDash?.mySlaBreached ?? 0, 600, animated);
+  const cTotalTickets = useCountUp(overview?.totalTickets ?? 0, 700, animated);
+  const cTotalFeedbacks = useCountUp(fbStats?.totalFeedbacks ?? 0, 700, animated);
+  const cOpenTickets = useCountUp(overview?.openTickets ?? 0, 700, animated);
+  const cCritical = useCountUp(overview?.criticalOpen ?? 0, 700, animated);
+  const cResolutionRate = useCountUp(resolutionRate, 800, animated);
+  const cAvgRating = useCountUp(Math.round((fbStats?.averageRating ?? 0) * 10), 700, animated);
+  const animSlaRate = useCountUp(slaRate, 900, animated);
+  const animSlaDash = useMemo(() => (animSlaRate / 100) * 314, [animSlaRate]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
@@ -213,10 +235,6 @@ export default function Dashboard() {
   }
 
   const isSuperAdmin = myDash?.role === "super_admin";
-  const overview = stats?.overview;
-  const totalTickets = overview?.totalTickets ?? 0;
-  const resolvedClosed = (overview?.resolvedTickets ?? 0) + (overview?.closedTickets ?? 0);
-  const resolutionRate = totalTickets > 0 ? Math.round((resolvedClosed / totalTickets) * 100) : 0;
 
   const statusData = [
     { name: "Open", value: overview?.openTickets ?? 0 },
@@ -247,24 +265,8 @@ export default function Dashboard() {
     return "Good evening";
   };
 
-  const sla = myDash?.slaCompliance;
-  const slaRate = sla?.rate ?? 100;
   const slaColor = slaRate >= 90 ? "text-emerald-600" : slaRate >= 70 ? "text-amber-600" : "text-red-600";
   const slaTrackColor = slaRate >= 90 ? "#10b981" : slaRate >= 70 ? "#f59e0b" : "#ef4444";
-
-  // Animated counters
-  const cMyOpen = useCountUp(myDash?.myOpenCount ?? 0, 600, animated);
-  const cMyTotal = useCountUp(myDash?.myTotalAssigned ?? 0, 600, animated);
-  const cMyResolved = useCountUp(myDash?.myResolvedCount ?? 0, 600, animated);
-  const cMySla = useCountUp(myDash?.mySlaBreached ?? 0, 600, animated);
-  const cTotalTickets = useCountUp(overview?.totalTickets ?? 0, 700, animated);
-  const cTotalFeedbacks = useCountUp(fbStats?.totalFeedbacks ?? 0, 700, animated);
-  const cOpenTickets = useCountUp(overview?.openTickets ?? 0, 700, animated);
-  const cCritical = useCountUp(overview?.criticalOpen ?? 0, 700, animated);
-  const cResolutionRate = useCountUp(resolutionRate, 800, animated);
-  const cAvgRating = useCountUp(Math.round((fbStats?.averageRating ?? 0) * 10), 700, animated);
-  const animSlaRate = useCountUp(slaRate, 900, animated);
-  const animSlaDash = useMemo(() => (animSlaRate / 100) * 314, [animSlaRate]);
 
   return (
     <div className="space-y-6">

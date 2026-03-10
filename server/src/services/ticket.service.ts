@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 const ticketInclude = {
   user: { select: { id: true, name: true, email: true, avatarUrl: true } },
   assignee: { select: { id: true, name: true, email: true } },
-  app: { select: { id: true, name: true, emailFrom: true, emailName: true, smtpHost: true, smtpPort: true, smtpUser: true, smtpPass: true } },
+  app: { select: { id: true, name: true, iconUrl: true, emailFrom: true, emailName: true, smtpHost: true, smtpPort: true, smtpUser: true, smtpPass: true } },
   _count: { select: { comments: true, attachments: true } },
 };
 
@@ -163,7 +163,7 @@ export async function addComment(data: {
       include: {
         user: { select: { email: true } },
         assignee: { select: { id: true, email: true } },
-        app: { select: { name: true, emailFrom: true, emailName: true, smtpHost: true, smtpPort: true, smtpUser: true, smtpPass: true } },
+        app: { select: { name: true, iconUrl: true, emailFrom: true, emailName: true, smtpHost: true, smtpPort: true, smtpUser: true, smtpPass: true } },
       },
     });
     if (ticket) {
@@ -202,7 +202,7 @@ export async function updateTicket(
 ) {
   const current = await prisma.ticket.findUnique({
     where: { id: ticketId },
-    include: { user: { select: { email: true } }, app: { select: { name: true, emailFrom: true, emailName: true, smtpHost: true, smtpPort: true, smtpUser: true, smtpPass: true } } },
+    include: { user: { select: { email: true } }, app: { select: { name: true, iconUrl: true, emailFrom: true, emailName: true, smtpHost: true, smtpPort: true, smtpUser: true, smtpPass: true } } },
   });
   if (!current) return null;
 

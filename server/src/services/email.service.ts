@@ -19,6 +19,7 @@ interface AppEmail {
   smtpUser?: string | null;
   smtpPass?: string | null;
   name: string;
+  iconUrl?: string | null;
 }
 
 // Cache per-app transporters to avoid creating a new one on every email
@@ -53,9 +54,13 @@ function getAppName(app?: AppEmail): string {
   return app?.name || "SupportDesk";
 }
 
+function getAppIcon(app?: AppEmail): string | null {
+  return app?.iconUrl || null;
+}
+
 // ── Base email layout ──
 
-function emailLayout(appName: string, content: string, footerNote?: string): string {
+function emailLayout(appName: string, content: string, footerNote?: string, iconUrl?: string | null): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -74,7 +79,9 @@ function emailLayout(appName: string, content: string, footerNote?: string): str
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
                 <tr>
                   <td style="vertical-align:middle;padding-right:10px;">
-                    <div style="width:32px;height:32px;background:rgba(255,255,255,0.2);border-radius:8px;text-align:center;line-height:32px;font-size:18px;color:#fff;">&#9781;</div>
+                    ${iconUrl
+                      ? `<img src="${iconUrl}" width="32" height="32" alt="" style="width:32px;height:32px;border-radius:8px;display:block;object-fit:cover;" />`
+                      : `<div style="width:32px;height:32px;background:rgba(255,255,255,0.2);border-radius:8px;text-align:center;line-height:32px;font-size:18px;color:#fff;">&#9781;</div>`}
                   </td>
                   <td style="vertical-align:middle;">
                     <span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.3px;">${appName}</span>
@@ -178,6 +185,7 @@ export async function sendEmailWithResponse(to: string, subject: string, html: s
 
 export async function notifyTicketCreated(userEmail: string, ticketTitle: string, ticketId: string, app?: AppEmail) {
   const appName = getAppName(app);
+  const appIcon = getAppIcon(app);
   const content = `
     <h1 style="margin:0 0 8px;font-size:22px;color:#111827;font-weight:700;">Ticket Created</h1>
     <p style="margin:0 0 24px;font-size:15px;color:#6b7280;">Your support request has been received and our team will review it shortly.</p>
@@ -193,11 +201,12 @@ export async function notifyTicketCreated(userEmail: string, ticketTitle: string
     </table>
     <p style="margin:24px 0 0;font-size:14px;color:#6b7280;">You'll receive updates when there's activity on your ticket.</p>`;
 
-  await sendEmail(userEmail, `Ticket Created: ${ticketTitle}`, emailLayout(appName, content, "We'll get back to you as soon as possible."), app);
+  await sendEmail(userEmail, `Ticket Created: ${ticketTitle}`, emailLayout(appName, content, "We'll get back to you as soon as possible.", appIcon), app);
 }
 
 export async function notifyStatusChange(userEmail: string, ticketTitle: string, oldStatus: string, newStatus: string, app?: AppEmail) {
   const appName = getAppName(app);
+  const appIcon = getAppIcon(app);
   const content = `
     <h1 style="margin:0 0 8px;font-size:22px;color:#111827;font-weight:700;">Ticket Updated</h1>
     <p style="margin:0 0 24px;font-size:15px;color:#6b7280;">The status of your support ticket has been updated.</p>
@@ -213,11 +222,12 @@ export async function notifyStatusChange(userEmail: string, ticketTitle: string,
       <p style="margin:0;font-size:14px;color:#065f46;">&#10003; Your ticket has been marked as resolved. If you still need help, you can reopen it by replying.</p>
     </div>` : ""}`;
 
-  await sendEmail(userEmail, `Ticket Updated: ${ticketTitle}`, emailLayout(appName, content), app);
+  await sendEmail(userEmail, `Ticket Updated: ${ticketTitle}`, emailLayout(appName, content, undefined, appIcon), app);
 }
 
 export async function notifyNewComment(userEmail: string, ticketTitle: string, commenterName: string, app?: AppEmail) {
   const appName = getAppName(app);
+  const appIcon = getAppIcon(app);
   const content = `
     <h1 style="margin:0 0 8px;font-size:22px;color:#111827;font-weight:700;">New Comment</h1>
     <p style="margin:0 0 24px;font-size:15px;color:#6b7280;">Someone has commented on your support ticket.</p>
@@ -231,11 +241,12 @@ export async function notifyNewComment(userEmail: string, ticketTitle: string, c
     </table>
     <p style="margin:24px 0 0;font-size:14px;color:#6b7280;">Open your ticket to view the full comment and reply.</p>`;
 
-  await sendEmail(userEmail, `New Comment on: ${ticketTitle}`, emailLayout(appName, content), app);
+  await sendEmail(userEmail, `New Comment on: ${ticketTitle}`, emailLayout(appName, content, undefined, appIcon), app);
 }
 
 export async function sendWelcomeEmail(userEmail: string, userName: string, app?: AppEmail) {
   const appName = getAppName(app);
+  const appIcon = getAppIcon(app);
   const content = `
     <h1 style="margin:0 0 8px;font-size:22px;color:#111827;font-weight:700;">Welcome, ${userName}!</h1>
     <p style="margin:0 0 28px;font-size:15px;color:#6b7280;">Your account has been created successfully. Here's what you can do:</p>
@@ -283,7 +294,7 @@ export async function sendWelcomeEmail(userEmail: string, userName: string, app?
       </tr>
     </table>`;
 
-  await sendEmail(userEmail, `Welcome to ${appName}!`, emailLayout(appName, content, "Thank you for joining us!"), app);
+  await sendEmail(userEmail, `Welcome to ${appName}!`, emailLayout(appName, content, "Thank you for joining us!", appIcon), app);
 }
 
 interface AdminTicketInfo {
@@ -300,6 +311,7 @@ interface AdminTicketInfo {
 
 export async function notifyAdminNewTicket(adminEmail: string, info: AdminTicketInfo, app?: AppEmail) {
   const appName = getAppName(app);
+  const appIcon = getAppIcon(app);
   const priColor = info.priority === "urgent" ? "#EF4444" : info.priority === "high" ? "#F59E0B" : info.priority === "medium" ? "#3B82F6" : "#6B7280";
   const descPreview = info.description.length > 150 ? info.description.slice(0, 150) + "..." : info.description;
   const slaText = info.slaDeadline ? new Date(info.slaDeadline).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : null;
@@ -327,7 +339,7 @@ export async function notifyAdminNewTicket(adminEmail: string, info: AdminTicket
     </div>` : ""}
     <p style="margin:24px 0 0;font-size:14px;color:#6b7280;">Log in to the admin panel to review and respond to this ticket.</p>`;
 
-  await sendEmail(adminEmail, `New Ticket: ${info.ticketTitle}`, emailLayout(appName, content, "Please review this ticket promptly."), app);
+  await sendEmail(adminEmail, `New Ticket: ${info.ticketTitle}`, emailLayout(appName, content, "Please review this ticket promptly.", appIcon), app);
 }
 
 // Helper to avoid naming conflict with the interface field
@@ -345,6 +357,7 @@ interface AdminFeedbackInfo {
 
 export async function notifyAdminNewFeedback(adminEmail: string, info: AdminFeedbackInfo, app?: AppEmail) {
   const appName = getAppName(app);
+  const appIcon = getAppIcon(app);
   const stars = "&#9733;".repeat(info.rating) + "&#9734;".repeat(5 - info.rating);
   const ratingColor = info.rating >= 4 ? "#10B981" : info.rating >= 3 ? "#F59E0B" : "#EF4444";
   const ratingLabel = info.rating >= 4 ? "Positive" : info.rating >= 3 ? "Neutral" : "Negative";
@@ -372,11 +385,12 @@ export async function notifyAdminNewFeedback(adminEmail: string, info: AdminFeed
     </div>` : ""}
     <p style="margin:24px 0 0;font-size:14px;color:#6b7280;">Log in to the admin panel to view and reply to this feedback.</p>`;
 
-  await sendEmail(adminEmail, `New ${info.rating}★ Feedback from ${info.userName}`, emailLayout(appName, content), app);
+  await sendEmail(adminEmail, `New ${info.rating}★ Feedback from ${info.userName}`, emailLayout(appName, content, undefined, appIcon), app);
 }
 
 export async function sendFeedbackReplyNotification(userEmail: string, rating: number, replyBy: string, app?: AppEmail) {
   const appName = getAppName(app);
+  const appIcon = getAppIcon(app);
   const stars = "&#9733;".repeat(rating) + "&#9734;".repeat(5 - rating);
   const content = `
     <h1 style="margin:0 0 8px;font-size:22px;color:#111827;font-weight:700;">Feedback Reply</h1>
@@ -391,5 +405,5 @@ export async function sendFeedbackReplyNotification(userEmail: string, rating: n
     </table>
     <p style="margin:24px 0 0;font-size:14px;color:#6b7280;">Open the app to view the full reply.</p>`;
 
-  await sendEmail(userEmail, "Your feedback received a reply", emailLayout(appName, content), app);
+  await sendEmail(userEmail, "Your feedback received a reply", emailLayout(appName, content, undefined, appIcon), app);
 }

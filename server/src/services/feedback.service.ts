@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 
 const feedbackInclude = {
   user: { select: { id: true, name: true, email: true, avatarUrl: true } },
-  app: { select: { id: true, name: true, emailFrom: true, emailName: true, smtpHost: true, smtpPort: true, smtpUser: true, smtpPass: true } },
+  app: { select: { id: true, name: true, iconUrl: true, emailFrom: true, emailName: true, smtpHost: true, smtpPort: true, smtpUser: true, smtpPass: true } },
   _count: { select: { replies: true } },
 };
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip,
@@ -6,6 +6,23 @@ import {
 } from "recharts";
 import api from "../api";
 import type { Analytics } from "../types";
+
+function useCountUp(target: number, duration = 700, trigger = true) {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    if (!trigger) return;
+    if (target === 0) { setValue(0); return; }
+    const start = performance.now();
+    const raf = (now: number) => {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(Math.round(eased * target));
+      if (progress < 1) requestAnimationFrame(raf);
+    };
+    requestAnimationFrame(raf);
+  }, [target, duration, trigger]);
+  return value;
+}
 
 const priorityColors: Record<string, string> = {
   critical: "bg-red-100 text-red-700 ring-1 ring-red-200",
@@ -143,6 +160,7 @@ export default function Dashboard() {
   const [recentFeedbacks, setRecentFeedbacks] = useState<RecentFeedback[]>([]);
   const [myDash, setMyDash] = useState<MyDashboard | null>(null);
   const [loading, setLoading] = useState(true);
+  const [animated, setAnimated] = useState(false);
   const [dateRange, setDateRange] = useState(7);
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
@@ -171,10 +189,12 @@ export default function Dashboard() {
       setRecentFeedbacks(recentFbRes.data.feedbacks ?? []);
       setLastRefresh(new Date());
       setLoading(false);
+      setAnimated(true);
     }).catch(() => setLoading(false));
   }, []);
 
   useEffect(() => {
+    setAnimated(false);
     fetchData(dateRange);
     // Auto-refresh every 30s
     timerRef.current = setInterval(() => fetchData(dateRange), 30000);
@@ -232,10 +252,24 @@ export default function Dashboard() {
   const slaColor = slaRate >= 90 ? "text-emerald-600" : slaRate >= 70 ? "text-amber-600" : "text-red-600";
   const slaTrackColor = slaRate >= 90 ? "#10b981" : slaRate >= 70 ? "#f59e0b" : "#ef4444";
 
+  // Animated counters
+  const cMyOpen = useCountUp(myDash?.myOpenCount ?? 0, 600, animated);
+  const cMyTotal = useCountUp(myDash?.myTotalAssigned ?? 0, 600, animated);
+  const cMyResolved = useCountUp(myDash?.myResolvedCount ?? 0, 600, animated);
+  const cMySla = useCountUp(myDash?.mySlaBreached ?? 0, 600, animated);
+  const cTotalTickets = useCountUp(overview?.totalTickets ?? 0, 700, animated);
+  const cTotalFeedbacks = useCountUp(fbStats?.totalFeedbacks ?? 0, 700, animated);
+  const cOpenTickets = useCountUp(overview?.openTickets ?? 0, 700, animated);
+  const cCritical = useCountUp(overview?.criticalOpen ?? 0, 700, animated);
+  const cResolutionRate = useCountUp(resolutionRate, 800, animated);
+  const cAvgRating = useCountUp(Math.round((fbStats?.averageRating ?? 0) * 10), 700, animated);
+  const animSlaRate = useCountUp(slaRate, 900, animated);
+  const animSlaDash = useMemo(() => (animSlaRate / 100) * 314, [animSlaRate]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between animate-fade-in-up" style={{ animationDelay: "0ms" }}>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{greeting()}, {user.name || "Admin"}</h1>
           <p className="text-sm text-gray-500 mt-1">
@@ -310,11 +344,11 @@ export default function Dashboard() {
       {/* My Stats + Trends Row */}
       {myDash && (
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-          <div className="relative overflow-hidden bg-white rounded-2xl border border-gray-200 p-5 group hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300">
+          <div className="relative overflow-hidden bg-white rounded-2xl border border-gray-200 p-5 group hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300 animate-fade-in-up" style={{ animationDelay: "60ms" }}>
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-500">My Open Tickets</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{myDash.myOpenCount}</p>
+                <p className="text-3xl font-bold text-gray-900 mt-2">{cMyOpen}</p>
               </div>
               <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-2.5 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -324,11 +358,11 @@ export default function Dashboard() {
             </div>
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-blue-600 opacity-60" />
           </div>
-          <div className="relative overflow-hidden bg-white rounded-2xl border border-gray-200 p-5 group hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300">
+          <div className="relative overflow-hidden bg-white rounded-2xl border border-gray-200 p-5 group hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300 animate-fade-in-up" style={{ animationDelay: "120ms" }}>
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-500">My Total Assigned</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{myDash.myTotalAssigned}</p>
+                <p className="text-3xl font-bold text-gray-900 mt-2">{cMyTotal}</p>
               </div>
               <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 p-2.5 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -338,11 +372,11 @@ export default function Dashboard() {
             </div>
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-indigo-600 opacity-60" />
           </div>
-          <div className="relative overflow-hidden bg-white rounded-2xl border border-gray-200 p-5 group hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300">
+          <div className="relative overflow-hidden bg-white rounded-2xl border border-gray-200 p-5 group hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300 animate-fade-in-up" style={{ animationDelay: "180ms" }}>
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-500">My Resolved</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{myDash.myResolvedCount}</p>
+                <p className="text-3xl font-bold text-gray-900 mt-2">{cMyResolved}</p>
               </div>
               <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 p-2.5 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -352,11 +386,11 @@ export default function Dashboard() {
             </div>
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-emerald-600 opacity-60" />
           </div>
-          <div className="relative overflow-hidden bg-white rounded-2xl border border-gray-200 p-5 group hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300">
+          <div className="relative overflow-hidden bg-white rounded-2xl border border-gray-200 p-5 group hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300 animate-fade-in-up" style={{ animationDelay: "240ms" }}>
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-500">My SLA Breached</p>
-                <p className={`text-3xl font-bold mt-2 ${myDash.mySlaBreached > 0 ? "text-red-600" : "text-gray-900"}`}>{myDash.mySlaBreached}</p>
+                <p className={`text-3xl font-bold mt-2 ${myDash.mySlaBreached > 0 ? "text-red-600" : "text-gray-900"}`}>{cMySla}</p>
               </div>
               <div className={`bg-gradient-to-br ${myDash.mySlaBreached > 0 ? "from-red-500 to-red-600" : "from-gray-400 to-gray-500"} p-2.5 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300`}>
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -432,14 +466,14 @@ export default function Dashboard() {
       {/* Overall Stats with Trends */}
       <div className="grid grid-cols-2 xl:grid-cols-6 gap-4">
         {[
-          { label: "Total Tickets", value: overview?.totalTickets ?? 0, trend: myDash?.trends ? <TrendBadge change={myDash.trends.ticketsChange} label={`vs prev ${dateRange}d`} /> : null, icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2", gradient: "from-blue-500 to-blue-600" },
-          { label: "Total Feedbacks", value: fbStats?.totalFeedbacks ?? 0, trend: myDash?.trends ? <TrendBadge change={myDash.trends.feedbacksChange} label={`vs prev ${dateRange}d`} /> : null, icon: "M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z", gradient: "from-indigo-500 to-indigo-600" },
-          { label: "Open Tickets", value: overview?.openTickets ?? 0, trend: null, icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z", gradient: "from-amber-500 to-amber-600" },
-          { label: "Critical", value: overview?.criticalOpen ?? 0, trend: null, icon: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z", gradient: "from-red-500 to-red-600" },
-          { label: "Resolved", value: `${resolutionRate}%`, trend: null, icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z", gradient: "from-emerald-500 to-emerald-600" },
-          { label: "Avg Rating", value: fbStats?.averageRating ?? 0, trend: null, icon: "M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z", gradient: "from-yellow-500 to-yellow-600" },
-        ].map((s) => (
-          <div key={s.label} className="relative overflow-hidden bg-white rounded-2xl border border-gray-200 p-5 group hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300">
+          { label: "Total Tickets", value: cTotalTickets, trend: myDash?.trends ? <TrendBadge change={myDash.trends.ticketsChange} label={`vs prev ${dateRange}d`} /> : null, icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2", gradient: "from-blue-500 to-blue-600" },
+          { label: "Total Feedbacks", value: cTotalFeedbacks, trend: myDash?.trends ? <TrendBadge change={myDash.trends.feedbacksChange} label={`vs prev ${dateRange}d`} /> : null, icon: "M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z", gradient: "from-indigo-500 to-indigo-600" },
+          { label: "Open Tickets", value: cOpenTickets, trend: null, icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z", gradient: "from-amber-500 to-amber-600" },
+          { label: "Critical", value: cCritical, trend: null, icon: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z", gradient: "from-red-500 to-red-600" },
+          { label: "Resolved", value: `${cResolutionRate}%`, trend: null, icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z", gradient: "from-emerald-500 to-emerald-600" },
+          { label: "Avg Rating", value: (cAvgRating / 10).toFixed(1), trend: null, icon: "M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z", gradient: "from-yellow-500 to-yellow-600" },
+        ].map((s, i) => (
+          <div key={s.label} className="relative overflow-hidden bg-white rounded-2xl border border-gray-200 p-5 group hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300 animate-fade-in-up" style={{ animationDelay: `${i * 60}ms` }}>
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-500">{s.label}</p>
@@ -469,7 +503,7 @@ export default function Dashboard() {
       )}
 
       {/* SLA Compliance + Workload + Charts Row */}
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid lg:grid-cols-3 gap-6 animate-fade-in-up" style={{ animationDelay: "200ms" }}>
         {/* SLA Compliance Gauge */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6">
           <h2 className="font-semibold text-gray-900 mb-1">SLA Compliance</h2>
@@ -479,10 +513,10 @@ export default function Dashboard() {
               <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 120 120">
                 <circle cx="60" cy="60" r="50" fill="none" stroke="#f3f4f6" strokeWidth="10" />
                 <circle cx="60" cy="60" r="50" fill="none" stroke={slaTrackColor} strokeWidth="10"
-                  strokeDasharray={`${(slaRate / 100) * 314} 314`} strokeLinecap="round" />
+                  strokeDasharray={`${animSlaDash} 314`} strokeLinecap="round" style={{ transition: "stroke-dasharray 0.9s cubic-bezier(0.4,0,0.2,1)" }} />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className={`text-3xl font-bold ${slaColor}`}>{slaRate}%</span>
+                <span className={`text-3xl font-bold ${slaColor}`}>{animSlaRate}%</span>
               </div>
             </div>
             <div className="flex items-center gap-6 mt-4 text-sm">
@@ -563,7 +597,7 @@ export default function Dashboard() {
       </div>
 
       {/* Priority + Rating Row */}
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid lg:grid-cols-3 gap-6 animate-fade-in-up" style={{ animationDelay: "300ms" }}>
         {/* Priority Bar Chart */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6">
           <h2 className="font-semibold text-gray-900 mb-1">By Priority</h2>
@@ -658,7 +692,7 @@ export default function Dashboard() {
       </div>
 
       {/* App Charts Row */}
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-2 gap-6 animate-fade-in-up" style={{ animationDelay: "380ms" }}>
         {/* Activity by App */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6">
           <h2 className="font-semibold text-gray-900 mb-1">Activity by App</h2>
@@ -720,7 +754,7 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Tickets */}
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden animate-fade-in-up" style={{ animationDelay: "440ms" }}>
         <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
           <div>
             <h2 className="font-semibold text-gray-900">Recent Tickets</h2>
@@ -791,7 +825,7 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Feedbacks */}
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden animate-fade-in-up" style={{ animationDelay: "500ms" }}>
         <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
           <div>
             <h2 className="font-semibold text-gray-900">Recent Feedbacks</h2>

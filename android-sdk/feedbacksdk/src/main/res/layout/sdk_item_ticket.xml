@@ -1,80 +1,78 @@
 <?xml version="1.0" encoding="utf-8"?>
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    style="@style/Widget.FeedbackSDK.Card"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="8dp"
-    app:cardCornerRadius="10dp"
-    app:cardElevation="1dp"
-    app:contentPadding="14dp"
-    app:strokeColor="@color/sdk_border"
-    app:strokeWidth="1dp">
+    android:layout_marginBottom="10dp"
+    android:clickable="true"
+    android:focusable="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:padding="16dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:gravity="top">
 
             <TextView
                 android:id="@+id/tvTitle"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:textColor="@color/sdk_on_surface"
-                android:textSize="15sp"
-                android:textStyle="bold"
+                android:layout_marginEnd="12dp"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="?attr/colorOnSurface"
                 android:maxLines="2"
                 android:ellipsize="end" />
 
             <TextView
                 android:id="@+id/tvStatus"
+                style="@style/TextAppearance.FeedbackSDK.Badge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="2dp"
-                android:textColor="@android:color/white"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:textStyle="bold"
-                android:background="@color/sdk_status_open" />
-
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="4dp"
+                android:background="@drawable/sdk_bg_badge" />
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="6dp"
-            android:gravity="center_vertical">
+            android:gravity="center_vertical"
+            android:layout_marginTop="10dp">
+
+            <View
+                android:id="@+id/priorityDot"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:background="@drawable/sdk_bg_priority_dot" />
 
             <TextView
                 android:id="@+id/tvPriority"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="12sp"
-                android:textColor="@color/sdk_text_secondary" />
+                android:layout_marginStart="8dp"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant" />
 
             <View
-                android:layout_width="4dp"
-                android:layout_height="4dp"
-                android:layout_marginHorizontal="8dp"
-                android:background="@color/sdk_border" />
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
 
             <TextView
                 android:id="@+id/tvDate"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="12sp"
-                android:textColor="@color/sdk_text_secondary" />
-
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant" />
         </LinearLayout>
-
     </LinearLayout>
-
 </com.google.android.material.card.MaterialCardView>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand palette (dark) -->
+    <color name="sdk_brand_primary">#93C5FD</color>
+    <color name="sdk_brand_primary_container">#1E3A8A</color>
+    <color name="sdk_brand_on_primary">#0B1F4D</color>
+    <color name="sdk_brand_on_primary_container">#DBEAFE</color>
+
+    <!-- Surface / background tokens -->
+    <color name="sdk_background">#0F172A</color>
+    <color name="sdk_surface">#1E293B</color>
+    <color name="sdk_surface_variant">#334155</color>
+    <color name="sdk_on_surface">#F1F5F9</color>
+    <color name="sdk_on_surface_variant">#94A3B8</color>
+    <color name="sdk_outline">#475569</color>
+
+    <!-- Status colors (slightly brighter for contrast on dark surfaces) -->
+    <color name="sdk_status_open">#60A5FA</color>
+    <color name="sdk_status_in_progress">#FBBF24</color>
+    <color name="sdk_status_resolved">#34D399</color>
+    <color name="sdk_status_closed">#94A3B8</color>
+    <color name="sdk_on_status">#0F172A</color>
+
+    <!-- Priority colors -->
+    <color name="sdk_priority_low">#94A3B8</color>
+    <color name="sdk_priority_medium">#60A5FA</color>
+    <color name="sdk_priority_high">#FBBF24</color>
+    <color name="sdk_priority_critical">#F87171</color>
+
+    <!-- Star rating -->
+    <color name="sdk_star_active">#FBBF24</color>
+    <color name="sdk_star_inactive">#475569</color>
+</resources>

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+    Public theme attributes exposed by the Feedback SDK.
+    Consumers who want to re-skin the SDK can override these in their copy of
+    FeedbackSDK.Theme (see themes.xml for the extension pattern).
+    -->
+
+    <!-- Status pill colors (used on ticket list + detail) -->
+    <attr name="sdkColorStatusOpen" format="color" />
+    <attr name="sdkColorStatusInProgress" format="color" />
+    <attr name="sdkColorStatusResolved" format="color" />
+    <attr name="sdkColorStatusClosed" format="color" />
+    <!-- Text/icon color painted on top of any status pill -->
+    <attr name="sdkColorOnStatus" format="color" />
+
+    <!-- Priority chip colors (used in create ticket + ticket cards) -->
+    <attr name="sdkColorPriorityLow" format="color" />
+    <attr name="sdkColorPriorityMedium" format="color" />
+    <attr name="sdkColorPriorityHigh" format="color" />
+    <attr name="sdkColorPriorityCritical" format="color" />
+
+    <!-- Star rating tints -->
+    <attr name="sdkColorStarActive" format="color" />
+    <attr name="sdkColorStarInactive" format="color" />
+</resources>

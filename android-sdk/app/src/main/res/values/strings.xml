@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">FeedbackSDK Demo</string>
+    <string name="status_unknown">Checking auth state…</string>
+    <string name="btn_sign_in">Sign in with Google</string>
+    <string name="btn_logout">Log out</string>
+    <string name="btn_create_ticket">Create ticket</string>
+    <string name="btn_my_tickets">My tickets</string>
+    <string name="btn_feedback">Send feedback</string>
+</resources>

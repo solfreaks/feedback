@@ -1,27 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="sdk_primary">#3B82F6</color>
-    <color name="sdk_primary_dark">#2563EB</color>
-    <color name="sdk_on_primary">#FFFFFF</color>
-    <color name="sdk_background">#F9FAFB</color>
+    <!-- Brand palette (light) -->
+    <color name="sdk_brand_primary">#2563EB</color>
+    <color name="sdk_brand_primary_container">#DBEAFE</color>
+    <color name="sdk_brand_on_primary">#FFFFFF</color>
+    <color name="sdk_brand_on_primary_container">#0C2B6B</color>
+
+    <!-- Surface / background tokens -->
+    <color name="sdk_background">#F8FAFC</color>
     <color name="sdk_surface">#FFFFFF</color>
-    <color name="sdk_on_surface">#111827</color>
-    <color name="sdk_text_secondary">#6B7280</color>
-    <color name="sdk_border">#E5E7EB</color>
-    <color name="sdk_error">#EF4444</color>
-    <color name="sdk_success">#10B981</color>
-    <color name="sdk_star_active">#F59E0B</color>
-    <color name="sdk_star_inactive">#D1D5DB</color>
+    <color name="sdk_surface_variant">#F1F5F9</color>
+    <color name="sdk_on_surface">#0F172A</color>
+    <color name="sdk_on_surface_variant">#475569</color>
+    <color name="sdk_outline">#E2E8F0</color>
 
     <!-- Status colors -->
-    <color name="sdk_status_open">#3B82F6</color>
+    <color name="sdk_status_open">#2563EB</color>
     <color name="sdk_status_in_progress">#F59E0B</color>
     <color name="sdk_status_resolved">#10B981</color>
-    <color name="sdk_status_closed">#6B7280</color>
+    <color name="sdk_status_closed">#64748B</color>
+    <color name="sdk_on_status">#FFFFFF</color>
 
     <!-- Priority colors -->
-    <color name="sdk_priority_low">#6B7280</color>
-    <color name="sdk_priority_medium">#3B82F6</color>
+    <color name="sdk_priority_low">#64748B</color>
+    <color name="sdk_priority_medium">#2563EB</color>
     <color name="sdk_priority_high">#F59E0B</color>
     <color name="sdk_priority_critical">#EF4444</color>
+
+    <!-- Star rating -->
+    <color name="sdk_star_active">#F59E0B</color>
+    <color name="sdk_star_inactive">#CBD5E1</color>
+
+    <!-- Legacy aliases kept so consumers who used to override these names still work.
+         The activities no longer reference them directly — they go through theme attrs. -->
+    <color name="sdk_primary">@color/sdk_brand_primary</color>
+    <color name="sdk_primary_dark">@color/sdk_brand_on_primary_container</color>
+    <color name="sdk_on_primary">@color/sdk_brand_on_primary</color>
+    <color name="sdk_text_secondary">@color/sdk_on_surface_variant</color>
+    <color name="sdk_border">@color/sdk_outline</color>
+    <color name="sdk_error">#EF4444</color>
+    <color name="sdk_success">@color/sdk_status_resolved</color>
 </resources>

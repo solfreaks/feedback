@@ -1,31 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
-    <!--
-    == Theming the Feedback SDK ==
-
-    The pre-built activities are registered in the library manifest with
-    android:theme="@style/FeedbackSDK.Theme". To customize look & feel, declare
-    a style with the SAME name in your app module (the app-level resource wins
-    at merge time) and pick a parent:
-
-        <style name="FeedbackSDK.Theme" parent="Theme.FeedbackSDK.DayNight">
-            <item name="colorPrimary">@color/my_brand</item>
-            <item name="colorOnPrimary">#FFFFFF</item>
-            <item name="sdkColorStatusResolved">@color/my_green</item>
-            <item name="sdkColorPriorityCritical">#B91C1C</item>
-        </style>
-
-    Available knobs:
-      * standard Material 3 attrs (colorPrimary, colorSurface, colorOutline, …)
-      * SDK-specific attrs declared in attrs.xml (sdkColorStatus*, sdkColorPriority*,
-        sdkColorStarActive, sdkColorStarInactive, sdkColorOnStatus)
-      * or drop-in color resource overrides using the legacy names
-        (@color/sdk_primary, @color/sdk_background, …)
-    -->
-
     <style name="Base.Theme.FeedbackSDK" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Material 3 color roles -->
         <item name="colorPrimary">@color/sdk_brand_primary</item>
         <item name="colorOnPrimary">@color/sdk_brand_on_primary</item>
         <item name="colorPrimaryContainer">@color/sdk_brand_primary_container</item>
@@ -39,7 +14,6 @@
         <item name="colorOutline">@color/sdk_outline</item>
         <item name="colorOutlineVariant">@color/sdk_outline</item>
 
-        <!-- SDK-specific semantic tokens -->
         <item name="sdkColorStatusOpen">@color/sdk_status_open</item>
         <item name="sdkColorStatusInProgress">@color/sdk_status_in_progress</item>
         <item name="sdkColorStatusResolved">@color/sdk_status_resolved</item>
@@ -54,16 +28,7 @@
         <item name="sdkColorStarActive">@color/sdk_star_active</item>
         <item name="sdkColorStarInactive">@color/sdk_star_inactive</item>
 
-        <!-- System chrome -->
         <item name="android:statusBarColor">?attr/colorSurface</item>
         <item name="android:navigationBarColor">?attr/colorSurface</item>
-        <item name="android:windowLightStatusBar">true</item>
     </style>
-
-    <!-- Public theme that consumers can extend. DayNight follows system setting. -->
-    <style name="Theme.FeedbackSDK.DayNight" parent="Base.Theme.FeedbackSDK" />
-
-    <!-- Applied automatically to the built-in activities (see AndroidManifest).
-         Consumers override by redeclaring this style in their own app resources. -->
-    <style name="FeedbackSDK.Theme" parent="Theme.FeedbackSDK.DayNight" />
 </resources>

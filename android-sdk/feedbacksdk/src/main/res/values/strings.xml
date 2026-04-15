@@ -26,4 +26,17 @@
     <string name="sdk_error_not_logged_in">Please log in first</string>
     <string name="sdk_title_hint">Brief summary of the issue</string>
     <string name="sdk_description_hint">Describe the issue in detail…</string>
+
+    <!-- New UI copy -->
+    <string name="sdk_back">Back</string>
+    <string name="sdk_send_comment">Send comment</string>
+    <string name="sdk_create_ticket_subtitle">Describe what\'s going wrong and we\'ll get back to you.</string>
+    <string name="sdk_comments">Comments</string>
+    <string name="sdk_no_tickets_subtitle">Your support tickets will show up here.</string>
+    <string name="sdk_rating_1">Terrible</string>
+    <string name="sdk_rating_2">Poor</string>
+    <string name="sdk_rating_3">Okay</string>
+    <string name="sdk_rating_4">Good</string>
+    <string name="sdk_rating_5">Excellent!</string>
+    <string name="sdk_tap_to_rate">Tap a star to rate</string>
 </resources>

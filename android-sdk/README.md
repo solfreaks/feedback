@@ -1,5 +1,7 @@
 # Feedback Android SDK
 
+[![](https://jitpack.io/v/solfreaks/feedback.svg)](https://jitpack.io/#solfreaks/feedback)
+
 Android library for integrating feedback, support tickets, and ratings into your app.
 
 ## Features

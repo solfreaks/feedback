@@ -1,0 +1,16 @@
+# JitPack build configuration for the Android SDK under android-sdk/.
+#
+# JitPack triggers a build whenever a consumer requests a version it hasn't
+# cached. It checks out the repo at the requested git tag, reads this file,
+# runs the install script, and serves whatever artifacts the build produces.
+#
+# See https://docs.jitpack.io/building/ for all options.
+
+jdk:
+  - openjdk17
+
+# The SDK's Gradle project lives in the android-sdk/ subdirectory, so we
+# cd there before running the publish task. `publishToMavenLocal` writes
+# artifacts into ~/.m2/repository which JitPack then picks up and serves.
+install:
+  - cd android-sdk && ./gradlew :feedbacksdk:publishToMavenLocal

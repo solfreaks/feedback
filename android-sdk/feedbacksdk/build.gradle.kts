@@ -1,6 +1,7 @@
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
+    `maven-publish`
 }
 
 android {
@@ -30,6 +31,56 @@ android {
 
     buildFeatures {
         viewBinding = true
+    }
+
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+        }
+    }
+}
+
+// --- JitPack publishing --------------------------------------------------------
+// JitPack builds the SDK from GitHub tags on-demand. There is no "publish"
+// task to run manually — consumers request `com.github.solfreaks:feedback:<tag>`
+// and JitPack triggers `./gradlew publishToMavenLocal` in its build environment,
+// serving the artifacts it finds in the local Maven repo.
+//
+// Release flow:
+//   1. Bump `sdk.version` in android-sdk/gradle.properties (e.g. 1.0.3)
+//   2. Commit and push to main
+//   3. git tag v1.0.3 && git push origin v1.0.3
+//   4. (Optional) trigger a build at https://jitpack.io/#solfreaks/feedback
+//
+// Consumer usage:
+//   repositories { maven { url = uri("https://jitpack.io") } }
+//   implementation("com.github.solfreaks:feedback:1.0.3")
+//
+// Note: `com.github.<owner>` is the JitPack-mandated groupId format.
+val sdkVersion: String = (project.findProperty("sdk.version") as String?) ?: "1.0.0"
+
+publishing {
+    publications {
+        register<MavenPublication>("release") {
+            groupId = "com.github.solfreaks"
+            artifactId = "feedback"
+            version = sdkVersion
+
+            afterEvaluate {
+                from(components["release"])
+            }
+
+            pom {
+                name.set("FeedbackSDK")
+                description.set("Android SDK for the Feedback support-ticket platform")
+                url.set("https://github.com/solfreaks/feedback")
+                licenses {
+                    license {
+                        name.set("Proprietary")
+                    }
+                }
+            }
+        }
     }
 }
 

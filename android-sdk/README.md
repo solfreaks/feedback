@@ -14,7 +14,52 @@ Android library for integrating feedback, support tickets, and ratings into your
 
 ## Installation
 
-### Option 1: Local module (recommended for now)
+### Option 1: JitPack (recommended)
+
+Add the JitPack repository to your **`settings.gradle.kts`**:
+
+```kotlin
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        maven { url = uri("https://jitpack.io") }
+    }
+}
+```
+
+Or if your project uses the older `allprojects` block in the root **`build.gradle`**:
+
+```groovy
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+    }
+}
+```
+
+Add the dependency in your app module's **`build.gradle.kts`**:
+
+```kotlin
+dependencies {
+    implementation("com.github.solfreaks:feedback:1.0.2")
+}
+```
+
+Groovy equivalent:
+
+```groovy
+dependencies {
+    implementation 'com.github.solfreaks:feedback:1.0.2'
+}
+```
+
+See the [![JitPack](https://jitpack.io/v/solfreaks/feedback.svg)](https://jitpack.io/#solfreaks/feedback) badge at the top for the latest version.
+
+### Option 2: Local module (development only)
 
 Copy the `feedbacksdk` folder into your project, then add to `settings.gradle.kts`:
 
@@ -30,7 +75,7 @@ dependencies {
 }
 ```
 
-### Option 2: AAR file
+### Option 3: AAR file
 
 Build the AAR:
 

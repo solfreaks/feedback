@@ -6,6 +6,7 @@
     android:background="?android:attr/colorBackground">
 
     <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/appBar"
         style="@style/Widget.FeedbackSDK.AppBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
@@ -129,6 +130,24 @@
                 </com.google.android.material.card.MaterialCardView>
 
                 <TextView
+                    android:id="@+id/tvAttachmentsHeader"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/sdk_attachments"
+                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:textColor="?attr/colorOnSurface"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginBottom="8dp"
+                    android:visibility="gone" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvAttachments"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    android:visibility="gone" />
+
+                <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/sdk_comments"
@@ -171,6 +190,7 @@
 
         <!-- Comment composer -->
         <LinearLayout
+            android:id="@+id/bottomBar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"

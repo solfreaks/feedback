@@ -7,10 +7,11 @@ Android library for integrating feedback, support tickets, and ratings into your
 ## Features
 
 - Google Sign-In authentication
-- Create & view support tickets with comments and attachments
-- Submit feedback with star ratings and categories
+- Create & view support tickets with comments, attachments, and inline media preview
+- Submit feedback with star ratings, categories, and attachments
 - FCM push notification support
 - Pre-built UI screens (ready to use) or programmatic API (build your own UI)
+- Edge-to-edge layouts (Android 15+ ready) with Material 3 theming
 
 ## Installation
 
@@ -45,7 +46,7 @@ Add the dependency in your app module's **`build.gradle.kts`**:
 
 ```kotlin
 dependencies {
-    implementation("com.github.solfreaks:feedback:1.0.2")
+    implementation("com.github.solfreaks:feedback:2.0.0")
 }
 ```
 
@@ -53,7 +54,7 @@ Groovy equivalent:
 
 ```groovy
 dependencies {
-    implementation 'com.github.solfreaks:feedback:1.0.2'
+    implementation 'com.github.solfreaks:feedback:2.0.0'
 }
 ```
 
@@ -295,6 +296,8 @@ FeedbackSDK.logout()
 | `FeedbackSDK.openFeedback(activity)` | Open feedback submission UI |
 | `FeedbackSDK.openFeedbackList(activity)` | Open feedback list UI (with Submit button) |
 | `FeedbackSDK.openFeedbackDetail(activity, id)` | Open feedback detail UI |
+| `FeedbackSDK.openAttachment(activity, url, name)` | Open built-in attachment viewer |
+| `FeedbackSDK.uploadFeedbackAttachment(id, file)` | Upload file to feedback |
 
 ## Requirements
 

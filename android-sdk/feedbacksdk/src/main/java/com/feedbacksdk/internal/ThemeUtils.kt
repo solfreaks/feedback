@@ -2,9 +2,13 @@ package com.feedbacksdk.internal
 
 import android.content.Context
 import android.util.TypedValue
+import android.view.View
 import androidx.annotation.AttrRes
 import androidx.annotation.ColorInt
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import com.feedbacksdk.R
 
 /** Resolve a theme color attribute to a concrete `@ColorInt`. Falls back to opaque gray. */
@@ -41,3 +45,27 @@ internal fun Context.priorityColor(priority: String): Int = resolveThemeColor(
         else -> R.attr.sdkColorPriorityMedium
     }
 )
+
+/**
+ * Apply system-bar insets to the given top and bottom views. Top gets status-bar
+ * padding, bottom gets navigation-bar padding. Intended for edge-to-edge activities
+ * where the root is a CoordinatorLayout that draws behind the bars.
+ */
+internal fun applySystemBarInsets(topView: View?, bottomView: View?) {
+    if (topView != null) {
+        ViewCompat.setOnApplyWindowInsetsListener(topView) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.updatePadding(top = bars.top)
+            insets
+        }
+    }
+    if (bottomView != null) {
+        ViewCompat.setOnApplyWindowInsetsListener(bottomView) { v, insets ->
+            val bars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.ime()
+            )
+            v.updatePadding(bottom = bars.bottom)
+            insets
+        }
+    }
+}

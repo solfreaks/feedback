@@ -10,6 +10,7 @@ import com.feedbacksdk.internal.SdkResult
 import com.feedbacksdk.internal.TokenStore
 import com.feedbacksdk.internal.toResult
 import com.feedbacksdk.models.*
+import com.feedbacksdk.ui.AttachmentViewerActivity
 import com.feedbacksdk.ui.FeedbackActivity
 import com.feedbacksdk.ui.FeedbackDetailActivity
 import com.feedbacksdk.ui.FeedbackListActivity
@@ -186,12 +187,27 @@ object FeedbackSDK {
     suspend fun uploadTicketAttachment(ticketId: String, file: File): SdkResult<Attachment> {
         checkInit()
         return try {
-            val requestBody = file.asRequestBody("application/octet-stream".toMediaTypeOrNull())
-            val part = MultipartBody.Part.createFormData("file", file.name, requestBody)
+            val part = filePart(file)
             ApiClient.getApi().uploadTicketAttachment(ticketId, part).toResult()
         } catch (e: Exception) {
             SdkResult.Error(e.message ?: "Failed to upload attachment")
         }
+    }
+
+    /** Upload attachment to a feedback submission */
+    suspend fun uploadFeedbackAttachment(feedbackId: String, file: File): SdkResult<Attachment> {
+        checkInit()
+        return try {
+            val part = filePart(file)
+            ApiClient.getApi().uploadFeedbackAttachment(feedbackId, part).toResult()
+        } catch (e: Exception) {
+            SdkResult.Error(e.message ?: "Failed to upload attachment")
+        }
+    }
+
+    private fun filePart(file: File): MultipartBody.Part {
+        val requestBody = file.asRequestBody("application/octet-stream".toMediaTypeOrNull())
+        return MultipartBody.Part.createFormData("file", file.name, requestBody)
     }
 
     // ── Feedback ──
@@ -298,6 +314,24 @@ object FeedbackSDK {
         activity.startActivity(
             Intent(activity, FeedbackDetailActivity::class.java).apply {
                 putExtra("feedback_id", feedbackId)
+            }
+        )
+    }
+
+    /**
+     * Open the built-in attachment viewer for a given attachment. Images show
+     * inline with pinch-zoom; other file types render as an "Open with…" button
+     * that fires ACTION_VIEW so the user's installed viewer can take over.
+     *
+     * [fileUrl] accepts either an absolute URL or a server-relative path like
+     * `/uploads/abc.png` (the SDK prepends the configured base URL).
+     */
+    fun openAttachment(activity: Activity, fileUrl: String, fileName: String = "") {
+        checkInit()
+        activity.startActivity(
+            Intent(activity, AttachmentViewerActivity::class.java).apply {
+                putExtra(AttachmentViewerActivity.EXTRA_URL, fileUrl)
+                putExtra(AttachmentViewerActivity.EXTRA_NAME, fileName)
             }
         )
     }

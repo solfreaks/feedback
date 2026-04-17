@@ -1,20 +1,27 @@
 package com.feedbacksdk.ui
 
+import android.content.Intent
 import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.feedbacksdk.FeedbackSDK
 import com.feedbacksdk.R
 import com.feedbacksdk.internal.SdkResult
+import com.feedbacksdk.internal.applySystemBarInsets
 import com.feedbacksdk.internal.priorityColor
 import com.feedbacksdk.internal.resolveThemeColor
 import com.feedbacksdk.internal.statusColor
+import com.feedbacksdk.models.Attachment
 import com.feedbacksdk.models.Comment
+import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
@@ -29,6 +36,8 @@ class TicketDetailActivity : AppCompatActivity() {
     private lateinit var tvPriority: TextView
     private lateinit var tvDate: TextView
     private lateinit var tvDescription: TextView
+    private lateinit var tvAttachmentsHeader: TextView
+    private lateinit var rvAttachments: RecyclerView
     private lateinit var commentsContainer: LinearLayout
     private lateinit var emptyComments: View
     private lateinit var editComment: TextInputEditText
@@ -40,6 +49,7 @@ class TicketDetailActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setTheme(R.style.FeedbackSDK_Theme)
         setContentView(R.layout.sdk_activity_ticket_detail)
 
@@ -48,13 +58,17 @@ class TicketDetailActivity : AppCompatActivity() {
             return
         }
 
+        val appBar = findViewById<AppBarLayout>(R.id.appBar)
         findViewById<MaterialToolbar>(R.id.toolbar).setNavigationOnClickListener { finish() }
+        applySystemBarInsets(topView = appBar, bottomView = findViewById(R.id.bottomBar))
 
         tvTitle = findViewById(R.id.tvTitle)
         tvStatus = findViewById(R.id.tvStatus)
         tvPriority = findViewById(R.id.tvPriority)
         tvDate = findViewById(R.id.tvDate)
         tvDescription = findViewById(R.id.tvDescription)
+        tvAttachmentsHeader = findViewById(R.id.tvAttachmentsHeader)
+        rvAttachments = findViewById(R.id.rvAttachments)
         commentsContainer = findViewById(R.id.commentsContainer)
         emptyComments = findViewById(R.id.emptyComments)
         editComment = findViewById(R.id.editComment)
@@ -62,7 +76,14 @@ class TicketDetailActivity : AppCompatActivity() {
         priorityDot = findViewById(R.id.priorityDot)
         progressBar = findViewById(R.id.progressBar)
 
+        rvAttachments.layoutManager = LinearLayoutManager(this, RecyclerView.HORIZONTAL, false)
+
         btnSend.setOnClickListener { sendComment() }
+        loadTicket()
+    }
+
+    override fun onResume() {
+        super.onResume()
         loadTicket()
     }
 
@@ -85,6 +106,8 @@ class TicketDetailActivity : AppCompatActivity() {
 
                     tvDate.text = formatDate(ticket.createdAt)
 
+                    renderAttachments(ticket.attachments)
+
                     val visibleComments = ticket.comments.filter { !it.isInternalNote }
                     commentsContainer.removeAllViews()
                     if (visibleComments.isEmpty()) {
@@ -99,6 +122,24 @@ class TicketDetailActivity : AppCompatActivity() {
                     Toast.makeText(this@TicketDetailActivity, result.message, Toast.LENGTH_LONG).show()
                 }
             }
+        }
+    }
+
+    private fun renderAttachments(attachments: List<Attachment>) {
+        if (attachments.isEmpty()) {
+            tvAttachmentsHeader.visibility = View.GONE
+            rvAttachments.visibility = View.GONE
+            return
+        }
+        tvAttachmentsHeader.visibility = View.VISIBLE
+        rvAttachments.visibility = View.VISIBLE
+        rvAttachments.adapter = AttachmentAdapter(attachments) { attachment ->
+            startActivity(
+                Intent(this, AttachmentViewerActivity::class.java).apply {
+                    putExtra(AttachmentViewerActivity.EXTRA_URL, attachment.fileUrl)
+                    putExtra(AttachmentViewerActivity.EXTRA_NAME, attachment.fileName)
+                }
+            )
         }
     }
 

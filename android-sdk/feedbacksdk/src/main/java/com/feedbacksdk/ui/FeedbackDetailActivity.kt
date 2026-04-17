@@ -1,5 +1,6 @@
 package com.feedbacksdk.ui
 
+import android.content.Intent
 import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.View
@@ -7,14 +8,20 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.feedbacksdk.FeedbackSDK
 import com.feedbacksdk.R
 import com.feedbacksdk.internal.SdkResult
+import com.feedbacksdk.internal.applySystemBarInsets
 import com.feedbacksdk.internal.resolveThemeColor
 import com.feedbacksdk.internal.statusColor
+import com.feedbacksdk.models.Attachment
 import com.feedbacksdk.models.FeedbackReply
+import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -27,6 +34,8 @@ class FeedbackDetailActivity : AppCompatActivity() {
     private lateinit var tvCategory: TextView
     private lateinit var tvDate: TextView
     private lateinit var tvComment: TextView
+    private lateinit var tvAttachmentsHeader: TextView
+    private lateinit var rvAttachments: RecyclerView
     private lateinit var repliesContainer: LinearLayout
     private lateinit var emptyReplies: View
     private lateinit var progressBar: View
@@ -35,6 +44,7 @@ class FeedbackDetailActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setTheme(R.style.FeedbackSDK_Theme)
         setContentView(R.layout.sdk_activity_feedback_detail)
 
@@ -43,7 +53,9 @@ class FeedbackDetailActivity : AppCompatActivity() {
             return
         }
 
+        val appBar = findViewById<AppBarLayout>(R.id.appBar)
         findViewById<MaterialToolbar>(R.id.toolbar).setNavigationOnClickListener { finish() }
+        applySystemBarInsets(topView = appBar, bottomView = null)
 
         stars = listOf(
             findViewById(R.id.star1),
@@ -56,9 +68,13 @@ class FeedbackDetailActivity : AppCompatActivity() {
         tvCategory = findViewById(R.id.tvCategory)
         tvDate = findViewById(R.id.tvDate)
         tvComment = findViewById(R.id.tvComment)
+        tvAttachmentsHeader = findViewById(R.id.tvAttachmentsHeader)
+        rvAttachments = findViewById(R.id.rvAttachments)
         repliesContainer = findViewById(R.id.repliesContainer)
         emptyReplies = findViewById(R.id.emptyReplies)
         progressBar = findViewById(R.id.progressBar)
+
+        rvAttachments.layoutManager = LinearLayoutManager(this, RecyclerView.HORIZONTAL, false)
 
         loadFeedback()
     }
@@ -95,6 +111,8 @@ class FeedbackDetailActivity : AppCompatActivity() {
                         tvComment.text = comment
                     }
 
+                    renderAttachments(feedback.attachments)
+
                     repliesContainer.removeAllViews()
                     if (feedback.replies.isEmpty()) {
                         emptyReplies.visibility = View.VISIBLE
@@ -108,6 +126,24 @@ class FeedbackDetailActivity : AppCompatActivity() {
                     Toast.makeText(this@FeedbackDetailActivity, result.message, Toast.LENGTH_LONG).show()
                 }
             }
+        }
+    }
+
+    private fun renderAttachments(attachments: List<Attachment>) {
+        if (attachments.isEmpty()) {
+            tvAttachmentsHeader.visibility = View.GONE
+            rvAttachments.visibility = View.GONE
+            return
+        }
+        tvAttachmentsHeader.visibility = View.VISIBLE
+        rvAttachments.visibility = View.VISIBLE
+        rvAttachments.adapter = AttachmentAdapter(attachments) { attachment ->
+            startActivity(
+                Intent(this, AttachmentViewerActivity::class.java).apply {
+                    putExtra(AttachmentViewerActivity.EXTRA_URL, attachment.fileUrl)
+                    putExtra(AttachmentViewerActivity.EXTRA_NAME, attachment.fileName)
+                }
+            )
         }
     }
 

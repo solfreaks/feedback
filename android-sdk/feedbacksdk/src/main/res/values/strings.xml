@@ -47,4 +47,15 @@
     <string name="sdk_no_feedback_subtitle">Your submitted feedback will show up here.</string>
     <string name="sdk_replies">Replies</string>
     <string name="sdk_no_replies">No replies yet</string>
+
+    <!-- Attachments -->
+    <string name="sdk_attachment">Attachment</string>
+    <string name="sdk_attachments">Attachments</string>
+    <string name="sdk_add_attachment">Add attachment</string>
+    <string name="sdk_remove_attachment">Remove attachment</string>
+    <string name="sdk_open_external">Open with…</string>
+    <string name="sdk_attachment_load_failed">Could not load attachment</string>
+    <string name="sdk_no_app_to_open">No app available to open this file</string>
+    <string name="sdk_ticket_created_attach_failed">Ticket created, but one or more attachments failed to upload.</string>
+    <string name="sdk_feedback_submitted_attach_failed">Feedback submitted, but one or more attachments failed to upload.</string>
 </resources>

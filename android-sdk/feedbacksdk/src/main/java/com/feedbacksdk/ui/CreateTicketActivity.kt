@@ -1,18 +1,27 @@
 package com.feedbacksdk.ui
 
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.feedbacksdk.FeedbackSDK
 import com.feedbacksdk.R
 import com.feedbacksdk.internal.SdkResult
+import com.feedbacksdk.internal.applySystemBarInsets
+import com.feedbacksdk.internal.uriToCacheFile
+import com.google.android.material.appbar.AppBarLayout
+import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.chip.ChipGroup
 import com.google.android.material.textfield.TextInputEditText
-import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.launch
+import java.io.File
 
 class CreateTicketActivity : AppCompatActivity() {
 
@@ -20,23 +29,58 @@ class CreateTicketActivity : AppCompatActivity() {
     private lateinit var editDescription: TextInputEditText
     private lateinit var chipGroupPriority: ChipGroup
     private lateinit var btnSubmit: MaterialButton
+    private lateinit var btnAttach: MaterialButton
+    private lateinit var rvAttachments: RecyclerView
     private lateinit var progressBar: View
+
+    private val pendingFiles = mutableListOf<File>()
+    private lateinit var pendingAdapter: PendingAttachmentAdapter
+
+    private val pickAttachments = registerForActivityResult(
+        ActivityResultContracts.GetMultipleContents()
+    ) { uris: List<Uri> ->
+        if (uris.isEmpty()) return@registerForActivityResult
+        lifecycleScope.launch {
+            uris.forEach { uri ->
+                uriToCacheFile(uri)?.let { pendingFiles.add(it) }
+            }
+            refreshAttachments()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setTheme(R.style.FeedbackSDK_Theme)
         setContentView(R.layout.sdk_activity_create_ticket)
 
+        val appBar = findViewById<AppBarLayout>(R.id.appBar)
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
         toolbar.setNavigationOnClickListener { finish() }
+        applySystemBarInsets(topView = appBar, bottomView = findViewById(R.id.bottomBar))
 
         editTitle = findViewById(R.id.editTitle)
         editDescription = findViewById(R.id.editDescription)
         chipGroupPriority = findViewById(R.id.chipGroupPriority)
         btnSubmit = findViewById(R.id.btnSubmit)
+        btnAttach = findViewById(R.id.btnAttach)
+        rvAttachments = findViewById(R.id.rvAttachments)
         progressBar = findViewById(R.id.progressBar)
 
+        pendingAdapter = PendingAttachmentAdapter(pendingFiles) { index ->
+            pendingFiles.removeAt(index)
+            refreshAttachments()
+        }
+        rvAttachments.layoutManager = LinearLayoutManager(this, RecyclerView.HORIZONTAL, false)
+        rvAttachments.adapter = pendingAdapter
+
+        btnAttach.setOnClickListener { pickAttachments.launch("*/*") }
         btnSubmit.setOnClickListener { submitTicket() }
+    }
+
+    private fun refreshAttachments() {
+        pendingAdapter.notifyDataSetChanged()
+        rvAttachments.visibility = if (pendingFiles.isEmpty()) View.GONE else View.VISIBLE
     }
 
     private fun submitTicket() {
@@ -64,7 +108,15 @@ class CreateTicketActivity : AppCompatActivity() {
         lifecycleScope.launch {
             when (val result = FeedbackSDK.createTicket(title, description, priority = priority)) {
                 is SdkResult.Success -> {
-                    Toast.makeText(this@CreateTicketActivity, R.string.sdk_ticket_created, Toast.LENGTH_SHORT).show()
+                    val ticketId = result.data.id
+                    var uploadFailed = false
+                    pendingFiles.forEach { file ->
+                        val uploadResult = FeedbackSDK.uploadTicketAttachment(ticketId, file)
+                        if (uploadResult is SdkResult.Error) uploadFailed = true
+                    }
+                    val msg = if (uploadFailed) R.string.sdk_ticket_created_attach_failed
+                              else R.string.sdk_ticket_created
+                    Toast.makeText(this@CreateTicketActivity, msg, Toast.LENGTH_SHORT).show()
                     setResult(RESULT_OK)
                     finish()
                 }
@@ -79,6 +131,7 @@ class CreateTicketActivity : AppCompatActivity() {
     private fun setLoading(loading: Boolean) {
         progressBar.visibility = if (loading) View.VISIBLE else View.GONE
         btnSubmit.isEnabled = !loading
+        btnAttach.isEnabled = !loading
         btnSubmit.visibility = if (loading) View.INVISIBLE else View.VISIBLE
     }
 }

@@ -1,21 +1,30 @@
 package com.feedbacksdk.ui
 
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.view.animation.OvershootInterpolator
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.feedbacksdk.FeedbackSDK
 import com.feedbacksdk.R
 import com.feedbacksdk.internal.SdkResult
+import com.feedbacksdk.internal.applySystemBarInsets
+import com.feedbacksdk.internal.uriToCacheFile
+import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.chip.ChipGroup
 import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.launch
+import java.io.File
 
 class FeedbackActivity : AppCompatActivity() {
 
@@ -24,16 +33,36 @@ class FeedbackActivity : AppCompatActivity() {
     private lateinit var chipGroupCategory: ChipGroup
     private lateinit var editComment: TextInputEditText
     private lateinit var btnSubmit: MaterialButton
+    private lateinit var btnAttach: MaterialButton
+    private lateinit var rvAttachments: RecyclerView
     private lateinit var progressBar: View
 
     private var selectedRating = 0
 
+    private val pendingFiles = mutableListOf<File>()
+    private lateinit var pendingAdapter: PendingAttachmentAdapter
+
+    private val pickAttachments = registerForActivityResult(
+        ActivityResultContracts.GetMultipleContents()
+    ) { uris: List<Uri> ->
+        if (uris.isEmpty()) return@registerForActivityResult
+        lifecycleScope.launch {
+            uris.forEach { uri ->
+                uriToCacheFile(uri)?.let { pendingFiles.add(it) }
+            }
+            refreshAttachments()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setTheme(R.style.FeedbackSDK_Theme)
         setContentView(R.layout.sdk_activity_feedback)
 
+        val appBar = findViewById<AppBarLayout>(R.id.appBar)
         findViewById<MaterialToolbar>(R.id.toolbar).setNavigationOnClickListener { finish() }
+        applySystemBarInsets(topView = appBar, bottomView = findViewById(R.id.bottomBar))
 
         stars = listOf(
             findViewById(R.id.star1),
@@ -46,6 +75,8 @@ class FeedbackActivity : AppCompatActivity() {
         chipGroupCategory = findViewById(R.id.chipGroupCategory)
         editComment = findViewById(R.id.editComment)
         btnSubmit = findViewById(R.id.btnSubmit)
+        btnAttach = findViewById(R.id.btnAttach)
+        rvAttachments = findViewById(R.id.rvAttachments)
         progressBar = findViewById(R.id.progressBar)
 
         stars.forEachIndexed { index, imageView ->
@@ -55,7 +86,20 @@ class FeedbackActivity : AppCompatActivity() {
             }
         }
 
+        pendingAdapter = PendingAttachmentAdapter(pendingFiles) { position ->
+            pendingFiles.removeAt(position)
+            refreshAttachments()
+        }
+        rvAttachments.layoutManager = LinearLayoutManager(this, RecyclerView.HORIZONTAL, false)
+        rvAttachments.adapter = pendingAdapter
+
+        btnAttach.setOnClickListener { pickAttachments.launch("*/*") }
         btnSubmit.setOnClickListener { submitFeedback() }
+    }
+
+    private fun refreshAttachments() {
+        pendingAdapter.notifyDataSetChanged()
+        rvAttachments.visibility = if (pendingFiles.isEmpty()) View.GONE else View.VISIBLE
     }
 
     private fun updateStars(animateIndex: Int) {
@@ -65,7 +109,6 @@ class FeedbackActivity : AppCompatActivity() {
                 else R.drawable.sdk_ic_star_outline
             )
         }
-        // Little pop on the tapped star.
         stars[animateIndex].animate()
             .scaleX(1.25f).scaleY(1.25f)
             .setDuration(120)
@@ -110,7 +153,15 @@ class FeedbackActivity : AppCompatActivity() {
         lifecycleScope.launch {
             when (val result = FeedbackSDK.submitFeedback(selectedRating, category, comment)) {
                 is SdkResult.Success -> {
-                    Toast.makeText(this@FeedbackActivity, R.string.sdk_feedback_submitted, Toast.LENGTH_SHORT).show()
+                    val feedbackId = result.data.id
+                    var uploadFailed = false
+                    pendingFiles.forEach { file ->
+                        val uploadResult = FeedbackSDK.uploadFeedbackAttachment(feedbackId, file)
+                        if (uploadResult is SdkResult.Error) uploadFailed = true
+                    }
+                    val msg = if (uploadFailed) R.string.sdk_feedback_submitted_attach_failed
+                              else R.string.sdk_feedback_submitted
+                    Toast.makeText(this@FeedbackActivity, msg, Toast.LENGTH_SHORT).show()
                     setResult(RESULT_OK)
                     finish()
                 }
@@ -125,6 +176,7 @@ class FeedbackActivity : AppCompatActivity() {
     private fun setLoading(loading: Boolean) {
         progressBar.visibility = if (loading) View.VISIBLE else View.GONE
         btnSubmit.isEnabled = !loading
+        btnAttach.isEnabled = !loading
         btnSubmit.visibility = if (loading) View.INVISIBLE else View.VISIBLE
     }
 }

@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -15,10 +16,12 @@ import androidx.recyclerview.widget.RecyclerView
 import com.feedbacksdk.FeedbackSDK
 import com.feedbacksdk.R
 import com.feedbacksdk.internal.SdkResult
+import com.feedbacksdk.internal.applySystemBarInsets
 import com.feedbacksdk.internal.priorityColor
 import com.feedbacksdk.internal.resolveThemeColor
 import com.feedbacksdk.internal.statusColor
 import com.feedbacksdk.models.Ticket
+import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.launch
@@ -35,10 +38,15 @@ class TicketListActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setTheme(R.style.FeedbackSDK_Theme)
         setContentView(R.layout.sdk_activity_ticket_list)
 
         findViewById<MaterialToolbar>(R.id.toolbar).setNavigationOnClickListener { finish() }
+        applySystemBarInsets(
+            topView = findViewById<AppBarLayout>(R.id.appBar),
+            bottomView = findViewById(R.id.bottomBar),
+        )
 
         recyclerView = findViewById(R.id.recyclerView)
         progressBar = findViewById(R.id.progressBar)

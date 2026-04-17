@@ -6,6 +6,7 @@
     android:background="?android:attr/colorBackground">
 
     <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/appBar"
         style="@style/Widget.FeedbackSDK.AppBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
@@ -73,6 +74,7 @@
         android:visibility="gone" />
 
     <LinearLayout
+        android:id="@+id/bottomBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"

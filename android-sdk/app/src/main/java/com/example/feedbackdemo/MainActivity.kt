@@ -51,6 +51,10 @@ class MainActivity : AppCompatActivity() {
             FeedbackSDK.openFeedback(this)
         }
 
+        binding.btnMyFeedback.setOnClickListener {
+            FeedbackSDK.openFeedbackList(this)
+        }
+
         binding.btnLogout.setOnClickListener {
             FeedbackSDK.logout()
             refreshAuthState()
@@ -78,6 +82,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnCreateTicket.isEnabled = loggedIn
         binding.btnMyTickets.isEnabled = loggedIn
         binding.btnFeedback.isEnabled = loggedIn
+        binding.btnMyFeedback.isEnabled = loggedIn
     }
 
     private fun toast(msg: String) {

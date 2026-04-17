@@ -23,6 +23,16 @@
             android:name=".ui.FeedbackActivity"
             android:theme="@style/FeedbackSDK.Theme"
             android:exported="false" />
+
+        <activity
+            android:name=".ui.FeedbackListActivity"
+            android:theme="@style/FeedbackSDK.Theme"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.FeedbackDetailActivity"
+            android:theme="@style/FeedbackSDK.Theme"
+            android:exported="false" />
     </application>
 
 </manifest>

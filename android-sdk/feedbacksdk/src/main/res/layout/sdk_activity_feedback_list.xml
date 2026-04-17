@@ -17,7 +17,7 @@
             android:layout_height="?attr/actionBarSize"
             app:navigationIcon="@drawable/sdk_ic_back"
             app:navigationContentDescription="@string/sdk_back"
-            app:title="@string/sdk_my_tickets" />
+            app:title="@string/sdk_my_feedback" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.recyclerview.widget.RecyclerView
@@ -30,7 +30,6 @@
         android:paddingBottom="96dp"
         app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
-    <!-- Empty state -->
     <LinearLayout
         android:id="@+id/emptyState"
         android:layout_width="match_parent"
@@ -44,13 +43,13 @@
         <ImageView
             android:layout_width="96dp"
             android:layout_height="96dp"
-            android:src="@drawable/sdk_ic_inbox"
-            android:contentDescription="@string/sdk_no_tickets" />
+            android:src="@drawable/sdk_ic_star_outline"
+            android:contentDescription="@string/sdk_no_feedback" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/sdk_no_tickets"
+            android:text="@string/sdk_no_feedback"
             android:textAppearance="?attr/textAppearanceTitleMedium"
             android:textColor="?attr/colorOnSurface"
             android:layout_marginTop="16dp" />
@@ -58,7 +57,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/sdk_no_tickets_subtitle"
+            android:text="@string/sdk_no_feedback_subtitle"
             android:textAppearance="?attr/textAppearanceBodyMedium"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:gravity="center"
@@ -83,11 +82,11 @@
         android:paddingVertical="12dp">
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnCreate"
+            android:id="@+id/btnSubmit"
             style="@style/Widget.FeedbackSDK.Button"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/sdk_create_ticket"
+            android:text="@string/sdk_submit_feedback"
             app:icon="@drawable/sdk_ic_add"
             app:iconGravity="textStart" />
     </LinearLayout>

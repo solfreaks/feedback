@@ -39,4 +39,12 @@
     <string name="sdk_rating_4">Good</string>
     <string name="sdk_rating_5">Excellent!</string>
     <string name="sdk_tap_to_rate">Tap a star to rate</string>
+
+    <!-- Feedback list / detail -->
+    <string name="sdk_my_feedback">My Feedback</string>
+    <string name="sdk_feedback_detail">Feedback Detail</string>
+    <string name="sdk_no_feedback">No feedback yet</string>
+    <string name="sdk_no_feedback_subtitle">Your submitted feedback will show up here.</string>
+    <string name="sdk_replies">Replies</string>
+    <string name="sdk_no_replies">No replies yet</string>
 </resources>

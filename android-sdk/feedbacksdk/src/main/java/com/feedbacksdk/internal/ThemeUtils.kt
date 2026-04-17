@@ -18,12 +18,12 @@ internal fun Context.resolveThemeColor(@AttrRes attrRes: Int): Int {
     }
 }
 
-/** Color for a ticket status string (open / in_progress / resolved / closed). */
+/** Color for a ticket or feedback status string. Ticket: open, in_progress, resolved, closed. Feedback: new, acknowledged, in_progress, resolved. */
 @ColorInt
 internal fun Context.statusColor(status: String): Int = resolveThemeColor(
     when (status) {
-        "open" -> R.attr.sdkColorStatusOpen
-        "in_progress" -> R.attr.sdkColorStatusInProgress
+        "open", "new" -> R.attr.sdkColorStatusOpen
+        "acknowledged", "in_progress" -> R.attr.sdkColorStatusInProgress
         "resolved" -> R.attr.sdkColorStatusResolved
         "closed" -> R.attr.sdkColorStatusClosed
         else -> R.attr.sdkColorStatusClosed

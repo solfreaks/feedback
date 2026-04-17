@@ -58,6 +58,13 @@
             android:id="@+id/btnFeedback"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/btn_feedback" />
+            android:text="@string/btn_feedback"
+            android:layout_marginBottom="8dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnMyFeedback"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/btn_my_feedback" />
     </LinearLayout>
 </ScrollView>

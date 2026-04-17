@@ -11,6 +11,8 @@ import com.feedbacksdk.internal.TokenStore
 import com.feedbacksdk.internal.toResult
 import com.feedbacksdk.models.*
 import com.feedbacksdk.ui.FeedbackActivity
+import com.feedbacksdk.ui.FeedbackDetailActivity
+import com.feedbacksdk.ui.FeedbackListActivity
 import com.feedbacksdk.ui.TicketDetailActivity
 import com.feedbacksdk.ui.TicketListActivity
 import com.feedbacksdk.ui.CreateTicketActivity
@@ -282,6 +284,22 @@ object FeedbackSDK {
     fun openFeedback(activity: Activity) {
         checkInit()
         activity.startActivity(Intent(activity, FeedbackActivity::class.java))
+    }
+
+    /** Open the Feedback List screen (user's past feedback submissions) */
+    fun openFeedbackList(activity: Activity) {
+        checkInit()
+        activity.startActivity(Intent(activity, FeedbackListActivity::class.java))
+    }
+
+    /** Open a specific feedback's detail screen */
+    fun openFeedbackDetail(activity: Activity, feedbackId: String) {
+        checkInit()
+        activity.startActivity(
+            Intent(activity, FeedbackDetailActivity::class.java).apply {
+                putExtra("feedback_id", feedbackId)
+            }
+        )
     }
 
     // ── Internal ──

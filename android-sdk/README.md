@@ -154,14 +154,20 @@ class LoginActivity : AppCompatActivity() {
 // Open create ticket screen
 FeedbackSDK.openCreateTicket(activity)
 
-// Open ticket list (user's tickets)
+// Open ticket list — includes a "Create Ticket" button at the bottom
 FeedbackSDK.openTicketList(activity)
-
-// Open feedback/rating screen
-FeedbackSDK.openFeedback(activity)
 
 // Open specific ticket detail
 FeedbackSDK.openTicketDetail(activity, ticketId)
+
+// Open feedback submission (star rating + category + comment)
+FeedbackSDK.openFeedback(activity)
+
+// Open feedback list — includes a "Submit Feedback" button at the bottom
+FeedbackSDK.openFeedbackList(activity)
+
+// Open specific feedback detail with replies
+FeedbackSDK.openFeedbackDetail(activity, feedbackId)
 ```
 
 ### 4. Using Programmatic API (Custom UI)
@@ -284,9 +290,11 @@ FeedbackSDK.logout()
 | `FeedbackSDK.registerDeviceToken(token)` | Register FCM token |
 | `FeedbackSDK.removeDeviceToken(token)` | Remove FCM token |
 | `FeedbackSDK.openCreateTicket(activity)` | Open create ticket UI |
-| `FeedbackSDK.openTicketList(activity)` | Open ticket list UI |
+| `FeedbackSDK.openTicketList(activity)` | Open ticket list UI (with Create button) |
 | `FeedbackSDK.openTicketDetail(activity, id)` | Open ticket detail UI |
-| `FeedbackSDK.openFeedback(activity)` | Open feedback UI |
+| `FeedbackSDK.openFeedback(activity)` | Open feedback submission UI |
+| `FeedbackSDK.openFeedbackList(activity)` | Open feedback list UI (with Submit button) |
+| `FeedbackSDK.openFeedbackDetail(activity, id)` | Open feedback detail UI |
 
 ## Requirements
 

@@ -31,6 +31,17 @@
         <item name="colorPrimaryContainer">@color/sdk_brand_primary_container</item>
         <item name="colorOnPrimaryContainer">@color/sdk_brand_on_primary_container</item>
 
+        <!--
+        Filter chips and several other M3 widgets draw from the secondary palette,
+        not primary. Point secondary-container at the brand tones so checked chips
+        match the rest of the UI instead of falling back to Material's default
+        (purple) baseline.
+        -->
+        <item name="colorSecondary">@color/sdk_brand_primary</item>
+        <item name="colorOnSecondary">@color/sdk_brand_on_primary</item>
+        <item name="colorSecondaryContainer">@color/sdk_brand_primary_container</item>
+        <item name="colorOnSecondaryContainer">@color/sdk_brand_on_primary_container</item>
+
         <item name="android:colorBackground">@color/sdk_background</item>
         <item name="colorSurface">@color/sdk_surface</item>
         <item name="colorSurfaceVariant">@color/sdk_surface_variant</item>

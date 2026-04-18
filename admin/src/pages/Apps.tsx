@@ -308,13 +308,9 @@ export default function Apps() {
     fetchApps();
   };
 
-  const openEdit = (app: App) => {
-    setEditForm({ name: app.name, description: app.description || "", platform: app.platform || "", bundleId: app.bundleId || "", googleClientId: app.googleClientId || "", emailFrom: app.emailFrom || "", emailName: app.emailName || "", smtpHost: app.smtpHost || "", smtpPort: app.smtpPort ? String(app.smtpPort) : "", smtpUser: app.smtpUser || "", smtpPass: app.smtpPass || "", firebaseProjectId: app.firebaseProjectId || "", firebaseClientEmail: app.firebaseClientEmail || "", firebasePrivateKey: app.firebasePrivateKey || "" });
-    setSelectedAdminIds((app.admins || []).map((a) => a.id));
-    setEditApp(app);
-    setTestPushResult(null);
-    fetchAdmins();
-  };
+  // Settings editing moved to the per-app detail page (/apps/:id). The
+  // modal JSX below is still mounted but unreachable — editApp stays null.
+  // Kept as a quick-rollback escape hatch; safe to delete in a future pass.
 
   const uploadIcon = async (appId: string, file: File) => {
     const formData = new FormData();

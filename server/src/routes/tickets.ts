@@ -87,6 +87,78 @@ router.post("/:id/comments", async (req: Request, res: Response) => {
   }
 });
 
+// Typing indicator: fans out "user is typing on ticket X" to the ticket's
+// creator and assignee. No persistence — purely ephemeral WS broadcast.
+// Debounced on the client to avoid spam.
+router.post("/:id/typing", async (req: Request, res: Response) => {
+  try {
+    // Dynamic require to avoid a circular import; this route is hot enough
+    // that the import cost is immaterial.
+    const { broadcastToUser } = require("../websocket");
+    const ticket = await (await import("../services/ticket.service")).getTicketDetail(req.params.id, req.user!.id);
+    if (!ticket) return res.status(404).json({ error: "Ticket not found" });
+    const payload = { type: "ticket_typing", ticketId: req.params.id, userId: req.user!.id };
+    if (ticket.userId !== req.user!.id) broadcastToUser(ticket.userId, payload);
+    if (ticket.assignedTo && ticket.assignedTo !== req.user!.id) {
+      broadcastToUser(ticket.assignedTo, payload);
+    }
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Typing indicator error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// User edits their own comment (10-min window). Only the body is editable.
+// Server enforces ownership and the edit window — the SDK mirrors the window
+// locally just to hide the option cleanly.
+const COMMENT_EDIT_WINDOW_MS = 10 * 60 * 1000;
+
+router.patch("/:id/comments/:commentId", async (req: Request, res: Response) => {
+  try {
+    const { body } = req.body as { body?: string };
+    if (!body || !body.trim()) return res.status(400).json({ error: "body is required" });
+
+    const existing = await ticketService.getComment(req.params.commentId);
+    if (!existing || existing.ticketId !== req.params.id) {
+      return res.status(404).json({ error: "Comment not found" });
+    }
+    if (existing.userId !== req.user!.id) {
+      return res.status(403).json({ error: "You can only edit your own comment" });
+    }
+    const age = Date.now() - new Date(existing.createdAt).getTime();
+    if (age > COMMENT_EDIT_WINDOW_MS) {
+      return res.status(403).json({ error: "Edit window has expired" });
+    }
+    const updated = await ticketService.updateCommentBody(req.params.commentId, body.trim());
+    return res.json(updated);
+  } catch (err) {
+    console.error("Edit comment error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/:id/comments/:commentId", async (req: Request, res: Response) => {
+  try {
+    const existing = await ticketService.getComment(req.params.commentId);
+    if (!existing || existing.ticketId !== req.params.id) {
+      return res.status(404).json({ error: "Comment not found" });
+    }
+    if (existing.userId !== req.user!.id) {
+      return res.status(403).json({ error: "You can only delete your own comment" });
+    }
+    const age = Date.now() - new Date(existing.createdAt).getTime();
+    if (age > COMMENT_EDIT_WINDOW_MS) {
+      return res.status(403).json({ error: "Delete window has expired" });
+    }
+    await ticketService.deleteComment(req.params.commentId);
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Delete comment error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Upload attachment
 router.post("/:id/attachments", upload.single("file"), async (req: Request, res: Response) => {
   try {

@@ -68,6 +68,7 @@ model App {
   feedbacks   Feedback[]
   deviceTokens DeviceToken[]
   admins      AppAdmin[]
+  announcements Announcement[]
 
   @@map("apps")
 }
@@ -93,6 +94,7 @@ model User {
   deviceTokens    DeviceToken[]
   appAdmins       AppAdmin[]
   notificationPreferences NotificationPreference[]
+  cannedReplies   CannedReply[]
 
   @@map("users")
 }
@@ -117,6 +119,7 @@ model Ticket {
   status      TicketStatus       @default(open)
   assignedTo  String?            @map("assigned_to")
   slaDeadline DateTime?          @map("sla_deadline")
+  adminLastViewedAt DateTime?    @map("admin_last_viewed_at")
   createdAt   DateTime           @default(now()) @map("created_at")
   updatedAt   DateTime           @updatedAt @map("updated_at")
   app         App                @relation(fields: [appId], references: [id])
@@ -196,6 +199,8 @@ model Feedback {
   status      FeedbackStatus       @default(new)
   comment     String?              @db.Text
   createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
+  adminLastViewedAt DateTime?      @map("admin_last_viewed_at")
   app         App                  @relation(fields: [appId], references: [id])
   user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   replies     FeedbackReply[]
@@ -240,6 +245,44 @@ enum NotificationType {
   new_feedback
   new_comment
   feedback_reply
+  mention
+}
+
+// Broadcast announcements from an app's admins to all its users. Delivery is
+// via FCM topic (subscribed per-device as `app_<appId>`), so we don't fan-out
+// per-user on the server. This row is the source of truth for the in-app
+// feed — clients pull it via GET /announcements.
+model Announcement {
+  id        String   @id @default(uuid())
+  appId     String   @map("app_id")
+  title     String
+  body      String   @db.Text
+  // Optional deep link the SDK opens when the announcement is tapped.
+  link      String?
+  createdBy String?  @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  app       App      @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@index([appId, createdAt])
+  @@map("announcements")
+}
+
+model CannedReply {
+  id        String   @id @default(uuid())
+  ownerId   String   @map("owner_id")
+  title     String
+  body      String   @db.Text
+  // Shared templates are visible to every admin; private ones only to their owner.
+  shared    Boolean  @default(false)
+  // Optional tag so admins can group replies (e.g. "triage", "refunds").
+  tag       String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
+  @@index([shared])
+  @@map("canned_replies")
 }
 
 model Notification {

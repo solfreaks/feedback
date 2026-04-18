@@ -2,6 +2,7 @@ import { PrismaClient, FeedbackCategory, FeedbackStatus } from "@prisma/client";
 import { notifyAdmins } from "./notification.service";
 import { notifyAdminNewFeedback } from "./email.service";
 import { sendPushToUser } from "./fcm.service";
+import { config } from "../config";
 
 const prisma = new PrismaClient();
 
@@ -97,23 +98,67 @@ export async function updateFeedbackStatus(feedbackId: string, status: FeedbackS
   });
 }
 
+/**
+ * User-facing content edit. Only accepts the fields a submitter should control;
+ * status / admin notes are explicitly excluded. The route layer enforces the
+ * 24h edit window and ownership check.
+ */
+export async function updateFeedbackContent(
+  feedbackId: string,
+  data: { rating?: number; category?: FeedbackCategory; comment?: string | null }
+) {
+  const patch: any = {};
+  if (data.rating !== undefined) patch.rating = data.rating;
+  if (data.category !== undefined) patch.category = data.category;
+  if (data.comment !== undefined) patch.comment = data.comment;
+  return prisma.feedback.update({
+    where: { id: feedbackId },
+    data: patch,
+    include: feedbackInclude,
+  });
+}
+
+export async function deleteFeedback(feedbackId: string) {
+  // Replies cascade-delete. Attachments also cascade on the row level, but
+  // their files on disk don't — we sweep them ourselves to avoid a leak.
+  const existing = await prisma.feedback.findUnique({
+    where: { id: feedbackId },
+    include: { attachments: true },
+  });
+  if (existing) {
+    for (const a of existing.attachments) {
+      try {
+        const fs = require("fs");
+        const path = require("path");
+        const filename = path.basename(a.fileUrl);
+        const filepath = path.join(config.uploadDir, filename);
+        if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+      } catch { /* best effort */ }
+    }
+  }
+  return prisma.feedback.delete({ where: { id: feedbackId } });
+}
+
 export async function addReply(data: { feedbackId: string; userId: string; body: string }) {
   const reply = await prisma.feedbackReply.create({
     data,
     include: { user: { select: { id: true, name: true, avatarUrl: true } } },
   });
 
-  // Auto-acknowledge on first reply
+  // Bump the parent feedback's updatedAt so clients can detect "new reply since
+  // last viewed". Combined with auto-acknowledge on first reply (below) when
+  // applicable. We issue the update unconditionally because @updatedAt only
+  // fires on row updates to the feedback itself, not on child inserts.
   const feedback = await prisma.feedback.findUnique({
     where: { id: data.feedbackId },
     select: { userId: true, appId: true, rating: true, status: true },
   });
-  if (feedback && feedback.status === "new") {
-    await prisma.feedback.update({
-      where: { id: data.feedbackId },
-      data: { status: "acknowledged" },
-    });
-  }
+  await prisma.feedback.update({
+    where: { id: data.feedbackId },
+    data: feedback && feedback.status === "new"
+      ? { status: "acknowledged" }
+      : { updatedAt: new Date() },
+  });
 
   // FCM push to feedback creator
   if (feedback && feedback.userId !== data.userId) {
@@ -141,16 +186,24 @@ export async function listAllFeedbacks(filters: {
   category?: FeedbackCategory;
   status?: FeedbackStatus;
   rating?: number;
+  search?: string;
   page?: number;
   limit?: number;
 }) {
-  const { appId, appIds, category, status, rating, page = 1, limit = 20 } = filters;
+  const { appId, appIds, category, status, rating, search, page = 1, limit = 20 } = filters;
   const where: any = {};
   if (appId) where.appId = appId;
   else if (appIds) where.appId = { in: appIds };
   if (category) where.category = category;
   if (status) where.status = status;
   if (rating) where.rating = rating;
+  if (search) {
+    where.OR = [
+      { comment: { contains: search } },
+      { user: { name: { contains: search } } },
+      { user: { email: { contains: search } } },
+    ];
+  }
 
   const [feedbacks, total] = await Promise.all([
     prisma.feedback.findMany({

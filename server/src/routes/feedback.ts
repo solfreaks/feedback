@@ -67,6 +67,61 @@ router.get("/:id", async (req: Request, res: Response) => {
   }
 });
 
+// User edits their own feedback (24h window). Only the rating, category, and
+// comment are editable — status is server-managed. After 24h we reject to
+// keep the audit trail meaningful for admins.
+const FEEDBACK_EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+router.patch("/:id", async (req: Request, res: Response) => {
+  try {
+    const { rating, category, comment } = req.body as {
+      rating?: number;
+      category?: string;
+      comment?: string | null;
+    };
+    const existing = await feedbackService.getFeedbackDetail(req.params.id);
+    if (!existing) return res.status(404).json({ error: "Feedback not found" });
+    if (existing.userId !== req.user!.id) {
+      return res.status(403).json({ error: "You can only edit your own feedback" });
+    }
+    const age = Date.now() - new Date(existing.createdAt).getTime();
+    if (age > FEEDBACK_EDIT_WINDOW_MS) {
+      return res.status(403).json({ error: "Edit window has expired" });
+    }
+    if (rating !== undefined && (rating < 1 || rating > 5)) {
+      return res.status(400).json({ error: "Rating must be 1-5" });
+    }
+    const updated = await feedbackService.updateFeedbackContent(req.params.id, {
+      rating,
+      category: category as any,
+      comment,
+    });
+    return res.json(updated);
+  } catch (err) {
+    console.error("Edit feedback error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/:id", async (req: Request, res: Response) => {
+  try {
+    const existing = await feedbackService.getFeedbackDetail(req.params.id);
+    if (!existing) return res.status(404).json({ error: "Feedback not found" });
+    if (existing.userId !== req.user!.id) {
+      return res.status(403).json({ error: "You can only delete your own feedback" });
+    }
+    const age = Date.now() - new Date(existing.createdAt).getTime();
+    if (age > FEEDBACK_EDIT_WINDOW_MS) {
+      return res.status(403).json({ error: "Delete window has expired" });
+    }
+    await feedbackService.deleteFeedback(req.params.id);
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Delete feedback error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Upload attachment to feedback
 router.post("/:id/attachments", upload.single("file"), async (req: Request, res: Response) => {
   try {

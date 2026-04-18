@@ -13,6 +13,8 @@ import feedbackRoutes from "./routes/feedback";
 import adminRoutes from "./routes/admin";
 import notificationRoutes from "./routes/notifications";
 import deviceTokenRoutes from "./routes/device-tokens";
+import summaryRoutes from "./routes/summary";
+import announcementRoutes from "./routes/announcements";
 
 const app = express();
 const server = createServer(app);
@@ -31,6 +33,8 @@ app.use("/feedbacks", feedbackRoutes);
 app.use("/admin", adminRoutes);
 app.use("/notifications", notificationRoutes);
 app.use("/device-tokens", deviceTokenRoutes);
+app.use("/summary", summaryRoutes);
+app.use("/announcements", announcementRoutes);
 
 // Health check
 app.get("/health", (_req, res) => {

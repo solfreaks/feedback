@@ -1,8 +1,10 @@
 import { PrismaClient, Priority, TicketStatus } from "@prisma/client";
 import { calculateSlaDeadline } from "../utils/sla";
 import { notifyTicketCreated, notifyStatusChange, notifyNewComment, notifyAdminNewTicket } from "./email.service";
-import { notifyAdmins } from "./notification.service";
+import { notifyAdmins, createNotification } from "./notification.service";
 import { sendPushToUser } from "./fcm.service";
+import { resolveMentions } from "../utils/mentions";
+import { broadcastToUser } from "../websocket";
 
 const prisma = new PrismaClient();
 
@@ -156,6 +158,15 @@ export async function addComment(data: {
     include: { user: { select: { id: true, name: true, avatarUrl: true } } },
   });
 
+  // @-mentions fire regardless of internal/public — admins should get pinged
+  // either way. Skip if the mentioned user is the author themselves.
+  processMentions({
+    body: data.body,
+    authorId: data.userId,
+    authorName: comment.user.name,
+    ticketId: data.ticketId,
+  }).catch((err) => console.warn("processMentions failed:", err));
+
   // Notify ticket owner and assigned developer
   if (!data.isInternalNote) {
     const ticket = await prisma.ticket.findUnique({
@@ -167,6 +178,20 @@ export async function addComment(data: {
       },
     });
     if (ticket) {
+      // Live WebSocket push — the SDK's ticket detail listens for this and
+      // appends the new comment without a full refresh. Sent to the creator
+      // and (if different) the assignee so both sides see the same thread.
+      const wsPayload = {
+        type: "ticket_comment",
+        ticketId: data.ticketId,
+        userId: data.userId,
+        data: comment,
+      };
+      if (ticket.userId !== data.userId) broadcastToUser(ticket.userId, wsPayload);
+      if (ticket.assignee && ticket.assignee.id !== data.userId) {
+        broadcastToUser(ticket.assignee.id, wsPayload);
+      }
+
       // Notify ticket creator (if commenter is not the creator)
       if (ticket.userId !== data.userId) {
         notifyNewComment(ticket.user.email, ticket.title, comment.user.name, ticket.app);
@@ -184,6 +209,25 @@ export async function addComment(data: {
   }
 
   return comment;
+}
+
+export async function getComment(commentId: string) {
+  return prisma.ticketComment.findUnique({
+    where: { id: commentId },
+    select: { id: true, ticketId: true, userId: true, createdAt: true, body: true, isInternalNote: true },
+  });
+}
+
+export async function updateCommentBody(commentId: string, body: string) {
+  return prisma.ticketComment.update({
+    where: { id: commentId },
+    data: { body },
+    include: { user: { select: { id: true, name: true, avatarUrl: true } } },
+  });
+}
+
+export async function deleteComment(commentId: string) {
+  return prisma.ticketComment.delete({ where: { id: commentId } });
 }
 
 export async function addAttachment(data: {
@@ -240,4 +284,116 @@ export async function updateTicket(
   }
 
   return ticket;
+}
+
+/**
+ * Merge `duplicateId` into `primaryId`:
+ *   - Move comments and attachments under the primary ticket
+ *   - Record a history entry on the primary ticket ("merged from X")
+ *   - Add an internal note on the primary with the admin-provided reason
+ *   - Close the duplicate with a user-facing comment linking to the primary
+ *
+ * Returns the updated primary ticket (re-fetched with full detail shape).
+ */
+export async function mergeTicket(data: {
+  primaryId: string;
+  duplicateId: string;
+  adminId: string;
+  reason?: string;
+}) {
+  if (data.primaryId === data.duplicateId) throw new Error("Cannot merge a ticket into itself");
+
+  const [primary, duplicate] = await Promise.all([
+    prisma.ticket.findUnique({ where: { id: data.primaryId } }),
+    prisma.ticket.findUnique({ where: { id: data.duplicateId } }),
+  ]);
+  if (!primary) throw new Error("Primary ticket not found");
+  if (!duplicate) throw new Error("Duplicate ticket not found");
+
+  await prisma.$transaction(async (tx) => {
+    // Re-parent comments
+    await tx.ticketComment.updateMany({
+      where: { ticketId: data.duplicateId },
+      data: { ticketId: data.primaryId },
+    });
+    // Re-parent attachments
+    await tx.ticketAttachment.updateMany({
+      where: { ticketId: data.duplicateId },
+      data: { ticketId: data.primaryId },
+    });
+
+    // Internal note on primary explaining the merge
+    await tx.ticketComment.create({
+      data: {
+        ticketId: data.primaryId,
+        userId: data.adminId,
+        body: `🔗 Merged from #${duplicate.id.slice(0, 8)}${data.reason ? ` — ${data.reason}` : ""}`,
+        isInternalNote: true,
+      },
+    });
+
+    // History entry on primary
+    await tx.ticketHistory.create({
+      data: {
+        ticketId: data.primaryId,
+        changedBy: data.adminId,
+        field: "merge",
+        oldValue: null,
+        newValue: duplicate.id,
+      },
+    });
+
+    // Close the duplicate + add a user-facing comment pointing to the primary
+    await tx.ticket.update({
+      where: { id: data.duplicateId },
+      data: { status: "closed" },
+    });
+    await tx.ticketComment.create({
+      data: {
+        ticketId: data.duplicateId,
+        userId: data.adminId,
+        body: `This ticket has been merged into #${primary.id.slice(0, 8)}. Please follow up there for further updates.`,
+        isInternalNote: false,
+      },
+    });
+  });
+
+  return prisma.ticket.findUnique({
+    where: { id: data.primaryId },
+    include: ticketInclude,
+  });
+}
+
+/**
+ * Resolve @-mentions in a ticket comment body and deliver an in-app + WS
+ * notification to each mentioned admin. Skips self-mentions.
+ */
+async function processMentions(data: {
+  body: string;
+  authorId: string;
+  authorName: string;
+  ticketId: string;
+}) {
+  const mentionedIds = await resolveMentions(data.body);
+  const recipients = mentionedIds.filter((id) => id !== data.authorId);
+  if (recipients.length === 0) return;
+
+  const ticket = await prisma.ticket.findUnique({
+    where: { id: data.ticketId },
+    select: { title: true },
+  });
+  const title = ticket?.title ?? "a ticket";
+  const excerpt = data.body.length > 120 ? data.body.slice(0, 117) + "…" : data.body;
+
+  await Promise.all(
+    recipients.map((uid) =>
+      createNotification({
+        userId: uid,
+        type: "mention",
+        title: `${data.authorName} mentioned you`,
+        message: `On "${title}": ${excerpt}`,
+        link: `/tickets/${data.ticketId}`,
+      })
+    )
+  );
 }

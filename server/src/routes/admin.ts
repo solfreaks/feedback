@@ -12,6 +12,8 @@ import * as feedbackService from "../services/feedback.service";
 import * as userService from "../services/user.service";
 import * as emailService from "../services/email.service";
 import { config } from "../config";
+import { toCsv } from "../utils/csv";
+import * as announcementService from "../services/announcement.service";
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -45,6 +47,10 @@ router.get("/tickets", async (req: Request, res: Response) => {
     const priority = req.query.priority as string | undefined;
     const assignedTo = req.query.assignedTo as string | undefined;
     const search = req.query.search as string | undefined;
+    // "stale": tickets not closed/resolved with no activity in the last 24h.
+    // "unread": tickets where the admin hasn't viewed since the ticket was last updated.
+    const stale = req.query.stale === "true";
+    const unread = req.query.unread === "true";
     const page = parseInt((req.query.page as string) || "1");
     const limit = parseInt((req.query.limit as string) || "20");
 
@@ -60,6 +66,11 @@ router.get("/tickets", async (req: Request, res: Response) => {
         { title: { contains: search } },
         { description: { contains: search } },
       ];
+    }
+    if (stale) {
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      where.status = where.status || { in: ["open", "in_progress"] };
+      where.updatedAt = { lt: oneDayAgo };
     }
 
     const [tickets, total] = await Promise.all([
@@ -78,23 +89,178 @@ router.get("/tickets", async (req: Request, res: Response) => {
       prisma.ticket.count({ where }),
     ]);
 
-    return res.json({ tickets, total, page, totalPages: Math.ceil(total / limit) });
+    // Derive unread flag per ticket; optionally filter to unread-only.
+    const enriched = tickets.map((t: any) => ({
+      ...t,
+      isUnread: !t.adminLastViewedAt || t.adminLastViewedAt < t.updatedAt,
+      isStale: (t.status === "open" || t.status === "in_progress") &&
+        t.updatedAt < new Date(Date.now() - 24 * 60 * 60 * 1000),
+    }));
+    const filtered = unread ? enriched.filter((t: any) => t.isUnread) : enriched;
+
+    return res.json({ tickets: filtered, total, page, totalPages: Math.ceil(total / limit) });
   } catch (err) {
     console.error("Admin list tickets error:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 });
 
+// Export tickets as CSV — honors the same filters as the list endpoint but
+// returns every matching row (no pagination). Capped at 10k to avoid blowing
+// up memory on a run-away query.
+router.get("/tickets/export.csv", async (req: Request, res: Response) => {
+  try {
+    const appId = req.query.appId as string | undefined;
+    const status = req.query.status as string | undefined;
+    const priority = req.query.priority as string | undefined;
+    const search = req.query.search as string | undefined;
+
+    const where: any = {};
+    if (appId) where.appId = appId;
+    if (status) where.status = status;
+    if (priority) where.priority = priority;
+    if (search) {
+      where.OR = [
+        { title: { contains: search } },
+        { description: { contains: search } },
+      ];
+    }
+
+    const tickets = await prisma.ticket.findMany({
+      where,
+      include: {
+        user: { select: { name: true, email: true } },
+        assignee: { select: { name: true } },
+        app: { select: { name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 10000,
+    });
+
+    const headers = [
+      "ID", "App", "Title", "Status", "Priority", "Category",
+      "User Name", "User Email", "Assignee", "Created", "Updated",
+    ];
+    const rows = tickets.map((t) => [
+      t.id, t.app.name, t.title, t.status, t.priority, t.category ?? "",
+      t.user.name ?? "", t.user.email ?? "", t.assignee?.name ?? "",
+      t.createdAt.toISOString(), t.updatedAt.toISOString(),
+    ]);
+
+    const csv = toCsv(headers, rows);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="tickets-${Date.now()}.csv"`);
+    return res.send(csv);
+  } catch (err) {
+    console.error("Admin export tickets CSV error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Bulk update tickets — supports status, priority, assignedTo across a
+// selected set of IDs. Runs each update through ticketService.updateTicket so
+// the same auto-assign / history-tracking / notification plumbing still fires.
+// Registered BEFORE the /:id variant so Express doesn't treat "bulk" as an id.
+router.patch("/tickets/bulk", async (req: Request, res: Response) => {
+  try {
+    const { ids, status, priority, assignedTo } = req.body as {
+      ids?: string[];
+      status?: string;
+      priority?: string;
+      assignedTo?: string | null;
+    };
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: "ids array is required" });
+    }
+    // Safety cap so a wayward select-all doesn't touch the whole DB.
+    if (ids.length > 500) {
+      return res.status(400).json({ error: "Cannot bulk update more than 500 tickets at once" });
+    }
+    const results = await Promise.allSettled(
+      ids.map((id) => ticketService.updateTicket(id, req.user!.id, {
+        status: status as any,
+        priority: priority as any,
+        assignedTo: assignedTo as any,
+      }))
+    );
+    const updated = results.filter((r) => r.status === "fulfilled" && (r as PromiseFulfilledResult<any>).value).length;
+    const failed = results.length - updated;
+    return res.json({ updated, failed });
+  } catch (err) {
+    console.error("Bulk update tickets error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Bulk delete tickets.
+router.delete("/tickets/bulk", async (req: Request, res: Response) => {
+  try {
+    const { ids } = req.body as { ids?: string[] };
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: "ids array is required" });
+    }
+    if (ids.length > 500) {
+      return res.status(400).json({ error: "Cannot bulk delete more than 500 tickets at once" });
+    }
+    // Cascade rules on the schema handle comments/attachments/history, but we
+    // still want to clean up files on disk so they don't leak storage.
+    const tickets = await prisma.ticket.findMany({
+      where: { id: { in: ids } },
+      include: { attachments: true },
+    });
+    for (const t of tickets) {
+      for (const a of t.attachments) deleteUploadedFile(a.fileUrl);
+    }
+    const result = await prisma.ticket.deleteMany({ where: { id: { in: ids } } });
+    return res.json({ deleted: result.count });
+  } catch (err) {
+    console.error("Bulk delete tickets error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Merge one ticket into another. Runs comments/attachments re-parenting
+// plus history + notification inside a transaction — see mergeTicket().
+router.post("/tickets/:id/merge-into/:primaryId", async (req: Request, res: Response) => {
+  try {
+    const { reason } = req.body as { reason?: string };
+    const merged = await ticketService.mergeTicket({
+      primaryId: req.params.primaryId,
+      duplicateId: req.params.id,
+      adminId: req.user!.id,
+      reason,
+    });
+    return res.json(merged);
+  } catch (err: any) {
+    console.error("Merge ticket error:", err);
+    return res.status(err?.message?.startsWith("Primary") || err?.message?.startsWith("Duplicate") || err?.message?.startsWith("Cannot merge") ? 400 : 500)
+      .json({ error: err?.message || "Internal server error" });
+  }
+});
+
 // Update ticket (status, priority, assignment, SLA)
 router.patch("/tickets/:id", async (req: Request, res: Response) => {
   try {
-    const { status, priority, assignedTo } = req.body;
+    const { status, priority, assignedTo, handoffNote } = req.body;
     const ticket = await ticketService.updateTicket(req.params.id, req.user!.id, {
       status,
       priority,
       assignedTo,
     });
     if (!ticket) return res.status(404).json({ error: "Ticket not found" });
+
+    // If the admin provided a handoff note alongside a reassignment, store it
+    // as an internal comment so the new assignee picks up the context. We
+    // require `assignedTo` to be present to avoid leaking random comments.
+    if (assignedTo !== undefined && typeof handoffNote === "string" && handoffNote.trim()) {
+      await ticketService.addComment({
+        ticketId: req.params.id,
+        userId: req.user!.id,
+        body: `🔁 Handoff: ${handoffNote.trim()}`,
+        isInternalNote: true,
+      });
+    }
+
     return res.json(ticket);
   } catch (err) {
     console.error("Admin update ticket error:", err);
@@ -123,6 +289,12 @@ router.get("/tickets/:id", async (req: Request, res: Response) => {
       },
     });
     if (!ticket) return res.status(404).json({ error: "Ticket not found" });
+
+    // Mark as viewed by admin. Fire-and-forget; don't block the response on it.
+    prisma.ticket.update({
+      where: { id: ticket.id },
+      data: { adminLastViewedAt: new Date() },
+    }).catch((err) => console.warn("markTicketAdminViewed failed:", err));
 
     // Resolve user names in assignedTo history entries
     const assigneeIds = new Set<string>();
@@ -190,11 +362,14 @@ router.post("/tickets/:id/notes", async (req: Request, res: Response) => {
   try {
     const { body, isInternalNote } = req.body;
     if (!body) return res.status(400).json({ error: "body is required" });
+    // Fail safe toward internal — omitting the flag must never accidentally
+    // push content user-visible. A snarky admin note leaking to the user
+    // isn't recoverable; the opposite mistake (hiding a public reply) is.
     const comment = await ticketService.addComment({
       ticketId: req.params.id,
       userId: req.user!.id,
       body,
-      isInternalNote: isInternalNote !== false, // default true for backwards compat
+      isInternalNote: isInternalNote !== false,
     });
     return res.status(201).json(comment);
   } catch (err) {
@@ -516,6 +691,48 @@ router.post("/apps/validate-firebase", async (req: Request, res: Response) => {
   }
 });
 
+// Send a test FCM push to the calling admin's own device tokens for this app.
+// Useful from the Apps page after configuring Firebase credentials — if it
+// arrives, credentials work; if nothing arrives, either Firebase isn't set up
+// for the app or the admin hasn't registered a device token against it yet.
+router.post("/apps/:id/test-push", async (req: Request, res: Response) => {
+  try {
+    const appId = req.params.id;
+    const adminId = req.user!.id;
+
+    const app = await prisma.app.findUnique({
+      where: { id: appId },
+      select: { firebaseProjectId: true, firebaseClientEmail: true, firebasePrivateKey: true, name: true },
+    });
+    if (!app) return res.status(404).json({ error: "App not found" });
+    if (!app.firebaseProjectId || !app.firebaseClientEmail || !app.firebasePrivateKey) {
+      return res.status(400).json({ error: "Firebase not configured for this app", sent: 0 });
+    }
+
+    const tokens = await prisma.deviceToken.findMany({
+      where: { userId: adminId, appId },
+      select: { token: true },
+    });
+    if (tokens.length === 0) {
+      return res.status(400).json({
+        error: "You have no device tokens registered for this app. Install the app with your admin account and trigger a token refresh first.",
+        sent: 0,
+      });
+    }
+
+    const { sendPushToUser } = await import("../services/fcm.service");
+    await sendPushToUser(adminId, appId, {
+      title: `${app.name} · test push`,
+      body: "If you see this, FCM is wired up correctly.",
+    }, { type: "test", appId });
+
+    return res.json({ sent: tokens.length });
+  } catch (err) {
+    console.error("Test push error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Delete app
 router.delete("/apps/:id", async (req: Request, res: Response) => {
   try {
@@ -523,6 +740,48 @@ router.delete("/apps/:id", async (req: Request, res: Response) => {
     return res.json({ success: true });
   } catch (err) {
     console.error("Delete app error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ---- Announcements ----
+
+router.post("/apps/:id/announcements", async (req: Request, res: Response) => {
+  try {
+    const { title, body, link } = req.body as { title?: string; body?: string; link?: string };
+    if (!title?.trim() || !body?.trim()) {
+      return res.status(400).json({ error: "title and body are required" });
+    }
+    const a = await announcementService.createAnnouncement({
+      appId: req.params.id,
+      title: title.trim(),
+      body: body.trim(),
+      link: link?.trim() || null,
+      createdBy: req.user!.id,
+    });
+    return res.status(201).json(a);
+  } catch (err) {
+    console.error("Create announcement error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/apps/:id/announcements", async (req: Request, res: Response) => {
+  try {
+    const items = await announcementService.listAnnouncements(req.params.id, 100);
+    return res.json(items);
+  } catch (err) {
+    console.error("List announcements error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/announcements/:id", async (req: Request, res: Response) => {
+  try {
+    await announcementService.deleteAnnouncement(req.params.id);
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Delete announcement error:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -613,18 +872,116 @@ router.delete("/categories/:id", async (req: Request, res: Response) => {
 router.get("/feedbacks", async (req: Request, res: Response) => {
   try {
     const appIdsParam = req.query.appIds as string | undefined;
+    const unread = req.query.unread === "true";
     const result = await feedbackService.listAllFeedbacks({
       appId: req.query.appId as string | undefined,
       appIds: appIdsParam ? appIdsParam.split(",") : undefined,
       category: req.query.category as any,
       status: req.query.status as any,
       rating: req.query.rating ? parseInt(req.query.rating as string) : undefined,
+      search: req.query.search as string | undefined,
       page: parseInt((req.query.page as string) || "1"),
       limit: parseInt((req.query.limit as string) || "20"),
     });
-    return res.json(result);
+    const enriched = result.feedbacks.map((f: any) => ({
+      ...f,
+      isUnread: !f.adminLastViewedAt || f.adminLastViewedAt < f.updatedAt,
+    }));
+    const filtered = unread ? enriched.filter((f: any) => f.isUnread) : enriched;
+    return res.json({ ...result, feedbacks: filtered });
   } catch (err) {
     console.error("Admin list feedbacks error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Export feedbacks as CSV — mirrors the filters on the list endpoint.
+router.get("/feedbacks/export.csv", async (req: Request, res: Response) => {
+  try {
+    const appIdsParam = req.query.appIds as string | undefined;
+    const result = await feedbackService.listAllFeedbacks({
+      appId: req.query.appId as string | undefined,
+      appIds: appIdsParam ? appIdsParam.split(",") : undefined,
+      category: req.query.category as any,
+      status: req.query.status as any,
+      rating: req.query.rating ? parseInt(req.query.rating as string) : undefined,
+      search: req.query.search as string | undefined,
+      page: 1,
+      limit: 10000,
+    });
+
+    const headers = [
+      "ID", "App", "Rating", "Category", "Status",
+      "Comment", "User Name", "User Email", "Created",
+    ];
+    const rows = result.feedbacks.map((f: any) => [
+      f.id,
+      f.app?.name ?? "",
+      f.rating,
+      f.category,
+      f.status,
+      f.comment ?? "",
+      f.user?.name ?? "",
+      f.user?.email ?? "",
+      new Date(f.createdAt).toISOString(),
+    ]);
+
+    const csv = toCsv(headers, rows);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="feedbacks-${Date.now()}.csv"`);
+    return res.send(csv);
+  } catch (err) {
+    console.error("Admin export feedbacks CSV error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Bulk update feedback status. Registered BEFORE the /:id variant.
+router.patch("/feedbacks/bulk", async (req: Request, res: Response) => {
+  try {
+    const { ids, status } = req.body as { ids?: string[]; status?: string };
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: "ids array is required" });
+    }
+    if (ids.length > 500) {
+      return res.status(400).json({ error: "Cannot bulk update more than 500 feedbacks at once" });
+    }
+    if (!status || !["new", "acknowledged", "in_progress", "resolved"].includes(status)) {
+      return res.status(400).json({ error: "valid status is required" });
+    }
+    const result = await prisma.feedback.updateMany({
+      where: { id: { in: ids } },
+      data: { status: status as any },
+    });
+    return res.json({ updated: result.count });
+  } catch (err) {
+    console.error("Bulk update feedbacks error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/feedbacks/bulk", async (req: Request, res: Response) => {
+  try {
+    const { ids } = req.body as { ids?: string[] };
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: "ids array is required" });
+    }
+    if (ids.length > 500) {
+      return res.status(400).json({ error: "Cannot bulk delete more than 500 feedbacks at once" });
+    }
+    // Attachments cascade-delete via the Prisma relation, but the files on
+    // disk need a manual sweep.
+    const feedbacks = await prisma.feedback.findMany({
+      where: { id: { in: ids } },
+      include: { attachments: true },
+    });
+    for (const f of feedbacks) {
+      for (const a of f.attachments) deleteUploadedFile(a.fileUrl);
+    }
+    const result = await prisma.feedback.deleteMany({ where: { id: { in: ids } } });
+    return res.json({ deleted: result.count });
+  } catch (err) {
+    console.error("Bulk delete feedbacks error:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -634,6 +991,10 @@ router.get("/feedbacks/:id", async (req: Request, res: Response) => {
   try {
     const feedback = await feedbackService.getFeedbackDetail(req.params.id);
     if (!feedback) return res.status(404).json({ error: "Feedback not found" });
+    prisma.feedback.update({
+      where: { id: feedback.id },
+      data: { adminLastViewedAt: new Date() },
+    }).catch((err) => console.warn("markFeedbackAdminViewed failed:", err));
     return res.json(feedback);
   } catch (err) {
     console.error("Admin get feedback error:", err);
@@ -980,6 +1341,88 @@ router.get("/system-info", async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("System info error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ==================== CANNED REPLIES ====================
+
+// Returns the admin's own replies + every admin's shared replies, so the
+// reply composer can show a merged list without a second request.
+router.get("/canned-replies", async (req: Request, res: Response) => {
+  try {
+    const replies = await prisma.cannedReply.findMany({
+      where: {
+        OR: [
+          { ownerId: req.user!.id },
+          { shared: true },
+        ],
+      },
+      orderBy: [{ shared: "desc" }, { title: "asc" }],
+    });
+    return res.json(replies);
+  } catch (err) {
+    console.error("List canned replies error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/canned-replies", async (req: Request, res: Response) => {
+  try {
+    const { title, body, shared, tag } = req.body;
+    if (!title || !body) return res.status(400).json({ error: "title and body are required" });
+    const reply = await prisma.cannedReply.create({
+      data: {
+        ownerId: req.user!.id,
+        title,
+        body,
+        shared: !!shared,
+        tag: tag || null,
+      },
+    });
+    return res.status(201).json(reply);
+  } catch (err) {
+    console.error("Create canned reply error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.patch("/canned-replies/:id", async (req: Request, res: Response) => {
+  try {
+    const existing = await prisma.cannedReply.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ error: "Not found" });
+    // Shared replies are editable by any admin; private ones only by their owner.
+    if (!existing.shared && existing.ownerId !== req.user!.id) {
+      return res.status(403).json({ error: "Not allowed" });
+    }
+    const { title, body, shared, tag } = req.body;
+    const reply = await prisma.cannedReply.update({
+      where: { id: req.params.id },
+      data: {
+        ...(title !== undefined && { title }),
+        ...(body !== undefined && { body }),
+        ...(shared !== undefined && { shared: !!shared }),
+        ...(tag !== undefined && { tag: tag || null }),
+      },
+    });
+    return res.json(reply);
+  } catch (err) {
+    console.error("Update canned reply error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/canned-replies/:id", async (req: Request, res: Response) => {
+  try {
+    const existing = await prisma.cannedReply.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ error: "Not found" });
+    if (!existing.shared && existing.ownerId !== req.user!.id) {
+      return res.status(403).json({ error: "Not allowed" });
+    }
+    await prisma.cannedReply.delete({ where: { id: req.params.id } });
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Delete canned reply error:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 });

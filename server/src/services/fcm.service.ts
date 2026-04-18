@@ -117,3 +117,41 @@ export async function sendPushToUsers(
 ) {
   await Promise.all(userIds.map((userId) => sendPushToUser(userId, appId, notification, data)));
 }
+
+/**
+ * Send a push notification to an FCM topic. The SDK subscribes each device to
+ * `app_<appId>` after it registers its FCM token, so calling this with that
+ * topic name reaches every device that has the app installed + launched once.
+ * One API call, Firebase handles fan-out.
+ *
+ * Returns true if the send succeeded. Missing Firebase config silently no-ops
+ * so callers don't need a guard; the announcement row still saves either way.
+ */
+export async function sendPushToTopic(
+  appId: string,
+  topic: string,
+  notification: { title: string; body: string },
+  data?: Record<string, string>
+): Promise<boolean> {
+  const app = await prisma.app.findUnique({
+    where: { id: appId },
+    select: { firebaseProjectId: true, firebaseClientEmail: true, firebasePrivateKey: true },
+  });
+  if (!app?.firebaseProjectId || !app.firebaseClientEmail || !app.firebasePrivateKey) {
+    return false;
+  }
+  try {
+    const firebaseApp = getFirebaseApp(appId, app.firebaseProjectId, app.firebaseClientEmail, app.firebasePrivateKey);
+    await firebaseApp.messaging().send({
+      topic,
+      notification,
+      data,
+      android: { priority: "high" },
+      apns: { payload: { aps: { sound: "default" } } },
+    });
+    return true;
+  } catch (err: any) {
+    console.error(`FCM topic send error for app ${appId}, topic ${topic}:`, err.message);
+    return false;
+  }
+}

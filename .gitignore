@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+.DS_Store?
+
+# Editors
+.vscode/
+.idea/
+*.iml
+
+# Kotlin build cache (stray session files)
+android-sdk/.kotlin/
+
+# Node (admin + server local clutter)
+node_modules/
+.env
+.env.local

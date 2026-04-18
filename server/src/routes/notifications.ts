@@ -1,11 +1,13 @@
 import { Router, Request, Response } from "express";
 import { authenticate } from "../middleware/auth";
-import { adminGuard } from "../middleware/adminGuard";
 import * as notificationService from "../services/notification.service";
 
 const router = Router();
 
-router.use(authenticate, adminGuard);
+// Any authenticated user sees their own notifications — notifications are
+// always scoped by userId in the service. Mentions etc. stay admin-only by
+// virtue of only being created for admin recipients.
+router.use(authenticate);
 
 // List notifications
 router.get("/", async (req: Request, res: Response) => {

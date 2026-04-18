@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import api from "../api";
 import Avatar from "../components/Avatar";
 import SettingsHelp from "../components/SettingsHelp";
+import { useCountUp } from "../hooks/useCountUp";
 import type { App } from "../types";
 
 /**
@@ -117,6 +118,16 @@ export default function AppDetail() {
 
   const [showSettingsHelp, setShowSettingsHelp] = useState(false);
 
+  // Flip true once the initial fetch resolves — gates the count-up animation
+  // so numbers don't flash at 0 while the skeleton is visible.
+  const [animated, setAnimated] = useState(false);
+  const animTickets = useCountUp(stats?.tickets ?? 0, 700, animated);
+  const animOpen = useCountUp(stats?.openTickets ?? 0, 700, animated);
+  const animFeedback = useCountUp(stats?.feedbacks ?? 0, 700, animated);
+
+  // Floating success toast (shown briefly after Save completes).
+  const [saveToastKey, setSaveToastKey] = useState(0);
+
   useEffect(() => {
     if (!id) return;
     load();
@@ -170,6 +181,8 @@ export default function AppDetail() {
       if (err?.response?.status === 404) setNotFound(true);
     }
     setLoading(false);
+    // Next frame so the DOM has painted the real values before count-up runs.
+    requestAnimationFrame(() => setAnimated(true));
   };
 
   const refreshAnnouncements = async () => {
@@ -209,8 +222,9 @@ export default function AppDetail() {
         api.put(`/admin/apps/${id}/admins`, { adminIds: selectedAdminIds }),
       ]);
       setSaveMsg({ ok: true, msg: "Saved" });
+      setSaveToastKey((k) => k + 1); // re-triggers the floating toast animation
       await load();
-      setTimeout(() => setSaveMsg(null), 2000);
+      setTimeout(() => setSaveMsg(null), 2400);
     } catch (err: any) {
       setSaveMsg({ ok: false, msg: err?.response?.data?.error || "Save failed" });
     }
@@ -352,8 +366,45 @@ export default function AppDetail() {
     setTimeout(() => setCopiedKey(false), 1500);
   };
 
+  // Skeleton while the initial fetch resolves. Mirrors the real layout so the
+  // page doesn't jump when content appears.
   if (loading) {
-    return <div className="flex items-center justify-center h-64"><div className="animate-spin w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full" /></div>;
+    return (
+      <div className="max-w-7xl animate-fade-in">
+        <div className="sdk-skeleton h-4 w-40 mb-4" />
+        <div className="bg-white rounded-xl border border-gray-200 p-5 mb-4 flex items-start gap-4">
+          <div className="sdk-skeleton w-[72px] h-[72px] rounded-xl" />
+          <div className="flex-1 space-y-2 py-1">
+            <div className="sdk-skeleton h-6 w-64" />
+            <div className="sdk-skeleton h-3 w-96 max-w-full" />
+            <div className="sdk-skeleton h-3 w-40 mt-3" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="bg-white rounded-xl border border-gray-200 p-3">
+              <div className="sdk-skeleton h-3 w-20 mb-2" />
+              <div className="sdk-skeleton h-7 w-12" />
+            </div>
+          ))}
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-5 mb-4">
+          <div className="sdk-skeleton h-4 w-20 mb-3" />
+          <div className="sdk-skeleton h-8 w-full" />
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-5 mb-4">
+          <div className="sdk-skeleton h-4 w-32 mb-4" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i}>
+                <div className="sdk-skeleton h-3 w-24 mb-1.5" />
+                <div className="sdk-skeleton h-9 w-full" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (notFound || !app) {
@@ -375,7 +426,7 @@ export default function AppDetail() {
       </div>
 
       {/* Header */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5 mb-4 flex items-start gap-4">
+      <div className="bg-white rounded-xl border border-gray-200 p-5 mb-4 flex items-start gap-4 animate-fade-in-up">
         {/* Photo with hover-overlay upload */}
         <div className="relative group flex-shrink-0">
           {appIconOrInitial(app, 72)}
@@ -460,14 +511,14 @@ export default function AppDetail() {
       </div>
 
       {/* Overview cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        <OverviewCard label="Tickets" value={stats?.tickets ?? 0} tint="bg-blue-50 text-blue-700" href={`/tickets?appId=${app.id}`} />
-        <OverviewCard label="Open tickets" value={stats?.openTickets ?? 0} tint="bg-amber-50 text-amber-700" href={`/tickets?appId=${app.id}&status=open`} />
-        <OverviewCard label="Feedback" value={stats?.feedbacks ?? 0} tint="bg-violet-50 text-violet-700" href={`/feedbacks?appId=${app.id}`} />
-        <div className={`bg-white rounded-xl border p-3 ${firebaseOk ? "border-emerald-200" : "border-amber-200"}`}>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4 animate-fade-in-up [animation-delay:80ms]">
+        <OverviewCard label="Tickets" value={animTickets} tint="bg-blue-50 text-blue-700" href={`/tickets?appId=${app.id}`} />
+        <OverviewCard label="Open tickets" value={animOpen} tint="bg-amber-50 text-amber-700" href={`/tickets?appId=${app.id}&status=open`} />
+        <OverviewCard label="Feedback" value={animFeedback} tint="bg-violet-50 text-violet-700" href={`/feedbacks?appId=${app.id}`} />
+        <div className={`bg-white rounded-xl border p-3 transition-colors ${firebaseOk ? "border-emerald-200" : "border-amber-200"}`}>
           <div className="text-xs text-gray-500 mb-1">Push (Firebase)</div>
           <div className="flex items-center gap-1.5">
-            <span className={`w-2 h-2 rounded-full ${firebaseOk ? "bg-emerald-500" : "bg-amber-500"}`} />
+            <span className={`w-2 h-2 rounded-full ${firebaseOk ? "bg-emerald-500" : "bg-amber-500 animate-soft-pulse"}`} />
             <span className="text-sm font-semibold text-gray-900">{firebaseOk ? "Configured" : "Not set up"}</span>
           </div>
         </div>
@@ -475,7 +526,7 @@ export default function AppDetail() {
 
       {/* Setup progress banner */}
       {setupPct < 100 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 animate-fade-in-up [animation-delay:160ms]">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-amber-900">
@@ -487,19 +538,25 @@ export default function AppDetail() {
             </div>
             <a
               href="#settings"
-              className="shrink-0 px-3 py-1.5 bg-amber-600 text-white text-xs font-medium rounded-lg hover:bg-amber-700"
+              className="shrink-0 px-3 py-1.5 bg-amber-600 text-white text-xs font-medium rounded-lg hover:bg-amber-700 transition-transform active:scale-95"
             >
               Finish setup
             </a>
           </div>
           <div className="mt-3 h-1.5 w-full bg-amber-200 rounded-full overflow-hidden">
-            <div className="h-full bg-amber-600" style={{ width: `${setupPct}%` }} />
+            {/* Animated fill: starts at 0, slides to setupPct over 900ms once
+                the page has loaded. key on animated so it restarts on refetch. */}
+            <div
+              key={animated ? "done" : "idle"}
+              className="h-full bg-amber-600 transition-[width] duration-[900ms] ease-out"
+              style={{ width: animated ? `${setupPct}%` : "0%" }}
+            />
           </div>
         </div>
       )}
 
       {/* API key */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5 mb-4">
+      <div className="bg-white rounded-xl border border-gray-200 p-5 mb-4 animate-fade-in-up [animation-delay:240ms]">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-semibold text-gray-900">API key</h3>
@@ -528,7 +585,7 @@ export default function AppDetail() {
       </div>
 
       {/* Announcements */}
-      <section className="bg-white rounded-xl border border-gray-200 p-5 mb-4">
+      <section className="bg-white rounded-xl border border-gray-200 p-5 mb-4 animate-fade-in-up [animation-delay:320ms]">
         <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="text-sm font-semibold text-gray-900">Announcements</h3>
@@ -567,7 +624,7 @@ export default function AppDetail() {
             <button
               onClick={sendAnnouncement}
               disabled={announcing || !announceTitle.trim() || !announceBody.trim()}
-              className="px-4 py-2 rounded-lg text-sm font-medium bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50"
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50 transition-transform active:scale-95"
             >
               {announcing ? "Sending…" : "Send"}
             </button>
@@ -609,7 +666,7 @@ export default function AppDetail() {
       </section>
 
       {/* Admins */}
-      <section className="bg-white rounded-xl border border-gray-200 p-5 mb-4">
+      <section className="bg-white rounded-xl border border-gray-200 p-5 mb-4 animate-fade-in-up [animation-delay:400ms]">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-gray-900">
             Assigned admins <span className="text-gray-400 font-normal">— responsible for tickets & feedback</span>
@@ -641,7 +698,7 @@ export default function AppDetail() {
       </section>
 
       {/* Settings (last section) */}
-      <section id="settings" className="bg-white rounded-xl border border-gray-200 p-5 mb-4 scroll-mt-6">
+      <section id="settings" className="bg-white rounded-xl border border-gray-200 p-5 mb-4 scroll-mt-6 animate-fade-in-up [animation-delay:480ms]">
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
             <h3 className="text-sm font-semibold text-gray-900">Settings</h3>
@@ -659,7 +716,7 @@ export default function AppDetail() {
         </div>
 
         {showSettingsHelp && (
-          <div className="mb-5 -mx-1">
+          <div className="mb-5 -mx-1 overflow-hidden animate-reveal">
             <SettingsHelp />
           </div>
         )}
@@ -761,7 +818,7 @@ export default function AppDetail() {
           <button
             onClick={save}
             disabled={saving || !form.name.trim()}
-            className="px-5 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+            className="px-5 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-transform active:scale-95"
           >
             {saving ? "Saving…" : "Save changes"}
           </button>
@@ -783,6 +840,21 @@ export default function AppDetail() {
           </button>
         )}
       </section>
+
+      {/* Floating success toast — appears on Save success, auto-dismisses.
+          keyed on saveToastKey so re-saves restart the slide-up animation. */}
+      {saveMsg && saveMsg.ok && (
+        <div
+          key={saveToastKey}
+          className="fixed bottom-8 left-1/2 z-40 bg-gray-900 text-white px-4 py-2.5 rounded-full shadow-lg text-sm font-medium animate-slide-up flex items-center gap-2"
+          style={{ transform: "translateX(-50%)" }}
+        >
+          <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+          {saveMsg.msg}
+        </div>
+      )}
 
       {/* Regenerate key confirmation */}
       {regenConfirm && (

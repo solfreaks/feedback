@@ -5,24 +5,8 @@ import {
   ResponsiveContainer, CartesianGrid,
 } from "recharts";
 import api from "../api";
+import { useCountUp } from "../hooks/useCountUp";
 import type { Analytics } from "../types";
-
-function useCountUp(target: number, duration = 700, trigger = true) {
-  const [value, setValue] = useState(0);
-  useEffect(() => {
-    if (!trigger) return;
-    if (target === 0) { setValue(0); return; }
-    const start = performance.now();
-    const raf = (now: number) => {
-      const progress = Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setValue(Math.round(eased * target));
-      if (progress < 1) requestAnimationFrame(raf);
-    };
-    requestAnimationFrame(raf);
-  }, [target, duration, trigger]);
-  return value;
-}
 
 const priorityColors: Record<string, string> = {
   critical: "bg-red-100 text-red-700 ring-1 ring-red-200",

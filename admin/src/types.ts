@@ -51,6 +51,9 @@ export interface Ticket {
   comments?: Comment[];
   attachments?: Attachment[];
   history?: HistoryEntry[];
+  // Derived server-side in admin list response
+  isUnread?: boolean;
+  isStale?: boolean;
 }
 
 export interface Comment {

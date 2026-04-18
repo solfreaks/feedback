@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import api from "../api";
 import type { Ticket } from "../types";
@@ -65,9 +65,30 @@ export default function TicketDetail() {
   const [deletingTicket, setDeletingTicket] = useState(false);
   const [deleteCommentId, setDeleteCommentId] = useState<string | null>(null);
   const [deletingComment, setDeletingComment] = useState(false);
+  // Merge-into-primary state. Two-step flow: open the form, enter the target
+  // ticket's short ID (or paste its URL), add an optional reason, confirm.
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const [mergeTargetId, setMergeTargetId] = useState("");
+  const [mergeReason, setMergeReason] = useState("");
+  const [merging, setMerging] = useState(false);
+  const [mergeError, setMergeError] = useState<string | null>(null);
   const [admins, setAdmins] = useState<{ id: string; name: string; avatarUrl?: string }[]>([]);
   const [assignDropdownOpen, setAssignDropdownOpen] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
+  // Handoff confirmation state: when non-null, shows a panel asking for an
+  // optional note before the reassignment is committed.
+  const [pendingAssignee, setPendingAssignee] = useState<{ id: string; name: string } | null>(null);
+  const [handoffNote, setHandoffNote] = useState("");
+  // User's saved canned replies merged with the built-in ones in the quick
+  // replies panel. Persisted via /admin/canned-replies.
+  const [cannedReplies, setCannedReplies] = useState<{ id: string; title: string; body: string; shared: boolean }[]>([]);
+  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
+  const [newTemplateTitle, setNewTemplateTitle] = useState("");
+  const [newTemplateShared, setNewTemplateShared] = useState(false);
+  // Mention autocomplete: detect an @token at the cursor and suggest admins.
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionActiveIdx, setMentionActiveIdx] = useState(0);
+  const commentRef = useRef<HTMLTextAreaElement>(null);
 
   const fetchTicket = () => {
     api.get(`/admin/tickets/${id}`).then((r) => { setTicket(r.data); setLoading(false); });
@@ -76,17 +97,111 @@ export default function TicketDetail() {
   useEffect(() => { fetchTicket(); }, [id]);
   useEffect(() => {
     api.get("/admin/admins").then((r) => setAdmins(r.data));
+    api.get("/admin/canned-replies").then((r) => setCannedReplies(r.data)).catch(() => {});
   }, []);
 
-  const updateTicket = async (updates: Record<string, string | null>) => {
+  // Match an @token immediately before the caret (i.e. currently typing).
+  const detectMention = (value: string, caret: number) => {
+    const prefix = value.slice(0, caret);
+    const match = /@([a-zA-Z0-9._-]*)$/.exec(prefix);
+    if (match) {
+      setMentionQuery(match[1].toLowerCase());
+      setMentionActiveIdx(0);
+    } else {
+      setMentionQuery(null);
+    }
+  };
+
+  const insertMention = (admin: { id: string; name: string }) => {
+    const el = commentRef.current;
+    if (!el) return;
+    const caret = el.selectionStart ?? comment.length;
+    const prefix = comment.slice(0, caret);
+    const suffix = comment.slice(caret);
+    const replaced = prefix.replace(/@([a-zA-Z0-9._-]*)$/, `@${admin.name.split(" ")[0]} `);
+    const next = replaced + suffix;
+    setComment(next);
+    setMentionQuery(null);
+    // Restore caret after the inserted mention
+    setTimeout(() => {
+      const newCaret = replaced.length;
+      el.focus();
+      el.setSelectionRange(newCaret, newCaret);
+    }, 0);
+  };
+
+  const mentionCandidates = mentionQuery !== null
+    ? admins.filter((a) =>
+        mentionQuery === "" ||
+        a.name.toLowerCase().includes(mentionQuery) ||
+        a.name.split(" ")[0].toLowerCase().startsWith(mentionQuery)
+      ).slice(0, 6)
+    : [];
+
+  const performMerge = async () => {
+    if (!id) return;
+    setMergeError(null);
+    // Accept full URL, full UUID, or short prefix. The endpoint takes the
+    // server's full UUID, so short slices are rejected here rather than
+    // round-tripping an invalid ID.
+    const raw = mergeTargetId.trim();
+    const urlMatch = raw.match(/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i);
+    const primaryId = urlMatch ? urlMatch[0] : raw;
+    if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(primaryId)) {
+      setMergeError("Paste the primary ticket's URL or full ID.");
+      return;
+    }
+    if (primaryId === id) {
+      setMergeError("A ticket cannot be merged into itself.");
+      return;
+    }
+    setMerging(true);
+    try {
+      await api.post(`/admin/tickets/${id}/merge-into/${primaryId}`, { reason: mergeReason.trim() });
+      navigate(`/tickets/${primaryId}`);
+    } catch (err: any) {
+      setMergeError(err?.response?.data?.error || "Merge failed");
+    } finally {
+      setMerging(false);
+    }
+  };
+
+  const saveAsTemplate = async () => {
+    if (!comment.trim() || !newTemplateTitle.trim()) return;
+    const res = await api.post("/admin/canned-replies", {
+      title: newTemplateTitle.trim(),
+      body: comment,
+      shared: newTemplateShared,
+    });
+    setCannedReplies((prev) => [...prev, res.data]);
+    setSaveTemplateOpen(false);
+    setNewTemplateTitle("");
+    setNewTemplateShared(false);
+  };
+
+  const deleteCannedReply = async (replyId: string) => {
+    await api.delete(`/admin/canned-replies/${replyId}`);
+    setCannedReplies((prev) => prev.filter((r) => r.id !== replyId));
+  };
+
+  const updateTicket = async (updates: Record<string, string | null>, extras: { handoffNote?: string } = {}) => {
     setUpdating(true);
     // Convert empty string to null for unassign
-    const payload = Object.fromEntries(
+    const payload: Record<string, unknown> = Object.fromEntries(
       Object.entries(updates).map(([k, v]) => [k, v === "" ? null : v])
     );
+    if (extras.handoffNote) payload.handoffNote = extras.handoffNote;
     await api.patch(`/admin/tickets/${id}`, payload);
     fetchTicket();
     setUpdating(false);
+  };
+
+  const confirmReassign = async () => {
+    if (!pendingAssignee) return;
+    await updateTicket({ assignedTo: pendingAssignee.id }, { handoffNote: handoffNote.trim() });
+    setPendingAssignee(null);
+    setHandoffNote("");
+    setAssignDropdownOpen(false);
   };
 
   const addComment = async () => {
@@ -381,7 +496,47 @@ export default function TicketDetail() {
                       </button>
 
                       {showQuickReplies && (
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+                        <>
+                        {cannedReplies.length > 0 && (
+                          <div className="mt-2">
+                            <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                              Your Saved Replies
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                              {cannedReplies.map((cr) => (
+                                <div key={cr.id} className="relative group">
+                                  <button
+                                    onClick={() => { setComment(cr.body); setShowQuickReplies(false); }}
+                                    className="w-full flex items-center gap-2 px-3 py-2.5 pr-7 rounded-lg border border-gray-200 bg-gray-50 hover:bg-emerald-50 hover:border-emerald-200 text-left transition-all"
+                                  >
+                                    <span className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                      </svg>
+                                    </span>
+                                    <span className="text-xs font-medium text-gray-700 truncate">
+                                      {cr.title}
+                                      {cr.shared && <span className="ml-1 text-[10px] text-emerald-600">· shared</span>}
+                                    </span>
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); deleteCannedReply(cr.id); }}
+                                    className="absolute top-1 right-1 w-5 h-5 rounded hover:bg-red-100 text-gray-300 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                                    title="Delete template"
+                                  >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mt-3 mb-1.5">
+                          Built-in
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                           {ticketQuickReplies.map((qr) => (
                             <button key={qr.label} onClick={() => { setComment(qr.body); setShowQuickReplies(false); }}
                               className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 hover:bg-blue-50 hover:border-blue-200 text-left transition-all group">
@@ -399,18 +554,51 @@ export default function TicketDetail() {
                             </button>
                           ))}
                         </div>
+                        </>
                       )}
                     </div>
 
                     <div className={`rounded-xl border transition-colors ${
                       isInternal ? "border-amber-300 bg-amber-50/50" : "border-gray-200 bg-white"
                     }`}>
-                      <textarea value={comment} onChange={(e) => setComment(e.target.value)}
-                        placeholder={isInternal ? "Write an internal note (only visible to admins)..." : "Write a reply to the user..."}
-                        className={`w-full p-4 text-sm rounded-t-xl resize-none outline-none bg-transparent ${
-                          isInternal ? "placeholder-amber-400" : "placeholder-gray-400"
-                        }`}
-                        rows={3} />
+                      <div className="relative">
+                        <textarea
+                          ref={commentRef}
+                          value={comment}
+                          onChange={(e) => {
+                            setComment(e.target.value);
+                            detectMention(e.target.value, e.target.selectionStart ?? e.target.value.length);
+                          }}
+                          onKeyDown={(e) => {
+                            if (mentionQuery === null || mentionCandidates.length === 0) return;
+                            if (e.key === "ArrowDown") { e.preventDefault(); setMentionActiveIdx((i) => Math.min(i + 1, mentionCandidates.length - 1)); }
+                            else if (e.key === "ArrowUp") { e.preventDefault(); setMentionActiveIdx((i) => Math.max(i - 1, 0)); }
+                            else if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); insertMention(mentionCandidates[mentionActiveIdx]); }
+                            else if (e.key === "Escape") { setMentionQuery(null); }
+                          }}
+                          placeholder={isInternal ? "Write an internal note (only visible to admins)..." : "Write a reply to the user..."}
+                          className={`w-full p-4 text-sm rounded-t-xl resize-none outline-none bg-transparent ${
+                            isInternal ? "placeholder-amber-400" : "placeholder-gray-400"
+                          }`}
+                          rows={3}
+                        />
+                        {mentionQuery !== null && mentionCandidates.length > 0 && (
+                          <div className="absolute left-4 top-full mt-1 z-20 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[220px] overflow-hidden">
+                            {mentionCandidates.map((a, i) => (
+                              <button
+                                key={a.id}
+                                onClick={() => insertMention(a)}
+                                className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm ${
+                                  i === mentionActiveIdx ? "bg-blue-50 text-blue-700" : "hover:bg-gray-50"
+                                }`}
+                              >
+                                <Avatar name={a.name} avatarUrl={a.avatarUrl} size={20} />
+                                <span>{a.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                       <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
                         <div className="flex items-center gap-3">
                           <button onClick={() => setIsInternal(!isInternal)}
@@ -433,6 +621,12 @@ export default function TicketDetail() {
                               Clear
                             </button>
                           )}
+                          {comment.trim() && (
+                            <button onClick={() => setSaveTemplateOpen(true)}
+                              className="text-xs text-emerald-600 hover:text-emerald-700 font-medium transition-colors">
+                              Save as template
+                            </button>
+                          )}
                         </div>
                         <button onClick={addComment} disabled={sending || !comment.trim()}
                           className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
@@ -452,6 +646,41 @@ export default function TicketDetail() {
                         </button>
                       </div>
                     </div>
+
+                    {/* Save-as-template inline panel */}
+                    {saveTemplateOpen && (
+                      <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 space-y-2">
+                        <div className="text-xs font-semibold text-emerald-800">Save reply as template</div>
+                        <input
+                          value={newTemplateTitle}
+                          onChange={(e) => setNewTemplateTitle(e.target.value)}
+                          placeholder="Template title (e.g. 'Refund in progress')"
+                          className="w-full text-sm rounded-md border border-emerald-200 bg-white px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                        />
+                        <div className="flex items-center justify-between">
+                          <label className="inline-flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={newTemplateShared}
+                              onChange={(e) => setNewTemplateShared(e.target.checked)}
+                              className="rounded"
+                            />
+                            Share with all admins
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => { setSaveTemplateOpen(false); setNewTemplateTitle(""); setNewTemplateShared(false); }}
+                              className="px-3 py-1.5 rounded-md text-xs text-gray-600 hover:bg-emerald-100"
+                            >Cancel</button>
+                            <button
+                              onClick={saveAsTemplate}
+                              disabled={!newTemplateTitle.trim()}
+                              className="px-3 py-1.5 rounded-md bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 disabled:opacity-50"
+                            >Save</button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -578,6 +807,58 @@ export default function TicketDetail() {
             </div>
           </div>
 
+          {/* Merge into another ticket */}
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="p-5">
+              {mergeOpen ? (
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-600 font-medium">Merge this ticket into:</p>
+                  <input
+                    value={mergeTargetId}
+                    onChange={(e) => setMergeTargetId(e.target.value)}
+                    placeholder="Paste primary ticket URL or ID"
+                    className="w-full text-sm rounded-md border border-gray-300 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                  <textarea
+                    value={mergeReason}
+                    onChange={(e) => setMergeReason(e.target.value)}
+                    rows={2}
+                    placeholder="Reason (optional — stored as internal note)"
+                    className="w-full text-sm rounded-md border border-gray-300 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                  {mergeError && <p className="text-xs text-red-600">{mergeError}</p>}
+                  <p className="text-[11px] text-gray-500">
+                    Comments and attachments move to the primary. This ticket gets closed with a
+                    public comment pointing there.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={performMerge}
+                      disabled={merging || !mergeTargetId.trim()}
+                      className="flex-1 py-2 rounded-lg text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {merging ? "Merging…" : "Merge"}
+                    </button>
+                    <button
+                      onClick={() => { setMergeOpen(false); setMergeTargetId(""); setMergeReason(""); setMergeError(null); }}
+                      className="flex-1 py-2 rounded-lg text-xs font-medium bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => setMergeOpen(true)}
+                  className="w-full py-2.5 rounded-xl text-sm font-medium bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                  </svg>
+                  Merge duplicate…
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Delete Ticket */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="p-5">
@@ -665,7 +946,16 @@ export default function TicketDetail() {
                       <span className="text-sm text-gray-500">Unassign</span>
                     </button>
                     {admins.map((a) => (
-                      <button key={a.id} onClick={() => { updateTicket({ assignedTo: a.id }); setAssignDropdownOpen(false); }}
+                      <button key={a.id} onClick={() => {
+                        if (ticket.assignedTo === a.id) {
+                          setAssignDropdownOpen(false);
+                          return;
+                        }
+                        // Different admin → stage the reassignment so the user
+                        // can attach a handoff note before it's committed.
+                        setPendingAssignee({ id: a.id, name: a.name });
+                        setAssignDropdownOpen(false);
+                      }}
                         className={`w-full flex items-center gap-2 px-3 py-2.5 hover:bg-blue-50 text-left ${ticket.assignedTo === a.id ? "bg-blue-50" : ""}`}>
                         <Avatar name={a.name} avatarUrl={a.avatarUrl} size={22} />
                         <span className="text-sm text-gray-700">{a.name}</span>
@@ -676,6 +966,33 @@ export default function TicketDetail() {
                         )}
                       </button>
                     ))}
+                  </div>
+                )}
+
+                {/* Handoff confirmation panel */}
+                {pendingAssignee && (
+                  <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
+                    <div className="text-xs text-gray-600">
+                      Handing off to <span className="font-semibold text-gray-900">{pendingAssignee.name}</span>
+                    </div>
+                    <textarea
+                      value={handoffNote}
+                      onChange={(e) => setHandoffNote(e.target.value)}
+                      rows={2}
+                      placeholder="Context for the new assignee (optional)…"
+                      className="w-full text-sm rounded-md border border-blue-200 bg-white p-2 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+                    />
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={confirmReassign}
+                        disabled={updating}
+                        className="px-3 py-1.5 rounded-md bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 disabled:opacity-50"
+                      >Reassign</button>
+                      <button
+                        onClick={() => { setPendingAssignee(null); setHandoffNote(""); }}
+                        className="px-3 py-1.5 rounded-md text-xs text-gray-600 hover:bg-blue-100"
+                      >Cancel</button>
+                    </div>
                   </div>
                 )}
               </div>

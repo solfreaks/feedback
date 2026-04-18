@@ -7,6 +7,7 @@ import TicketDetail from "./pages/TicketDetail";
 import FeedbackList from "./pages/FeedbackList";
 import FeedbackDetail from "./pages/FeedbackDetail";
 import Apps from "./pages/Apps";
+import AppDetail from "./pages/AppDetail";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import NotificationDropdown from "./components/NotificationDropdown";
@@ -416,6 +417,7 @@ export default function App() {
         <Route path="/feedbacks" element={<ProtectedRoute><Layout><FeedbackList /></Layout></ProtectedRoute>} />
         <Route path="/feedbacks/:id" element={<ProtectedRoute><Layout><FeedbackDetail /></Layout></ProtectedRoute>} />
         <Route path="/apps" element={<ProtectedRoute><Layout><Apps /></Layout></ProtectedRoute>} />
+        <Route path="/apps/:id" element={<ProtectedRoute><Layout><AppDetail /></Layout></ProtectedRoute>} />
         <Route path="/users" element={<ProtectedRoute><Layout><Users /></Layout></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>} />
       </Routes>

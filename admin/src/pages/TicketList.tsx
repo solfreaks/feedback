@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import api from "../api";
 import Avatar from "../components/Avatar";
 import type { Ticket, App, Analytics } from "../types";
@@ -61,12 +61,20 @@ function slaTimeLeft(deadline: string) {
 
 export default function TicketList() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [focusedIdx, setFocusedIdx] = useState<number>(-1);
+  const focusedIdxRef = useRef(focusedIdx);
+  focusedIdxRef.current = focusedIdx;
   const [apps, setApps] = useState<App[]>([]);
   const [admins, setAdmins] = useState<{ id: string; name: string; avatarUrl?: string }[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<Analytics["overview"] | null>(null);
+  // Selected ticket IDs persist across pagination so the admin can build up a
+  // working set before acting. Stored as Set for fast add/remove lookups.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
 
   const page = parseInt(searchParams.get("page") || "1");
   const appId = searchParams.get("appId") || "";
@@ -74,6 +82,8 @@ export default function TicketList() {
   const priority = searchParams.get("priority") || "";
   const assignedTo = searchParams.get("assignedTo") || "";
   const search = searchParams.get("search") || "";
+  const stale = searchParams.get("stale") === "true";
+  const unread = searchParams.get("unread") === "true";
 
   const [searchInput, setSearchInput] = useState(search);
 
@@ -97,21 +107,150 @@ export default function TicketList() {
     if (priority) params.priority = priority;
     if (assignedTo) params.assignedTo = assignedTo;
     if (search) params.search = search;
+    if (stale) params.stale = "true";
+    if (unread) params.unread = "true";
     api.get("/admin/tickets", { params }).then((r) => {
       setTickets(r.data.tickets);
       setTotal(r.data.total);
       setLoading(false);
     });
-  }, [page, appId, status, priority, assignedTo, search]);
+  }, [page, appId, status, priority, assignedTo, search, stale, unread]);
 
   // Sync search input when URL changes
   useEffect(() => { setSearchInput(search); }, [search]);
+
+  // Keyboard shortcuts: J/K to move selection, Enter to open, / to focus search.
+  // Skipped when the user is typing in an input — standard convention.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      if (e.key === "j" || e.key === "ArrowDown") {
+        e.preventDefault();
+        setFocusedIdx((i) => Math.min(i + 1, tickets.length - 1));
+      } else if (e.key === "k" || e.key === "ArrowUp") {
+        e.preventDefault();
+        setFocusedIdx((i) => Math.max(i - 1, 0));
+      } else if (e.key === "Enter" && focusedIdxRef.current >= 0) {
+        const t = tickets[focusedIdxRef.current];
+        if (t) navigate(`/tickets/${t.id}`);
+      } else if (e.key === "/") {
+        e.preventDefault();
+        const input = document.querySelector<HTMLInputElement>('input[type="text"][placeholder*="Search tickets"]');
+        input?.focus();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [tickets, navigate]);
+
+  // Reset focus when results change.
+  useEffect(() => { setFocusedIdx(-1); }, [tickets]);
 
   const toggleFilter = (key: string, value: string) => {
     const p = new URLSearchParams(searchParams);
     if (p.get(key) === value) p.delete(key); else p.set(key, value);
     p.set("page", "1");
     setSearchParams(p);
+  };
+
+  const toggleBoolFilter = (key: string) => {
+    const p = new URLSearchParams(searchParams);
+    if (p.get(key) === "true") p.delete(key); else p.set(key, "true");
+    p.set("page", "1");
+    setSearchParams(p);
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAllOnPage = () => {
+    const pageIds = tickets.map((t) => t.id);
+    const allOnPageSelected = pageIds.every((id) => selected.has(id));
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allOnPageSelected) pageIds.forEach((id) => next.delete(id));
+      else pageIds.forEach((id) => next.add(id));
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelected(new Set());
+
+  const bulkUpdate = async (patch: Record<string, unknown>) => {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    try {
+      await api.patch("/admin/tickets/bulk", { ids, ...patch });
+      clearSelection();
+      // Refetch current page
+      const params: any = { page, limit: 20 };
+      if (appId) params.appId = appId;
+      if (status) params.status = status;
+      if (priority) params.priority = priority;
+      if (assignedTo) params.assignedTo = assignedTo;
+      if (search) params.search = search;
+      if (stale) params.stale = "true";
+      if (unread) params.unread = "true";
+      const r = await api.get("/admin/tickets", { params });
+      setTickets(r.data.tickets);
+      setTotal(r.data.total);
+    } catch (err) {
+      console.error("Bulk update failed:", err);
+    }
+  };
+
+  const bulkDelete = async () => {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    if (!window.confirm(`Delete ${ids.length} ticket${ids.length === 1 ? "" : "s"}? This cannot be undone.`)) return;
+    try {
+      await api.delete("/admin/tickets/bulk", { data: { ids } });
+      clearSelection();
+      const params: any = { page, limit: 20 };
+      if (appId) params.appId = appId;
+      if (status) params.status = status;
+      if (priority) params.priority = priority;
+      if (assignedTo) params.assignedTo = assignedTo;
+      if (search) params.search = search;
+      if (stale) params.stale = "true";
+      if (unread) params.unread = "true";
+      const r = await api.get("/admin/tickets", { params });
+      setTickets(r.data.tickets);
+      setTotal(r.data.total);
+    } catch (err) {
+      console.error("Bulk delete failed:", err);
+    }
+  };
+
+  const exportCsv = async () => {
+    // Re-use the current filter set. Fetch the CSV as a blob via the axios
+    // instance (auth headers get applied automatically) and trigger a download.
+    const params: any = {};
+    if (appId) params.appId = appId;
+    if (status) params.status = status;
+    if (priority) params.priority = priority;
+    if (search) params.search = search;
+    try {
+      const res = await api.get("/admin/tickets/export.csv", { params, responseType: "blob" });
+      const url = URL.createObjectURL(res.data);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `tickets-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("CSV export failed:", err);
+    }
   };
 
   const handleSearch = () => {
@@ -127,7 +266,8 @@ export default function TicketList() {
   };
 
   const totalPages = Math.ceil(total / 20);
-  const activeFilters = [appId, status, priority, assignedTo, search].filter(Boolean).length;
+  const activeFilters = [appId, status, priority, assignedTo, search].filter(Boolean).length
+    + (stale ? 1 : 0) + (unread ? 1 : 0);
 
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
@@ -141,6 +281,16 @@ export default function TicketList() {
           <h1 className="text-2xl font-bold text-gray-900">Tickets</h1>
           <p className="text-sm text-gray-500 mt-1">Manage support tickets across all apps</p>
         </div>
+        <button
+          onClick={exportCsv}
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-colors"
+          title="Export current results as CSV"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          Export CSV
+        </button>
       </div>
 
       {/* Stats Cards */}
@@ -188,6 +338,13 @@ export default function TicketList() {
 
         {/* Filter groups */}
         <div className="space-y-2.5">
+          {/* Flags (quick attention filters) */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-14 flex-shrink-0">Flags</span>
+            <FilterPill label="Unread" active={unread} onClick={() => toggleBoolFilter("unread")} dot="bg-blue-500" />
+            <FilterPill label="Stale · 24h+" active={stale} onClick={() => toggleBoolFilter("stale")} dot="bg-amber-500" />
+          </div>
+
           {/* Status pills */}
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-14 flex-shrink-0">Status</span>
@@ -259,6 +416,15 @@ export default function TicketList() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">
+                    <th className="px-4 py-3 w-10">
+                      <input
+                        type="checkbox"
+                        aria-label="Select all on page"
+                        checked={tickets.length > 0 && tickets.every((t) => selected.has(t.id))}
+                        onChange={toggleSelectAllOnPage}
+                        className="rounded cursor-pointer"
+                      />
+                    </th>
                     <th className="px-6 py-3">Title</th>
                     <th className="px-6 py-3">User</th>
                     <th className="px-6 py-3">App</th>
@@ -270,15 +436,43 @@ export default function TicketList() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {tickets.map((t) => {
+                  {tickets.map((t, idx) => {
                     const slaBreach = t.slaDeadline && new Date(t.slaDeadline) < new Date() && t.status !== "closed" && t.status !== "resolved";
                     const slaLeft = t.slaDeadline && !slaBreach ? slaTimeLeft(t.slaDeadline) : null;
+                    const isFocused = idx === focusedIdx;
+                    // SLA red wins over stale amber; focused row overlays a ring.
+                    const rowTint = slaBreach
+                      ? "bg-red-50/50"
+                      : t.isStale
+                        ? "bg-amber-50/40"
+                        : "";
                     return (
-                      <tr key={t.id} className={`hover:bg-gray-50 transition-colors ${slaBreach ? "bg-red-50/50" : ""}`}>
+                      <tr
+                        key={t.id}
+                        className={`hover:bg-gray-50 transition-colors ${rowTint} ${isFocused ? "outline outline-2 -outline-offset-2 outline-blue-400" : ""}`}
+                      >
+                        <td className="px-4 py-3.5">
+                          <input
+                            type="checkbox"
+                            aria-label={`Select ${t.title}`}
+                            checked={selected.has(t.id)}
+                            onChange={() => toggleSelect(t.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="rounded cursor-pointer"
+                          />
+                        </td>
                         <td className="px-6 py-3.5">
-                          <Link to={`/tickets/${t.id}`} className="text-blue-600 hover:text-blue-800 font-medium">
-                            {t.title}
-                          </Link>
+                          <div className="flex items-center gap-2">
+                            {t.isUnread && (
+                              <span
+                                className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0"
+                                title="Unread — user has activity you haven't seen"
+                              />
+                            )}
+                            <Link to={`/tickets/${t.id}`} className={`text-blue-600 hover:text-blue-800 ${t.isUnread ? "font-semibold" : "font-medium"}`}>
+                              {t.title}
+                            </Link>
+                          </div>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className="text-xs text-gray-400 flex items-center gap-1">
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -350,7 +544,7 @@ export default function TicketList() {
                     );
                   })}
                   {tickets.length === 0 && (
-                    <tr><td colSpan={8} className="px-6 py-12 text-center text-gray-400">
+                    <tr><td colSpan={9} className="px-6 py-12 text-center text-gray-400">
                       <div className="flex flex-col items-center gap-2">
                         <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -404,6 +598,90 @@ export default function TicketList() {
             </div>
           )}
         </>
+      )}
+
+      {/* Bulk-action floating bar — shown while any ticket is selected. */}
+      {selected.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 bg-gray-900 text-white rounded-xl shadow-2xl px-4 py-3 flex items-center gap-3">
+          <span className="text-sm font-medium">
+            {selected.size} selected
+          </span>
+          <div className="w-px h-6 bg-white/20" />
+
+          {/* Status */}
+          <div className="relative group">
+            <button className="px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/20 text-xs font-medium">
+              Status ▾
+            </button>
+            <div className="absolute bottom-full left-0 mb-1 bg-white text-gray-800 rounded-lg shadow-lg hidden group-hover:block min-w-[140px]">
+              {(["open", "in_progress", "resolved", "closed"] as const).map((s) => (
+                <button key={s} onClick={() => bulkUpdate({ status: s })}
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 capitalize">
+                  {s.replace("_", " ")}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Priority */}
+          <div className="relative group">
+            <button className="px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/20 text-xs font-medium">
+              Priority ▾
+            </button>
+            <div className="absolute bottom-full left-0 mb-1 bg-white text-gray-800 rounded-lg shadow-lg hidden group-hover:block min-w-[120px]">
+              {(["critical", "high", "medium", "low"] as const).map((p) => (
+                <button key={p} onClick={() => bulkUpdate({ priority: p })}
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 capitalize">
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Assign */}
+          <div className="relative">
+            <button
+              onClick={() => setBulkAssignOpen((o) => !o)}
+              className="px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/20 text-xs font-medium"
+            >
+              Assign ▾
+            </button>
+            {bulkAssignOpen && (
+              <div className="absolute bottom-full left-0 mb-1 bg-white text-gray-800 rounded-lg shadow-lg min-w-[200px] max-h-64 overflow-y-auto">
+                <button
+                  onClick={() => { bulkUpdate({ assignedTo: null }); setBulkAssignOpen(false); }}
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 border-b border-gray-100"
+                >
+                  Unassign
+                </button>
+                {admins.map((a) => (
+                  <button key={a.id}
+                    onClick={() => { bulkUpdate({ assignedTo: a.id }); setBulkAssignOpen(false); }}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50"
+                  >
+                    {a.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="w-px h-6 bg-white/20" />
+
+          <button
+            onClick={bulkDelete}
+            className="px-3 py-1.5 rounded-md text-xs font-medium text-red-200 hover:bg-red-500/20"
+          >
+            Delete
+          </button>
+
+          <button
+            onClick={clearSelection}
+            className="px-3 py-1.5 rounded-md text-xs font-medium text-gray-300 hover:bg-white/10"
+          >
+            Cancel
+          </button>
+        </div>
       )}
     </div>
   );

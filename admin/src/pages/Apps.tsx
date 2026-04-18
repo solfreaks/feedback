@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import api from "../api";
 import type { App } from "../types";
 import Avatar from "../components/Avatar";
@@ -100,6 +101,11 @@ export default function Apps() {
   const [smtpTestResult, setSmtpTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [firebaseValidating, setFirebaseValidating] = useState(false);
   const [firebaseResult, setFirebaseResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  // Test-push state lives only in the edit modal since it requires a saved appId.
+  const [testPushSending, setTestPushSending] = useState(false);
+  const [testPushResult, setTestPushResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  // Announcement composer now lives on the per-app detail page
+  // (/apps/:id). The list card only links to it.
 
   // Edit modal
   const [editApp, setEditApp] = useState<App | null>(null);
@@ -116,6 +122,9 @@ export default function Apps() {
 
   // Regen key
   const [regenConfirm, setRegenConfirm] = useState<string | null>(null);
+
+  // Filter
+  const [searchQuery, setSearchQuery] = useState("");
   const [regenerating, setRegenerating] = useState(false);
 
   const fetchApps = useCallback(() => {
@@ -234,6 +243,18 @@ export default function Apps() {
     e.target.value = "";
   };
 
+  const sendTestPush = async (appId: string) => {
+    setTestPushSending(true);
+    setTestPushResult(null);
+    try {
+      const res = await api.post(`/admin/apps/${appId}/test-push`);
+      setTestPushResult({ ok: true, msg: `Sent to ${res.data.sent} device${res.data.sent === 1 ? "" : "s"}.` });
+    } catch (err: any) {
+      setTestPushResult({ ok: false, msg: err.response?.data?.error || "Send failed" });
+    }
+    setTestPushSending(false);
+  };
+
   const validateFirebase = async (form: AppForm) => {
     setFirebaseValidating(true);
     try {
@@ -291,6 +312,7 @@ export default function Apps() {
     setEditForm({ name: app.name, description: app.description || "", platform: app.platform || "", bundleId: app.bundleId || "", googleClientId: app.googleClientId || "", emailFrom: app.emailFrom || "", emailName: app.emailName || "", smtpHost: app.smtpHost || "", smtpPort: app.smtpPort ? String(app.smtpPort) : "", smtpUser: app.smtpUser || "", smtpPass: app.smtpPass || "", firebaseProjectId: app.firebaseProjectId || "", firebaseClientEmail: app.firebaseClientEmail || "", firebasePrivateKey: app.firebasePrivateKey || "" });
     setSelectedAdminIds((app.admins || []).map((a) => a.id));
     setEditApp(app);
+    setTestPushResult(null);
     fetchAdmins();
   };
 
@@ -797,9 +819,38 @@ export default function Apps() {
         )}
       </div>
 
+      {/* Search */}
+      {apps.length > 3 && (
+        <div className="mb-4 relative">
+          <svg className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search apps by name, description, or bundle ID…"
+            className="w-full pl-10 pr-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300"
+          />
+        </div>
+      )}
+
       {/* Apps Grid */}
       <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {apps.map((app) => (
+        {apps
+          .filter((app) => {
+            // Case-insensitive match against name, description, and bundle ID.
+            // Using a short-circuit so empty query returns everything without
+            // allocating a lowercase string per row.
+            if (!searchQuery.trim()) return true;
+            const q = searchQuery.toLowerCase();
+            return (
+              app.name.toLowerCase().includes(q) ||
+              (app.description?.toLowerCase().includes(q) ?? false) ||
+              (app.bundleId?.toLowerCase().includes(q) ?? false)
+            );
+          })
+          .map((app) => (
           <div key={app.id} className={`bg-white rounded-xl border transition-all ${app.isActive ? "border-gray-200 hover:border-gray-300 hover:shadow-sm" : "border-gray-200 opacity-60"}`}>
             <div className="p-5">
               {/* Header */}
@@ -816,7 +867,12 @@ export default function Apps() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-gray-900 truncate">{app.name}</h3>
+                    <Link
+                      to={`/apps/${app.id}`}
+                      className="font-semibold text-gray-900 hover:text-blue-600 truncate"
+                    >
+                      {app.name}
+                    </Link>
                     {!app.isActive && (
                       <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-500">Inactive</span>
                     )}
@@ -825,11 +881,15 @@ export default function Apps() {
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <SetupRing app={app} />
-                  <button onClick={() => openEdit(app)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                  <Link
+                    to={`/apps/${app.id}`}
+                    title="Open details"
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 12h15" />
                     </svg>
-                  </button>
+                  </Link>
                 </div>
               </div>
 
@@ -905,6 +965,12 @@ export default function Apps() {
                     )}
                   </svg>
                 </button>
+                <Link
+                  to={`/apps/${app.id}`}
+                  className="px-3 py-1 rounded-lg text-[11px] font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
+                >
+                  View details →
+                </Link>
                 <button onClick={() => openWizard(app.id)} title="Clone app"
                   className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -928,13 +994,33 @@ export default function Apps() {
           </div>
         ))}
 
+        {apps.length > 0 && searchQuery.trim() && apps.filter((a) =>
+          a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (a.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+          (a.bundleId?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
+        ).length === 0 && (
+          <div className="col-span-full bg-white rounded-xl border border-gray-200 p-8 text-center">
+            <p className="text-sm text-gray-500">No apps match <span className="font-medium text-gray-700">"{searchQuery}"</span>.</p>
+            <button onClick={() => setSearchQuery("")} className="mt-2 text-xs text-blue-600 hover:text-blue-700 font-medium">Clear search</button>
+          </div>
+        )}
+
         {apps.length === 0 && (
           <div className="col-span-full bg-white rounded-xl border border-gray-200 p-12 text-center">
             <svg className="w-12 h-12 text-gray-200 mx-auto mb-3" fill="none" stroke="currentColor" strokeWidth={1} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L12 12.75l-5.571-3m11.142 0l4.179 2.25L12 17.25l-9.75-5.25 4.179-2.25m11.142 0l4.179 2.25L12 21.75l-9.75-5.25 4.179-2.25" />
             </svg>
             <p className="text-gray-500 font-medium">No apps registered yet</p>
-            <p className="text-sm text-gray-400 mt-1">Register your first app to get started</p>
+            <p className="text-sm text-gray-400 mt-1 mb-4">Register your first app to get started</p>
+            <button
+              onClick={() => setWizardOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Register your first app
+            </button>
           </div>
         )}
       </div>
@@ -1161,6 +1247,24 @@ export default function Apps() {
                     <textarea value={editForm.firebasePrivateKey} onChange={(e) => setEditForm({ ...editForm, firebasePrivateKey: e.target.value })}
                       placeholder="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
                       rows={3} className={`${inputCls} font-mono text-xs resize-none`} />
+                  </div>
+                  <div className="flex items-center gap-3 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => editApp && sendTestPush(editApp.id)}
+                      disabled={testPushSending || !editApp}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                      </svg>
+                      {testPushSending ? "Sending…" : "Send test push to my device"}
+                    </button>
+                    {testPushResult && (
+                      <span className={`text-xs ${testPushResult.ok ? "text-emerald-600" : "text-red-600"}`}>
+                        {testPushResult.msg}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

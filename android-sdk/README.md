@@ -2,22 +2,28 @@
 
 [![](https://jitpack.io/v/solfreaks/feedback.svg)](https://jitpack.io/#solfreaks/feedback)
 
-Android library for integrating feedback, support tickets, and ratings into your app.
+Android library for integrating feedback, support tickets, announcements, and in-app notifications into your app.
 
 ## Features
 
-- Google Sign-In authentication
-- Create & view support tickets with comments, attachments, and inline media preview
-- Submit feedback with star ratings, categories, and attachments
-- FCM push notification support
-- Pre-built UI screens (ready to use) or programmatic API (build your own UI)
+- **Google Sign-In** authentication (or bring your own JWT)
+- **Support tickets** with comments, attachments, inline media preview
+- **Feedback** with star ratings, categories, attachments
+- **Developer announcements** broadcast via FCM topic (admin → all users)
+- **In-app notification feed** — new replies, @mentions, status changes
+- **Live updates** over WebSocket — new comments appear without refresh, "support is typing…" indicator
+- **Offline UX** — offline banner, keep-stale-data-visible, draft persistence, "failed · tap to retry" on send
+- **User agency** — users can edit/delete their own feedback (24h) and comments (10 min)
+- **Drop-in `FeedbackBellView`** — bell icon with unread badge for your own toolbar
+- Pre-built UI screens **or** a programmatic `suspend` API for custom UI
 - Edge-to-edge layouts (Android 15+ ready) with Material 3 theming
+- FCM push notifications with automatic device-token registration + topic subscription
 
 ## Installation
 
-### Option 1: JitPack (recommended)
+### JitPack (recommended)
 
-Add the JitPack repository to your **`settings.gradle.kts`**:
+In **`settings.gradle.kts`**:
 
 ```kotlin
 dependencyResolutionManagement {
@@ -30,80 +36,31 @@ dependencyResolutionManagement {
 }
 ```
 
-Or if your project uses the older `allprojects` block in the root **`build.gradle`**:
-
-```groovy
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-        maven { url 'https://jitpack.io' }
-    }
-}
-```
-
-Add the dependency in your app module's **`build.gradle.kts`**:
+In your app's **`build.gradle.kts`**:
 
 ```kotlin
 dependencies {
-    implementation("com.github.solfreaks:feedback:2.0.0")
+    implementation("com.github.solfreaks:feedback:2.1.0")
 }
 ```
 
 Groovy equivalent:
 
 ```groovy
-dependencies {
-    implementation 'com.github.solfreaks:feedback:2.0.0'
-}
+implementation 'com.github.solfreaks:feedback:2.1.0'
 ```
 
-See the [![JitPack](https://jitpack.io/v/solfreaks/feedback.svg)](https://jitpack.io/#solfreaks/feedback) badge at the top for the latest version.
+See the [JitPack badge](https://jitpack.io/#solfreaks/feedback) at the top for the latest version.
 
-### Option 2: Local module (development only)
+### Local module / AAR (dev fallback)
 
-Copy the `feedbacksdk` folder into your project, then add to `settings.gradle.kts`:
-
-```kotlin
-include(":feedbacksdk")
-```
-
-Add dependency in your app's `build.gradle.kts`:
-
-```kotlin
-dependencies {
-    implementation(project(":feedbacksdk"))
-}
-```
-
-### Option 3: AAR file
-
-Build the AAR:
-
-```bash
-./gradlew :feedbacksdk:assembleRelease
-```
-
-Copy `feedbacksdk/build/outputs/aar/feedbacksdk-release.aar` to your project's `libs/` folder and add:
-
-```kotlin
-dependencies {
-    implementation(files("libs/feedbacksdk-release.aar"))
-    // Also add these transitive dependencies:
-    implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
-    implementation("com.google.android.gms:play-services-auth:20.7.0")
-    implementation("com.google.android.material:material:1.11.0")
-}
-```
+For active SDK development you can point at a local module (`include(":feedbacksdk")`) or an assembled AAR (`./gradlew :feedbacksdk:assembleRelease` → `feedbacksdk/build/outputs/aar/feedbacksdk-release.aar`). Remember to pull in the transitive deps yourself (Retrofit, OkHttp, play-services-auth, Material).
 
 ## Quick Start
 
 ### 1. Initialize the SDK
 
-In your `Application` class or main `Activity`:
+In your `Application.onCreate()`:
 
 ```kotlin
 class MyApp : Application() {
@@ -112,110 +69,128 @@ class MyApp : Application() {
 
         FeedbackSDK.initialize(
             context = this,
-            baseUrl = "https://your-feedback-server.com",
-            apiKey = "your-app-api-key",           // From admin panel
-            googleClientId = "your-google-client-id", // For Google Sign-In
-            debug = BuildConfig.DEBUG               // Enable logging in debug
+            baseUrl = "https://your-feedback-server.com/api",
+            apiKey = "your-app-api-key",           // From the admin panel's App detail page
+            appId = "your-app-id",                 // Enables announcements via FCM topic
+            googleClientId = "your-google-client-id",
+            debug = BuildConfig.DEBUG,
         )
     }
 }
 ```
 
+> **The admin panel shows ready-to-paste copy-integration snippets** on each app's detail page — API key, app ID, and base URL are baked in. Use those instead of writing the values by hand.
+
 ### 2. Google Sign-In
 
 ```kotlin
 class LoginActivity : AppCompatActivity() {
-
     private val signInLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         lifecycleScope.launch {
-            when (val authResult = FeedbackSDK.handleGoogleSignInResult(result.data)) {
-                is SdkResult.Success -> {
-                    // User logged in: authResult.data.user
-                    Log.d("Auth", "Welcome ${authResult.data.user.name}")
-                }
-                is SdkResult.Error -> {
-                    Log.e("Auth", "Login failed: ${authResult.message}")
-                }
+            when (val r = FeedbackSDK.handleGoogleSignInResult(result.data)) {
+                is SdkResult.Success -> toast("Welcome ${r.data.user.name}")
+                is SdkResult.Error -> Log.e("Auth", r.message)
             }
         }
     }
 
     fun signIn() {
-        val intent = FeedbackSDK.getGoogleSignInIntent(this)
-        signInLauncher.launch(intent)
+        signInLauncher.launch(FeedbackSDK.getGoogleSignInIntent(this))
     }
 }
 ```
 
-### 3. Using Pre-built UI (Easiest)
+### 3. Pre-built screens
 
 ```kotlin
-// Open create ticket screen
+// Tickets
 FeedbackSDK.openCreateTicket(activity)
+FeedbackSDK.openTicketList(activity)        // list + in-screen "Create" button
+FeedbackSDK.openTicketDetail(activity, id)  // live comments + typing indicator
 
-// Open ticket list — includes a "Create Ticket" button at the bottom
-FeedbackSDK.openTicketList(activity)
-
-// Open specific ticket detail
-FeedbackSDK.openTicketDetail(activity, ticketId)
-
-// Open feedback submission (star rating + category + comment)
-FeedbackSDK.openFeedback(activity)
-
-// Open feedback list — includes a "Submit Feedback" button at the bottom
+// Feedback
+FeedbackSDK.openFeedback(activity)           // star + category + comment + attachments
 FeedbackSDK.openFeedbackList(activity)
+FeedbackSDK.openFeedbackDetail(activity, id)
 
-// Open specific feedback detail with replies
-FeedbackSDK.openFeedbackDetail(activity, feedbackId)
+// Notifications + announcements
+FeedbackSDK.openNotifications(activity)      // two-tab feed: Activity / Announcements
+
+// Attachment viewer (pinch-to-zoom images; ACTION_VIEW for other types)
+FeedbackSDK.openAttachment(activity, fileUrl, fileName)
 ```
 
-### 4. Using Programmatic API (Custom UI)
+### 4. Drop-in bell widget
+
+Put a bell anywhere in your own UI — it polls the unread count and opens the notifications screen on tap:
+
+```xml
+<com.feedbacksdk.ui.FeedbackBellView
+    android:layout_width="48dp"
+    android:layout_height="48dp" />
+```
+
+The badge auto-refreshes when the hosting activity resumes. Call `bell.refresh()` if you want to poke it manually.
+
+### 5. Dashboard / settings badges (no UI required)
 
 ```kotlin
 lifecycleScope.launch {
-    // Create a ticket
-    when (val result = FeedbackSDK.createTicket(
-        title = "App crashes on login",
-        description = "When I tap the login button, the app crashes",
-        priority = "high"  // low, medium, high, critical
-    )) {
-        is SdkResult.Success -> Log.d("Ticket", "Created: ${result.data.id}")
-        is SdkResult.Error -> Log.e("Ticket", result.message)
-    }
-
-    // Submit feedback
-    when (val result = FeedbackSDK.submitFeedback(
-        rating = 4,
-        category = "suggestion",  // general, bug_report, feature_request, suggestion, complaint
-        comment = "Great app, but needs dark mode!"
-    )) {
-        is SdkResult.Success -> Log.d("Feedback", "Submitted!")
-        is SdkResult.Error -> Log.e("Feedback", result.message)
-    }
-
-    // List user's tickets
-    when (val result = FeedbackSDK.listTickets(page = 1)) {
+    when (val r = FeedbackSDK.getSummary()) {
         is SdkResult.Success -> {
-            result.data.tickets.forEach { ticket ->
-                Log.d("Ticket", "${ticket.title} - ${ticket.status}")
-            }
+            val t = r.data.tickets
+            val f = r.data.feedback
+            // Show "My Tickets · 5 (2 new)" and "My Feedback · 7 · 4.3★"
+            ticketsBadge.text = "${t.total} (${t.unread} new)"
+            feedbackBadge.text = "${f.total} · ${"%.1f".format(f.averageRating)}★"
         }
-        is SdkResult.Error -> Log.e("Tickets", result.message)
+        is SdkResult.Error -> Log.w("Feedback", r.message)
     }
-
-    // Add comment to ticket
-    FeedbackSDK.addComment(ticketId, "Any update on this?")
-
-    // Upload attachment
-    FeedbackSDK.uploadTicketAttachment(ticketId, File("/path/to/screenshot.png"))
 }
 ```
 
-### 5. Push Notifications (FCM)
+### 6. Custom UI (programmatic API)
 
-Add Firebase to your project, then register the service in `AndroidManifest.xml`:
+Every screen in the SDK is also a single `suspend` call so you can build your own UI:
+
+```kotlin
+lifecycleScope.launch {
+    // Create
+    FeedbackSDK.createTicket(title = "…", description = "…", priority = "high")
+    FeedbackSDK.submitFeedback(rating = 4, category = "suggestion", comment = "…")
+
+    // Read
+    FeedbackSDK.listTickets(page = 1)
+    FeedbackSDK.listFeedbacks(page = 1)
+    FeedbackSDK.listAnnouncements()
+
+    // Reply
+    FeedbackSDK.addComment(ticketId, "Any update?")
+    FeedbackSDK.uploadTicketAttachment(ticketId, File("/path/to/screenshot.png"))
+    FeedbackSDK.uploadFeedbackAttachment(feedbackId, File("/path/…"))
+
+    // Users can edit/delete what they wrote (server enforces the windows)
+    FeedbackSDK.editFeedback(id, rating = 5, comment = "updated")
+    FeedbackSDK.deleteFeedback(id)
+    FeedbackSDK.editComment(ticketId, commentId, "fixed typo")
+    FeedbackSDK.deleteComment(ticketId, commentId)
+
+    // Unread + notifications
+    FeedbackSDK.getUnreadCounts()
+    FeedbackSDK.getUnreadNotificationCount()
+    FeedbackSDK.listNotifications()
+    FeedbackSDK.markNotificationRead(notificationId)
+    FeedbackSDK.markAllNotificationsRead()
+}
+```
+
+All methods return a sealed `SdkResult<T>` (`Success` or `Error`). No exceptions leak to the caller.
+
+## Push Notifications (FCM)
+
+Add Firebase Messaging to your app's dependencies and register the service:
 
 ```xml
 <service
@@ -227,81 +202,95 @@ Add Firebase to your project, then register the service in `AndroidManifest.xml`
 </service>
 ```
 
-Or extend the service in your own class:
+Or subclass to pipe messages through your own handler:
 
 ```kotlin
 class MyFirebaseService : FeedbackFirebaseService() {
     override fun onNewToken(token: String) {
-        super.onNewToken(token) // Registers with feedback server
-        // Your own token handling...
+        super.onNewToken(token) // Registers with feedback server + subscribes to announcement topic
     }
-
     override fun onMessageReceived(message: RemoteMessage) {
-        // Handle your push notifications
+        // Your own push handling
     }
 }
 ```
 
-To manually register/unregister tokens:
+### Announcement topic subscription
+
+When you pass `appId` to `FeedbackSDK.initialize(...)`, the SDK subscribes the device to `app_<appId>` after an FCM token is registered. Admin broadcasts from the admin panel reach every subscribed device.
+
+If your app manages FCM topics manually, opt out:
 
 ```kotlin
-// Register (e.g., after login)
-FeedbackSDK.registerDeviceToken(fcmToken)
-
-// Unregister (e.g., on logout)
-FeedbackSDK.removeDeviceToken(fcmToken)
+FeedbackSDK.setAutoSubscribeAnnouncements(enabled = false)
 ```
 
-### 6. Auth Token (Manual)
+## Offline & Resilience
 
-If you handle authentication yourself instead of using Google Sign-In:
+- **Offline banner** appears across every list/detail screen when the device loses connectivity
+- **Retry banner** with a Retry button when a fetch fails and there's nothing cached
+- **Stale data kept visible** — a failed refresh doesn't blank the screen
+- **Send retry** — optimistic comment send shows "Sending…", converts to "Failed · tap to retry" on error, preserves the draft text
+- **Drafts persist** across process death for Create Ticket and Feedback submission
+- **Typing indicator** and **live comment arrival** use the SDK's WebSocket connection; auto-reconnects with backoff
 
-```kotlin
-// Set token from your own auth flow
-FeedbackSDK.setAuthToken(jwtToken, user)
+## Theming
 
-// Check login state
-if (FeedbackSDK.isLoggedIn) {
-    val user = FeedbackSDK.currentUser
-}
+All pre-built screens use `@style/FeedbackSDK.Theme`. To customize, declare a style with the same name in your app:
 
-// Logout
-FeedbackSDK.logout()
+```xml
+<style name="FeedbackSDK.Theme" parent="Theme.FeedbackSDK.DayNight">
+    <item name="colorPrimary">@color/my_brand</item>
+    <item name="colorOnPrimary">#FFFFFF</item>
+    <item name="sdkColorStatusResolved">@color/my_green</item>
+</style>
 ```
+
+Material 3 filter chips draw from the secondary color palette — if you want them to match your primary, set `colorSecondaryContainer` too (see `themes.xml` in the SDK for the baseline).
 
 ## API Reference
 
 | Method | Description |
-|--------|-------------|
-| `FeedbackSDK.initialize(...)` | Initialize the SDK (required) |
-| `FeedbackSDK.getGoogleSignInIntent(activity)` | Get Google Sign-In intent |
-| `FeedbackSDK.handleGoogleSignInResult(data)` | Process sign-in result |
-| `FeedbackSDK.setAuthToken(token, user?)` | Set auth token manually |
-| `FeedbackSDK.logout()` | Clear stored credentials |
-| `FeedbackSDK.isLoggedIn` | Check if user is logged in |
-| `FeedbackSDK.currentUser` | Get current user info |
-| `FeedbackSDK.createTicket(...)` | Create support ticket |
-| `FeedbackSDK.listTickets(page, limit)` | List user's tickets |
-| `FeedbackSDK.getTicket(id)` | Get ticket with comments |
-| `FeedbackSDK.addComment(ticketId, body)` | Add comment to ticket |
-| `FeedbackSDK.uploadTicketAttachment(id, file)` | Upload file to ticket |
-| `FeedbackSDK.submitFeedback(...)` | Submit feedback/rating |
-| `FeedbackSDK.listFeedbacks(page, limit)` | List user's feedbacks |
-| `FeedbackSDK.getFeedback(id)` | Get feedback with replies |
-| `FeedbackSDK.registerDeviceToken(token)` | Register FCM token |
-| `FeedbackSDK.removeDeviceToken(token)` | Remove FCM token |
-| `FeedbackSDK.openCreateTicket(activity)` | Open create ticket UI |
-| `FeedbackSDK.openTicketList(activity)` | Open ticket list UI (with Create button) |
-| `FeedbackSDK.openTicketDetail(activity, id)` | Open ticket detail UI |
-| `FeedbackSDK.openFeedback(activity)` | Open feedback submission UI |
-| `FeedbackSDK.openFeedbackList(activity)` | Open feedback list UI (with Submit button) |
-| `FeedbackSDK.openFeedbackDetail(activity, id)` | Open feedback detail UI |
-| `FeedbackSDK.openAttachment(activity, url, name)` | Open built-in attachment viewer |
-| `FeedbackSDK.uploadFeedbackAttachment(id, file)` | Upload file to feedback |
+|---|---|
+| **Init & auth** | |
+| `initialize(context, baseUrl, apiKey, appId?, googleClientId?, debug?)` | Required. `appId` enables announcement topic subscription. |
+| `setAutoSubscribeAnnouncements(enabled)` | Opt-in/out of auto FCM topic subscription. |
+| `getGoogleSignInIntent(activity)` / `handleGoogleSignInResult(data)` | Google sign-in pair. |
+| `setAuthToken(token, user?)` / `logout()` / `isLoggedIn` / `currentUser` | Manual auth. |
+| **Tickets** | |
+| `createTicket(title, description, category?, priority?)` | `priority`: low / medium / high / critical. |
+| `listTickets(page, limit)` / `getTicket(id)` | |
+| `addComment(id, body)` / `editComment(ticketId, commentId, body)` / `deleteComment(ticketId, commentId)` | 10-min edit window for own comments. |
+| `uploadTicketAttachment(id, file)` | |
+| **Feedback** | |
+| `submitFeedback(rating, category?, comment?)` | |
+| `listFeedbacks(page, limit)` / `getFeedback(id)` | |
+| `editFeedback(id, rating?, category?, comment?)` / `deleteFeedback(id)` | 24h edit window. |
+| `uploadFeedbackAttachment(id, file)` | |
+| **Notifications & announcements** | |
+| `listNotifications(page, limit)` / `markNotificationRead(id)` / `markAllNotificationsRead()` | |
+| `getUnreadNotificationCount()` | Used by `FeedbackBellView`. |
+| `listAnnouncements()` | Developer broadcasts (FCM topic + in-app feed). |
+| **Summary & unread** | |
+| `getSummary()` | Totals + status breakdowns + folded-in unread counts. |
+| `getUnreadCounts(limit?)` | Raw per-item unread IDs (tickets + feedback). |
+| `markTicketRead(id, updatedAt)` / `markFeedbackRead(id, replyCount)` | Manual mark-read (detail screens do this automatically). |
+| **Device tokens** | |
+| `registerDeviceToken(token)` / `removeDeviceToken(token)` | `FeedbackFirebaseService` handles this for you. |
+| **Pre-built UI** | |
+| `openCreateTicket(activity)` | |
+| `openTicketList(activity)` / `openTicketDetail(activity, id)` | List has in-screen create button. |
+| `openFeedback(activity)` / `openFeedbackList(activity)` / `openFeedbackDetail(activity, id)` | |
+| `openNotifications(activity)` | Two-tab feed: Activity + Announcements. |
+| `openAttachment(activity, fileUrl, fileName)` | Pinch-zoom viewer + ACTION_VIEW fallback. |
 
 ## Requirements
 
 - Android API 24+ (Android 7.0)
 - Kotlin 1.9+
 - Google Play Services (for Google Sign-In)
-- Firebase (optional, for push notifications)
+- Firebase Messaging (optional — runtime dep, add yourself if you want push)
+
+## License
+
+Proprietary. See `server/` for the backend this SDK talks to.

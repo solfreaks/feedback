@@ -205,7 +205,7 @@ export default function FeedbackDetail() {
   const responseTime = getResponseTime(feedback.createdAt, feedback.replies);
 
   return (
-    <div className="max-w-5xl">
+    <div className="max-w-7xl">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-gray-400 mb-5">
         <Link to="/feedbacks" className="hover:text-gray-600 transition-colors flex items-center gap-1">
@@ -266,9 +266,9 @@ export default function FeedbackDetail() {
         )}
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid lg:grid-cols-12 gap-6">
         {/* Main content */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-8 xl:col-span-9 space-y-6">
           {/* Feedback Card */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             {/* Header badges */}
@@ -315,7 +315,7 @@ export default function FeedbackDetail() {
                     Attachments ({feedback.attachments.length})
                   </p>
                   {feedback.attachments.filter(a => isImage(a.fileName)).length > 0 && (
-                    <div className="grid grid-cols-3 gap-2 mb-2">
+                    <div className="grid grid-cols-3 xl:grid-cols-4 gap-2 mb-2">
                       {feedback.attachments.filter(a => isImage(a.fileName)).map((a) => (
                         <a key={a.id} href={`/api${a.fileUrl}`} target="_blank" rel="noreferrer"
                           className="block aspect-square rounded-lg overflow-hidden border border-gray-200 hover:border-blue-400 transition-colors">
@@ -441,7 +441,7 @@ export default function FeedbackDetail() {
                   </button>
 
                   {showQuickReplies && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2 mt-2">
                       {quickReplies.map((qr) => (
                         <button key={qr.label} onClick={() => { setReply(qr.body); setShowQuickReplies(false); }}
                           className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 hover:bg-blue-50 hover:border-blue-200 text-left transition-all group">
@@ -501,7 +501,7 @@ export default function FeedbackDetail() {
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-5">
+        <div className="lg:col-span-4 xl:col-span-3 space-y-5">
           {/* Submitted by */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="px-5 py-3.5 bg-gray-50 border-b border-gray-200">
@@ -531,60 +531,20 @@ export default function FeedbackDetail() {
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Details</h3>
             </div>
             <div className="p-5 space-y-3">
+              {/* Only keep fields NOT already visible on the top banner or
+                  the feedback card. Rating / sentiment / status / category /
+                  app / response time are all above — don't duplicate them. */}
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">Rating</span>
-                <div className="flex items-center gap-1.5">
-                  <Stars rating={feedback.rating} />
-                  <span className="font-bold text-gray-900">{feedback.rating}</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">Sentiment</span>
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${sentiment.color}`}>
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d={sentiment.icon} />
-                  </svg>
-                  {sentiment.label}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">Category</span>
-                <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${categoryColors[feedback.category] || ""}`}>
-                  {categoryLabels[feedback.category] || feedback.category}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">Status</span>
-                <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${statusColors[feedback.status] || ""}`}>
-                  {statusLabels[feedback.status] || feedback.status}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">Application</span>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-5 h-5 rounded-md bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-[8px] font-bold text-white">
-                    {feedback.app.name.charAt(0).toUpperCase()}
-                  </div>
-                  <span className="font-medium text-gray-700">{feedback.app.name}</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">Attachments</span>
-                <span className="font-medium text-gray-700">{feedback.attachments?.length || 0} files</span>
+                <span className="text-gray-500">Submitted</span>
+                <span className="font-medium text-gray-700">{new Date(feedback.createdAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-500">Replies</span>
                 <span className="font-medium text-gray-700">{feedback.replies.length}</span>
               </div>
-              {responseTime && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">Response Time</span>
-                  <span className="font-medium text-gray-700">{responseTime}</span>
-                </div>
-              )}
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">Submitted</span>
-                <span className="font-medium text-gray-700">{new Date(feedback.createdAt).toLocaleDateString()}</span>
+                <span className="text-gray-500">Attachments</span>
+                <span className="font-medium text-gray-700">{feedback.attachments?.length || 0}</span>
               </div>
             </div>
           </div>

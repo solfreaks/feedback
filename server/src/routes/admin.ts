@@ -579,10 +579,19 @@ router.get("/apps/:id", async (req: Request, res: Response) => {
   try {
     const app = await prisma.app.findUnique({
       where: { id: req.params.id },
-      include: { _count: { select: { tickets: true, feedbacks: true } } },
+      include: {
+        _count: { select: { tickets: true, feedbacks: true } },
+        // AppDetail seeds its selectedAdminIds from this — without it the
+        // Overview tab's admin chips always look empty after a refetch.
+        admins: {
+          select: { user: { select: { id: true, name: true, avatarUrl: true, email: true } } },
+        },
+      },
     });
     if (!app) return res.status(404).json({ error: "App not found" });
-    return res.json(app);
+    // Flatten to match the `admins` shape the client expects (App.admins in types.ts).
+    const { admins, ...rest } = app as any;
+    return res.json({ ...rest, admins: admins.map((a: any) => a.user) });
   } catch (err) {
     console.error("Get app error:", err);
     return res.status(500).json({ error: "Internal server error" });

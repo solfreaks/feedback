@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import api from "../api";
 import Avatar from "../components/Avatar";
-import IntegrationGuide from "../components/IntegrationGuide";
+import SettingsHelp from "../components/SettingsHelp";
 import type { App } from "../types";
 
 /**
@@ -114,6 +114,8 @@ export default function AppDetail() {
   // Photo upload
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingIcon, setUploadingIcon] = useState(false);
+
+  const [showSettingsHelp, setShowSettingsHelp] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -525,21 +527,6 @@ export default function AppDetail() {
         </div>
       </div>
 
-      {/* Integration guide */}
-      <section className="bg-white rounded-xl border border-gray-200 p-5 mb-4">
-        <div className="mb-3">
-          <h3 className="text-sm font-semibold text-gray-900">Integration guide</h3>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Copy-paste setup for this app. Snippets already include the API key and app ID.
-          </p>
-        </div>
-        <IntegrationGuide
-          apiKey={app.apiKey}
-          appId={app.id}
-          defaultPlatform={app.platform}
-        />
-      </section>
-
       {/* Announcements */}
       <section className="bg-white rounded-xl border border-gray-200 p-5 mb-4">
         <div className="flex items-center justify-between mb-3">
@@ -655,12 +642,27 @@ export default function AppDetail() {
 
       {/* Settings (last section) */}
       <section id="settings" className="bg-white rounded-xl border border-gray-200 p-5 mb-4 scroll-mt-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-start justify-between gap-3 mb-4">
           <div>
             <h3 className="text-sm font-semibold text-gray-900">Settings</h3>
             <p className="text-xs text-gray-500 mt-0.5">Configure how this app authenticates, emails users, and sends push notifications.</p>
           </div>
+          <button
+            onClick={() => setShowSettingsHelp((v) => !v)}
+            className="shrink-0 inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+            </svg>
+            {showSettingsHelp ? "Hide setup help" : "How to configure"}
+          </button>
         </div>
+
+        {showSettingsHelp && (
+          <div className="mb-5 -mx-1">
+            <SettingsHelp />
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Field label="App name" required>

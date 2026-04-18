@@ -50,6 +50,22 @@ export async function listAnnouncements(appId: string, limit = 50) {
   });
 }
 
+/**
+ * Cross-app list used by the global Announcements page. Scopes to the admin's
+ * assigned apps unless they're super_admin (the caller supplies the app-id
+ * whitelist or passes undefined to see everything).
+ */
+export async function listAllAnnouncements(appIds: string[] | undefined, limit = 100) {
+  return prisma.announcement.findMany({
+    where: appIds ? { appId: { in: appIds } } : {},
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    include: {
+      app: { select: { id: true, name: true, iconUrl: true, platform: true } },
+    },
+  });
+}
+
 export async function deleteAnnouncement(announcementId: string) {
   return prisma.announcement.delete({ where: { id: announcementId } });
 }

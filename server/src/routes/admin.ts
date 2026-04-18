@@ -786,6 +786,28 @@ router.delete("/announcements/:id", async (req: Request, res: Response) => {
   }
 });
 
+// Cross-app announcement feed. Non-super admins see only their assigned apps'
+// announcements — matches the scope rules used elsewhere (e.g. /my-dashboard).
+router.get("/announcements", async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const role = req.user!.role;
+    let appIds: string[] | undefined;
+    if (role !== "super_admin") {
+      const assignments = await prisma.appAdmin.findMany({
+        where: { userId },
+        select: { appId: true },
+      });
+      appIds = assignments.map((a) => a.appId);
+    }
+    const items = await announcementService.listAllAnnouncements(appIds, 200);
+    return res.json(items);
+  } catch (err) {
+    console.error("List all announcements error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Get admins assigned to an app
 router.get("/apps/:id/admins", async (req: Request, res: Response) => {
   try {

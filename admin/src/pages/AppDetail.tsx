@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import api from "../api";
 import Avatar from "../components/Avatar";
 import SettingsHelp from "../components/SettingsHelp";
@@ -65,9 +65,22 @@ function relTime(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+type TabKey = "overview" | "announcements" | "settings";
+const TAB_KEYS: TabKey[] = ["overview", "announcements", "settings"];
+
 export default function AppDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab: TabKey = (TAB_KEYS as string[]).includes(searchParams.get("tab") || "")
+    ? (searchParams.get("tab") as TabKey)
+    : "overview";
+  const setTab = (t: TabKey) => {
+    const next = new URLSearchParams(searchParams);
+    if (t === "overview") next.delete("tab");
+    else next.set("tab", t);
+    setSearchParams(next, { replace: true });
+  };
 
   const [app, setApp] = useState<App | null>(null);
   const [loading, setLoading] = useState(true);
@@ -425,10 +438,20 @@ export default function AppDetail() {
         <span className="text-gray-900 font-medium">{app.name}</span>
       </div>
 
-      {/* Header */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5 mb-4 flex items-start gap-4 animate-fade-in-up">
+      {/* Header — subtle radial wash on top-left for identity, still white at the form edge. */}
+      <div className="relative overflow-hidden bg-white rounded-xl border border-gray-200 p-5 mb-4 flex items-start gap-4 animate-fade-in-up">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-16 -left-16 w-80 h-80 rounded-full opacity-[0.08]"
+          style={{ background: "radial-gradient(closest-side, #2563eb, transparent)" }}
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -bottom-16 -right-16 w-80 h-80 rounded-full opacity-[0.06]"
+          style={{ background: "radial-gradient(closest-side, #7c3aed, transparent)" }}
+        />
         {/* Photo with hover-overlay upload */}
-        <div className="relative group flex-shrink-0">
+        <div className="relative z-10 group flex-shrink-0">
           {appIconOrInitial(app, 72)}
           <button
             type="button"
@@ -458,8 +481,14 @@ export default function AppDetail() {
           />
         </div>
 
-        <div className="flex-1 min-w-0">
+        <div className="relative z-10 flex-1 min-w-0">
           <div className="flex items-center gap-3 flex-wrap">
+            {app.isActive && (
+              <span className="relative flex h-2 w-2" title="Active" aria-label="Active">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+            )}
             {editingName ? (
               <input
                 autoFocus
@@ -472,16 +501,16 @@ export default function AppDetail() {
                   else if (e.key === "Escape") setEditingName(false);
                 }}
                 disabled={savingName}
-                className="text-2xl font-bold text-gray-900 bg-transparent border-b-2 border-blue-400 focus:outline-none px-0 py-0.5 min-w-0 max-w-full"
+                className="text-3xl font-bold tracking-tight text-gray-900 bg-transparent border-b-2 border-blue-400 focus:outline-none px-0 py-0.5 min-w-0 max-w-full"
               />
             ) : (
               <button
                 onClick={startEditName}
                 title="Click to rename"
-                className="group text-2xl font-bold text-gray-900 truncate hover:text-blue-700 text-left flex items-center gap-1.5"
+                className="group text-3xl font-bold tracking-tight text-gray-900 truncate hover:text-blue-700 text-left flex items-center gap-1.5 transition-colors"
               >
                 <span className="truncate">{app.name}</span>
-                <svg className="w-4 h-4 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
                 </svg>
               </button>
@@ -510,6 +539,49 @@ export default function AppDetail() {
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="mb-4 border-b border-gray-200 flex items-end gap-1 animate-fade-in-up [animation-delay:40ms]">
+        {(
+          [
+            { key: "overview", label: "Overview", badge: undefined, badgeTint: undefined },
+            { key: "announcements", label: "Announcements", badge: announcements.length, badgeTint: undefined },
+            { key: "settings", label: "Settings", badge: setupPct < 100 ? setupTotal - setupDone : undefined, badgeTint: "amber" },
+          ] as { key: TabKey; label: string; badge: number | undefined; badgeTint: "amber" | undefined }[]
+        ).map((t) => {
+          const active = activeTab === t.key;
+          return (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTab(t.key)}
+              className={`relative px-4 py-2.5 text-sm font-medium transition-colors ${
+                active ? "text-blue-700" : "text-gray-500 hover:text-gray-800"
+              }`}
+            >
+              <span className="inline-flex items-center gap-2">
+                {t.label}
+                {t.badge !== undefined && t.badge > 0 && (
+                  <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-semibold rounded-full ${
+                    t.badgeTint === "amber"
+                      ? "bg-amber-100 text-amber-700"
+                      : active
+                        ? "bg-blue-100 text-blue-700"
+                        : "bg-gray-100 text-gray-600"
+                  }`}>
+                    {t.badge}
+                  </span>
+                )}
+              </span>
+              {active && (
+                <span className="absolute left-2 right-2 -bottom-px h-0.5 bg-blue-600 rounded-t" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {activeTab === "overview" && (
+      <>
       {/* Overview cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4 animate-fade-in-up [animation-delay:80ms]">
         <OverviewCard label="Tickets" value={animTickets} tint="bg-blue-50 text-blue-700" href={`/tickets?appId=${app.id}`} />
@@ -536,12 +608,13 @@ export default function AppDetail() {
                 {setupRows.filter((r) => !r.done).map((r) => r.label).join(" · ")}
               </p>
             </div>
-            <a
-              href="#settings"
+            <button
+              type="button"
+              onClick={() => setTab("settings")}
               className="shrink-0 px-3 py-1.5 bg-amber-600 text-white text-xs font-medium rounded-lg hover:bg-amber-700 transition-transform active:scale-95"
             >
               Finish setup
-            </a>
+            </button>
           </div>
           <div className="mt-3 h-1.5 w-full bg-amber-200 rounded-full overflow-hidden">
             {/* Animated fill: starts at 0, slides to setupPct over 900ms once
@@ -584,89 +657,8 @@ export default function AppDetail() {
         </div>
       </div>
 
-      {/* Announcements */}
+      {/* Admins (overview tab) */}
       <section className="bg-white rounded-xl border border-gray-200 p-5 mb-4 animate-fade-in-up [animation-delay:320ms]">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900">Announcements</h3>
-            <p className="text-xs text-gray-500 mt-0.5">Delivered via FCM topic to every device with this app installed.</p>
-          </div>
-        </div>
-
-        {/* Inline composer */}
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
-          <div className="space-y-2">
-            <input
-              type="text"
-              value={announceTitle}
-              onChange={(e) => setAnnounceTitle(e.target.value)}
-              placeholder="Title"
-              maxLength={80}
-              className={inputCls}
-            />
-            <textarea
-              value={announceBody}
-              onChange={(e) => setAnnounceBody(e.target.value)}
-              placeholder="Body"
-              rows={2}
-              maxLength={240}
-              className={`${inputCls} resize-none`}
-            />
-            <input
-              type="text"
-              value={announceLink}
-              onChange={(e) => setAnnounceLink(e.target.value)}
-              placeholder="Link (optional) — /tickets or https://…"
-              className={`${inputCls} font-mono text-xs`}
-            />
-          </div>
-          <div className="flex flex-col justify-end">
-            <button
-              onClick={sendAnnouncement}
-              disabled={announcing || !announceTitle.trim() || !announceBody.trim()}
-              className="px-4 py-2 rounded-lg text-sm font-medium bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50 transition-transform active:scale-95"
-            >
-              {announcing ? "Sending…" : "Send"}
-            </button>
-            {announceResult && (
-              <span className={`text-xs mt-2 ${announceResult.ok ? "text-emerald-600" : "text-red-600"}`}>
-                {announceResult.msg}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Past announcements */}
-        {announcements.length > 0 && (
-          <div className="mt-5">
-            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Recent</div>
-            <div className="space-y-2">
-              {announcements.map((a) => (
-                <div key={a.id} className="flex items-start gap-3 border border-gray-100 rounded-lg p-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-900">{a.title}</span>
-                      <span className="text-xs text-gray-400">{relTime(a.createdAt)}</span>
-                    </div>
-                    <p className="text-sm text-gray-600 mt-0.5 break-words">{a.body}</p>
-                    {a.link && <p className="text-xs text-blue-600 mt-1 font-mono">{a.link}</p>}
-                  </div>
-                  <button
-                    onClick={() => deleteAnnouncement(a.id)}
-                    className="text-xs text-gray-400 hover:text-red-600 flex-shrink-0"
-                    title="Delete announcement"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </section>
-
-      {/* Admins */}
-      <section className="bg-white rounded-xl border border-gray-200 p-5 mb-4 animate-fade-in-up [animation-delay:400ms]">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-gray-900">
             Assigned admins <span className="text-gray-400 font-normal">— responsible for tickets & feedback</span>
@@ -684,21 +676,291 @@ export default function AppDetail() {
                   key={a.id}
                   type="button"
                   onClick={() => setSelectedAdminIds(picked ? selectedAdminIds.filter((x) => x !== a.id) : [...selectedAdminIds, a.id])}
-                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                    picked ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-700 border-gray-300 hover:border-blue-400"
+                  className={`group inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-200 active:scale-95 ${
+                    picked
+                      ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                      : "bg-white text-gray-700 border-gray-300 hover:border-blue-400 hover:bg-blue-50"
                   }`}
                 >
                   <Avatar name={a.name} avatarUrl={a.avatarUrl ?? undefined} size={18} />
                   {a.name}
+                  {picked && (
+                    <svg className="w-3 h-3 animate-fade-in" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
                 </button>
               );
             })}
           </div>
         )}
+        <div className="mt-4 flex justify-end">
+          <button
+            onClick={save}
+            disabled={saving || !form.name.trim()}
+            className="px-4 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-transform active:scale-95"
+          >
+            {saving ? "Saving…" : "Save assignments"}
+          </button>
+        </div>
       </section>
+      </>
+      )}
 
-      {/* Settings (last section) */}
-      <section id="settings" className="bg-white rounded-xl border border-gray-200 p-5 mb-4 scroll-mt-6 animate-fade-in-up [animation-delay:480ms]">
+      {activeTab === "announcements" && (
+      <>
+      {/* Composer + live device preview side-by-side. The preview gives the
+          admin instant feedback on what the push will look like on a phone —
+          pure visual, wired directly to the current input state. */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 mb-4 animate-fade-in-up">
+        {/* Composer */}
+        <section className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-violet-100 text-violet-600">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 01-1.44-4.282m3.102.069a18.03 18.03 0 01-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 018.835 2.535M10.34 6.66a23.847 23.847 0 008.835-2.535" />
+              </svg>
+            </span>
+            <h3 className="text-sm font-semibold text-gray-900">New broadcast</h3>
+            <span className="text-xs text-gray-400">· Delivered via FCM topic <code className="bg-gray-100 px-1 rounded font-mono">app_{app.id.slice(0, 8)}…</code></span>
+          </div>
+          <p className="text-xs text-gray-500 mb-4">Every device with this app installed receives it — in-app + push.</p>
+
+          <div className="space-y-3">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-medium text-gray-600">Title</label>
+                <span className={`text-[11px] tabular-nums ${announceTitle.length > 70 ? "text-amber-600" : "text-gray-400"}`}>
+                  {announceTitle.length}/80
+                </span>
+              </div>
+              <input
+                type="text"
+                value={announceTitle}
+                onChange={(e) => setAnnounceTitle(e.target.value)}
+                placeholder="e.g. Version 2.1 is here"
+                maxLength={80}
+                className={inputCls}
+              />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-medium text-gray-600">Body</label>
+                <span className={`text-[11px] tabular-nums ${announceBody.length > 220 ? "text-amber-600" : "text-gray-400"}`}>
+                  {announceBody.length}/240
+                </span>
+              </div>
+              <textarea
+                value={announceBody}
+                onChange={(e) => setAnnounceBody(e.target.value)}
+                placeholder="Share what's new, maintenance windows, outages, feature launches…"
+                rows={4}
+                maxLength={240}
+                className={`${inputCls} resize-none`}
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-gray-600 mb-1 inline-flex items-center gap-1.5">
+                Link <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <div className="relative">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+                </svg>
+                <input
+                  type="text"
+                  value={announceLink}
+                  onChange={(e) => setAnnounceLink(e.target.value)}
+                  placeholder="/tickets  or  https://example.com/blog"
+                  className={`${inputCls} pl-9 font-mono text-xs`}
+                />
+              </div>
+              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                <span className="text-[11px] text-gray-400">Quick:</span>
+                {["/tickets", "/feedback", "/notifications"].map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setAnnounceLink(p)}
+                    className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 hover:bg-blue-50 hover:text-blue-700 font-mono transition-colors"
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 pt-1">
+              <div className="text-xs text-gray-500 flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+                Cannot be undone
+              </div>
+              <div className="flex items-center gap-3">
+                {announceResult && (
+                  <span className={`text-xs ${announceResult.ok ? "text-emerald-600" : "text-red-600"}`}>
+                    {announceResult.msg}
+                  </span>
+                )}
+                <button
+                  onClick={sendAnnouncement}
+                  disabled={announcing || !announceTitle.trim() || !announceBody.trim()}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50 transition-all active:scale-95 shadow-sm hover:shadow"
+                >
+                  {announcing ? (
+                    <>
+                      <div className="animate-spin w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full" />
+                      Sending…
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.125A59.769 59.769 0 0121.485 12 59.768 59.768 0 013.27 20.875L5.999 12zm0 0h7.5" />
+                      </svg>
+                      Broadcast
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Live phone preview */}
+        <aside className="lg:sticky lg:top-6 self-start">
+          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 text-center">Live preview</div>
+          <div className="relative mx-auto w-[260px] rounded-[32px] bg-gray-900 p-3 shadow-xl">
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 w-16 h-1 rounded-full bg-gray-700" />
+            <div className="rounded-[24px] bg-gradient-to-b from-slate-100 to-slate-200 pt-7 pb-4 px-3 min-h-[340px]">
+              {/* Status bar */}
+              <div className="flex items-center justify-between text-[10px] font-semibold text-gray-700 mb-3 px-1">
+                <span>9:41</span>
+                <div className="flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M2 22h2V10H2v12zm5 0h2V6H7v16zm5 0h2V2h-2v20zm5 0h2V14h-2v8z" /></svg>
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z" /></svg>
+                </div>
+              </div>
+              {/* Notification card */}
+              <div className="bg-white/95 backdrop-blur rounded-2xl shadow-sm p-3 animate-slide-down" key={announceTitle + announceBody + announceLink}>
+                <div className="flex items-start gap-2.5">
+                  {appIconOrInitial(app, 32)}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] font-semibold text-gray-900 truncate">{app.name}</span>
+                      <span className="text-[10px] text-gray-400">now</span>
+                    </div>
+                    <div className="text-[12px] font-semibold text-gray-900 mt-0.5 leading-tight break-words">
+                      {announceTitle || "Your title appears here"}
+                    </div>
+                    <div className="text-[11px] text-gray-600 mt-0.5 leading-snug break-words line-clamp-3">
+                      {announceBody || "Your body text will show up in the notification shade and in the in-app feed."}
+                    </div>
+                    {announceLink && (
+                      <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded font-mono truncate max-w-full">
+                        <svg className="w-2.5 h-2.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757" />
+                        </svg>
+                        <span className="truncate">{announceLink}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {/* Faux secondary notif to give the preview context */}
+              <div className="mt-2 bg-white/60 rounded-2xl p-2.5">
+                <div className="h-2 w-16 rounded bg-gray-300 mb-1.5" />
+                <div className="h-1.5 w-3/4 rounded bg-gray-200 mb-1" />
+                <div className="h-1.5 w-1/2 rounded bg-gray-200" />
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      {/* Past announcements — timeline */}
+      <section className="bg-white rounded-xl border border-gray-200 p-5 mb-4 animate-fade-in-up [animation-delay:80ms]">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-gray-900">
+            History <span className="text-gray-400 font-normal">· {announcements.length}</span>
+          </h3>
+        </div>
+
+        {announcements.length > 0 ? (
+          <div className="relative">
+            {/* Vertical rail */}
+            <div className="absolute left-[15px] top-2 bottom-2 w-px bg-gradient-to-b from-violet-200 via-gray-200 to-transparent" />
+            <ul className="space-y-4">
+              {announcements.map((a) => (
+                <li key={a.id} className="relative pl-10 group">
+                  {/* Dot */}
+                  <span className="absolute left-2 top-1.5 w-3 h-3 rounded-full bg-white border-2 border-violet-500 shadow-sm group-hover:scale-110 transition-transform" />
+                  <div className="rounded-lg border border-gray-100 p-3 hover:border-violet-200 hover:bg-violet-50/30 transition-colors">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-semibold text-gray-900">{a.title}</span>
+                          <span className="text-xs text-gray-400" title={new Date(a.createdAt).toLocaleString()}>
+                            {relTime(a.createdAt)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600 mt-1 break-words whitespace-pre-wrap leading-relaxed">{a.body}</p>
+                        {a.link && (
+                          <div className="mt-2 inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded font-mono">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757" />
+                            </svg>
+                            {a.link}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => deleteAnnouncement(a.id)}
+                        className="flex-shrink-0 p-1.5 rounded-md text-gray-300 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+                        title="Delete announcement"
+                        aria-label="Delete announcement"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <div className="relative overflow-hidden rounded-xl border border-dashed border-gray-200 p-10 text-center">
+            {/* Subtle violet radial background */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 opacity-[0.4]"
+              style={{ background: "radial-gradient(circle at 50% 0%, rgba(124,58,237,0.08), transparent 60%)" }}
+            />
+            <div className="relative">
+              <div className="mx-auto w-14 h-14 rounded-full bg-violet-100 flex items-center justify-center mb-3">
+                <svg className="w-7 h-7 text-violet-500" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 01-1.44-4.282m3.102.069a18.03 18.03 0 01-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 018.835 2.535M10.34 6.66a23.847 23.847 0 008.835-2.535" />
+                </svg>
+              </div>
+              <p className="text-sm font-medium text-gray-700">No announcements yet</p>
+              <p className="text-xs text-gray-500 mt-1 max-w-xs mx-auto">
+                Broadcast product updates, outages, or feature launches — they appear here and in the SDK notifications feed.
+              </p>
+            </div>
+          </div>
+        )}
+      </section>
+      </>
+      )}
+
+      {activeTab === "settings" && (
+      <>
+      {/* Settings */}
+      <section id="settings" className="bg-white rounded-xl border border-gray-200 p-5 mb-4 scroll-mt-6 animate-fade-in-up">
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
             <h3 className="text-sm font-semibold text-gray-900">Settings</h3>
@@ -825,7 +1087,8 @@ export default function AppDetail() {
         </div>
       </section>
 
-      {/* Danger zone */}
+      {/* Danger zone — visible only on the Settings tab, where destructive
+          actions belong. */}
       <section className="bg-red-50 border border-red-200 rounded-xl p-5 mb-8">
         <h3 className="text-sm font-semibold text-red-900">Danger zone</h3>
         <p className="text-xs text-red-800 mt-0.5">Deleting an app removes all its tickets, feedback, and announcements. This cannot be undone.</p>
@@ -840,6 +1103,8 @@ export default function AppDetail() {
           </button>
         )}
       </section>
+      </>
+      )}
 
       {/* Floating success toast — appears on Save success, auto-dismisses.
           keyed on saveToastKey so re-saves restart the slide-up animation. */}
@@ -875,9 +1140,13 @@ export default function AppDetail() {
 
 function OverviewCard({ label, value, tint, href }: { label: string; value: number; tint: string; href?: string }) {
   const content = (
-    <div className={`rounded-xl border border-gray-200 bg-white p-3 ${href ? "hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer" : ""}`}>
+    <div
+      className={`rounded-xl border border-gray-200 bg-white p-3 transition-all duration-200 ${
+        href ? "hover:border-gray-300 hover:shadow-md hover:-translate-y-0.5 cursor-pointer" : ""
+      }`}
+    >
       <div className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${tint} mb-1`}>{label}</div>
-      <div className="text-2xl font-semibold text-gray-900">{value}</div>
+      <div className="text-2xl font-semibold text-gray-900 tabular-nums">{value}</div>
     </div>
   );
   return href ? <Link to={href} className="block">{content}</Link> : content;

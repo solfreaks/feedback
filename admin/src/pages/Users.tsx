@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import api from "../api";
-import type { UserDetail } from "../types";
+import type { App, UserDetail } from "../types";
 import Avatar from "../components/Avatar";
 
 const roleDot: Record<string, string> = {
@@ -46,6 +46,8 @@ export default function Users() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [bannedFilter, setBannedFilter] = useState<string>("");
+  const [appFilter, setAppFilter] = useState<string>(searchParams.get("appId") || "");
+  const [apps, setApps] = useState<App[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [userStats, setUserStats] = useState<UserStats | null>(null);
@@ -58,6 +60,7 @@ export default function Users() {
     if (search) params.search = search;
     if (roleFilter) params.role = roleFilter;
     if (bannedFilter) params.isBanned = bannedFilter;
+    if (appFilter) params.appId = appFilter;
     api.get("/admin/users", { params }).then((r) => {
       setUsers(r.data.users);
       setTotal(r.data.total);
@@ -71,7 +74,17 @@ export default function Users() {
   };
 
   useEffect(() => { fetchStats(); }, []);
-  useEffect(() => { fetchUsers(); }, [page, roleFilter, bannedFilter, searchTrigger]);
+  useEffect(() => {
+    api.get("/admin/apps").then((r) => setApps(r.data)).catch(() => {});
+  }, []);
+  useEffect(() => { fetchUsers(); }, [page, roleFilter, bannedFilter, appFilter, searchTrigger]);
+  // Keep the URL in sync so the filter survives reload + is shareable.
+  useEffect(() => {
+    const p = new URLSearchParams(searchParams);
+    if (appFilter) p.set("appId", appFilter); else p.delete("appId");
+    setSearchParams(p, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appFilter]);
 
   // Auto-open user detail from query param
   useEffect(() => {
@@ -231,10 +244,25 @@ export default function Users() {
               dot="bg-red-500" />
           </div>
 
-          {(roleFilter || search || bannedFilter) && (
+          {/* App pills — shows users with any activity (ticket/feedback/device/admin) for that app */}
+          {apps.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-10 flex-shrink-0">App</span>
+              {apps.map((a) => (
+                <FilterPill
+                  key={a.id}
+                  label={a.name}
+                  active={appFilter === a.id}
+                  onClick={() => { setAppFilter(appFilter === a.id ? "" : a.id); setPage(1); }}
+                />
+              ))}
+            </div>
+          )}
+
+          {(roleFilter || search || bannedFilter || appFilter) && (
             <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
               <span className="text-xs text-gray-500">Filters active</span>
-              <button onClick={() => { setRoleFilter(""); setBannedFilter(""); setSearch(""); setPage(1); setSearchTrigger((t) => t + 1); }}
+              <button onClick={() => { setRoleFilter(""); setBannedFilter(""); setAppFilter(""); setSearch(""); setPage(1); setSearchTrigger((t) => t + 1); }}
                 className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

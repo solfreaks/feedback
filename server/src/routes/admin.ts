@@ -1209,6 +1209,7 @@ router.get("/users", async (req: Request, res: Response) => {
       role: req.query.role as string | undefined,
       search: req.query.search as string | undefined,
       isBanned: req.query.isBanned !== undefined ? req.query.isBanned === "true" : undefined,
+      appId: req.query.appId as string | undefined,
       page: parseInt((req.query.page as string) || "1"),
       limit: parseInt((req.query.limit as string) || "20"),
     });

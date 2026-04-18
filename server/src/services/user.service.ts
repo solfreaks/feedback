@@ -19,6 +19,7 @@ export async function listUsers(opts: {
   role?: string;
   search?: string;
   isBanned?: boolean;
+  appId?: string;
   page?: number;
   limit?: number;
 }) {
@@ -33,6 +34,18 @@ export async function listUsers(opts: {
       { name: { contains: opts.search } },
       { email: { contains: opts.search } },
     ];
+  }
+  // "Users in app X" = any of: has a ticket, feedback, device token, or is
+  // an app admin for X. Covers both active users and passive SDK installs.
+  if (opts.appId) {
+    where.AND = [{
+      OR: [
+        { tickets: { some: { appId: opts.appId } } },
+        { feedbacks: { some: { appId: opts.appId } } },
+        { deviceTokens: { some: { appId: opts.appId } } },
+        { appAdmins: { some: { appId: opts.appId } } },
+      ],
+    }];
   }
 
   const [users, total] = await Promise.all([

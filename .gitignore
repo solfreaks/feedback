@@ -14,3 +14,7 @@ android-sdk/.kotlin/
 node_modules/
 .env
 .env.local
+
+# Legacy SQL dump — contains real user data, never commit
+hhealthc_feedback_db.sql
+*.sql

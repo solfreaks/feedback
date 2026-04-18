@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import api from "../api";
 import Avatar from "../components/Avatar";
@@ -65,6 +65,36 @@ function relTime(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+// Bucket announcements into Today / Yesterday / This week / earlier-by-month.
+// Used by the history timeline to give the user a cheap time-anchor without
+// rendering a date next to every item.
+function groupAnnouncementsByDay(items: Announcement[]): { label: string; items: Announcement[] }[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const weekAgo = new Date(today);
+  weekAgo.setDate(today.getDate() - 7);
+
+  const buckets = new Map<string, Announcement[]>();
+  const order: string[] = [];
+  for (const item of items) {
+    const d = new Date(item.createdAt);
+    d.setHours(0, 0, 0, 0);
+    let label: string;
+    if (d.getTime() === today.getTime()) label = "Today";
+    else if (d.getTime() === yesterday.getTime()) label = "Yesterday";
+    else if (d.getTime() >= weekAgo.getTime()) label = "This week";
+    else label = d.toLocaleDateString(undefined, { month: "long", year: d.getFullYear() === today.getFullYear() ? undefined : "numeric" });
+    if (!buckets.has(label)) {
+      buckets.set(label, []);
+      order.push(label);
+    }
+    buckets.get(label)!.push(item);
+  }
+  return order.map((label) => ({ label, items: buckets.get(label)! }));
+}
+
 type TabKey = "overview" | "announcements" | "settings";
 const TAB_KEYS: TabKey[] = ["overview", "announcements", "settings"];
 
@@ -114,6 +144,8 @@ export default function AppDetail() {
   const [announceLink, setAnnounceLink] = useState("");
   const [announcing, setAnnouncing] = useState(false);
   const [announceResult, setAnnounceResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [announceSearch, setAnnounceSearch] = useState("");
+  const [announceDeleteTarget, setAnnounceDeleteTarget] = useState<Announcement | null>(null);
 
   // Destructive confirmations.
   const [copiedKey, setCopiedKey] = useState(false);
@@ -220,6 +252,24 @@ export default function AppDetail() {
   const setupPct = setupTotal === 0 ? 0 : Math.round((setupDone / setupTotal) * 100);
 
   const firebaseOk = !!(app?.firebaseProjectId && app?.firebaseClientEmail && app?.firebasePrivateKey);
+
+  // Announcement history derivations — filter by search, bucket by day.
+  const filteredAnnouncements = useMemo(() => {
+    if (!announceSearch.trim()) return announcements;
+    const q = announceSearch.trim().toLowerCase();
+    return announcements.filter(
+      (a) => a.title.toLowerCase().includes(q) || a.body.toLowerCase().includes(q)
+    );
+  }, [announcements, announceSearch]);
+  const groupedAnnouncements = useMemo(() => groupAnnouncementsByDay(filteredAnnouncements), [filteredAnnouncements]);
+  const announceSent7d = useMemo(() => {
+    const cutoff = Date.now() - 7 * 86_400_000;
+    return announcements.filter((a) => new Date(a.createdAt).getTime() >= cutoff).length;
+  }, [announcements]);
+  const announceSent30d = useMemo(() => {
+    const cutoff = Date.now() - 30 * 86_400_000;
+    return announcements.filter((a) => new Date(a.createdAt).getTime() >= cutoff).length;
+  }, [announcements]);
 
   // ---- Save / delete / regenerate ----
   const save = async () => {
@@ -709,10 +759,17 @@ export default function AppDetail() {
 
       {activeTab === "announcements" && (
       <>
+      {/* Stat strip — quick read on broadcast cadence. */}
+      <div className="grid grid-cols-3 gap-2 mb-4 animate-fade-in-up">
+        <AnnounceStat label="Total sent" value={announcements.length} tint="from-violet-50 to-violet-50/40" dotClass="bg-violet-500" />
+        <AnnounceStat label="Last 7 days" value={announceSent7d} tint="from-blue-50 to-blue-50/40" dotClass="bg-blue-500" />
+        <AnnounceStat label="Last 30 days" value={announceSent30d} tint="from-emerald-50 to-emerald-50/40" dotClass="bg-emerald-500" />
+      </div>
+
       {/* Composer + live device preview side-by-side. The preview gives the
           admin instant feedback on what the push will look like on a phone —
           pure visual, wired directly to the current input state. */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 mb-4 animate-fade-in-up">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 mb-4 animate-fade-in-up [animation-delay:60ms]">
         {/* Composer */}
         <section className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="flex items-center gap-2 mb-1">
@@ -880,61 +937,34 @@ export default function AppDetail() {
         </aside>
       </div>
 
-      {/* Past announcements — timeline */}
-      <section className="bg-white rounded-xl border border-gray-200 p-5 mb-4 animate-fade-in-up [animation-delay:80ms]">
-        <div className="flex items-center justify-between mb-4">
+      {/* Past announcements — searchable, day-grouped timeline */}
+      <section className="bg-white rounded-xl border border-gray-200 p-5 mb-4 animate-fade-in-up [animation-delay:120ms]">
+        <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
           <h3 className="text-sm font-semibold text-gray-900">
-            History <span className="text-gray-400 font-normal">· {announcements.length}</span>
+            History{" "}
+            <span className="text-gray-400 font-normal">
+              · {filteredAnnouncements.length}
+              {announceSearch && announcements.length !== filteredAnnouncements.length ? ` of ${announcements.length}` : ""}
+            </span>
           </h3>
+          {announcements.length > 0 && (
+            <div className="relative flex-1 max-w-xs">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+              </svg>
+              <input
+                type="text"
+                value={announceSearch}
+                onChange={(e) => setAnnounceSearch(e.target.value)}
+                placeholder="Search title or body…"
+                className="w-full pl-9 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white focus:border-blue-300"
+              />
+            </div>
+          )}
         </div>
 
-        {announcements.length > 0 ? (
-          <div className="relative">
-            {/* Vertical rail */}
-            <div className="absolute left-[15px] top-2 bottom-2 w-px bg-gradient-to-b from-violet-200 via-gray-200 to-transparent" />
-            <ul className="space-y-4">
-              {announcements.map((a) => (
-                <li key={a.id} className="relative pl-10 group">
-                  {/* Dot */}
-                  <span className="absolute left-2 top-1.5 w-3 h-3 rounded-full bg-white border-2 border-violet-500 shadow-sm group-hover:scale-110 transition-transform" />
-                  <div className="rounded-lg border border-gray-100 p-3 hover:border-violet-200 hover:bg-violet-50/30 transition-colors">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-semibold text-gray-900">{a.title}</span>
-                          <span className="text-xs text-gray-400" title={new Date(a.createdAt).toLocaleString()}>
-                            {relTime(a.createdAt)}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600 mt-1 break-words whitespace-pre-wrap leading-relaxed">{a.body}</p>
-                        {a.link && (
-                          <div className="mt-2 inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded font-mono">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757" />
-                            </svg>
-                            {a.link}
-                          </div>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => deleteAnnouncement(a.id)}
-                        className="flex-shrink-0 p-1.5 rounded-md text-gray-300 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
-                        title="Delete announcement"
-                        aria-label="Delete announcement"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : (
+        {announcements.length === 0 ? (
           <div className="relative overflow-hidden rounded-xl border border-dashed border-gray-200 p-10 text-center">
-            {/* Subtle violet radial background */}
             <div
               aria-hidden
               className="pointer-events-none absolute inset-0 opacity-[0.4]"
@@ -951,6 +981,72 @@ export default function AppDetail() {
                 Broadcast product updates, outages, or feature launches — they appear here and in the SDK notifications feed.
               </p>
             </div>
+          </div>
+        ) : filteredAnnouncements.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-gray-200 p-8 text-center">
+            <p className="text-sm text-gray-500">No matches for "{announceSearch}".</p>
+            <button
+              onClick={() => setAnnounceSearch("")}
+              className="mt-2 text-xs text-violet-600 hover:text-violet-700 font-medium"
+            >
+              Clear search
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-5">
+            {groupedAnnouncements.map((bucket) => (
+              <div key={bucket.label}>
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                  {bucket.label}
+                  <span className="flex-1 h-px bg-gray-100" />
+                  <span className="text-gray-300 normal-case tracking-normal font-medium">{bucket.items.length}</span>
+                </div>
+                <div className="relative">
+                  <div className="absolute left-[15px] top-2 bottom-2 w-px bg-gradient-to-b from-violet-200 via-gray-200 to-transparent" />
+                  <ul className="space-y-3">
+                    {bucket.items.map((a) => (
+                      <li key={a.id} className="relative pl-10 group">
+                        <span className="absolute left-2 top-2 w-3 h-3 rounded-full bg-white border-2 border-violet-500 shadow-sm group-hover:scale-110 transition-transform" />
+                        <div className="rounded-lg border border-gray-100 p-3 hover:border-violet-200 hover:bg-violet-50/30 transition-colors">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-semibold text-gray-900">{a.title}</span>
+                                <span
+                                  className="text-xs text-gray-400"
+                                  title={new Date(a.createdAt).toLocaleString()}
+                                >
+                                  {relTime(a.createdAt)}
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-600 mt-1 break-words whitespace-pre-wrap leading-relaxed">{a.body}</p>
+                              {a.link && (
+                                <div className="mt-2 inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded font-mono break-all">
+                                  <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757" />
+                                  </svg>
+                                  {a.link}
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => setAnnounceDeleteTarget(a)}
+                              className="flex-shrink-0 p-1.5 rounded-md text-gray-300 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+                              title="Delete announcement"
+                              aria-label="Delete announcement"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </section>
@@ -1121,6 +1217,39 @@ export default function AppDetail() {
         </div>
       )}
 
+      {/* Delete announcement confirmation */}
+      {announceDeleteTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm animate-fade-in"
+          onClick={() => setAnnounceDeleteTarget(null)}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-semibold text-gray-900">Delete announcement?</h3>
+            <p className="text-sm text-gray-600 mt-2">
+              "{announceDeleteTarget.title}" will disappear from the in-app feed. Users who already received the push won't be affected.
+            </p>
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => setAnnounceDeleteTarget(null)}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const target = announceDeleteTarget;
+                  setAnnounceDeleteTarget(null);
+                  if (target) deleteAnnouncement(target.id);
+                }}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Regenerate key confirmation */}
       {regenConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setRegenConfirm(false)}>
@@ -1150,6 +1279,18 @@ function OverviewCard({ label, value, tint, href }: { label: string; value: numb
     </div>
   );
   return href ? <Link to={href} className="block">{content}</Link> : content;
+}
+
+function AnnounceStat({ label, value, tint, dotClass }: { label: string; value: number; tint: string; dotClass: string }) {
+  return (
+    <div className={`rounded-xl border border-gray-200 px-4 py-2 bg-gradient-to-br ${tint}`}>
+      <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-600">
+        <span className={`w-1.5 h-1.5 rounded-full ${dotClass}`} />
+        {label}
+      </div>
+      <div className="text-xl font-bold text-gray-900 tabular-nums leading-tight">{value}</div>
+    </div>
+  );
 }
 
 function Field({ label, required, optional, className, children }: { label: string; required?: boolean; optional?: boolean; className?: string; children: React.ReactNode }) {

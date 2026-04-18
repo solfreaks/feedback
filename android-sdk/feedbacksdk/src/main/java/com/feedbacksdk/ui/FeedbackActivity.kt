@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.feedbacksdk.FeedbackSDK
 import com.feedbacksdk.R
+import com.feedbacksdk.internal.DraftStore
 import com.feedbacksdk.internal.SdkResult
 import com.feedbacksdk.internal.applySystemBarInsets
 import com.feedbacksdk.internal.uriToCacheFile
@@ -27,6 +28,11 @@ import kotlinx.coroutines.launch
 import java.io.File
 
 class FeedbackActivity : AppCompatActivity() {
+
+    private companion object {
+        const val DRAFT_RATING = "feedback.rating"
+        const val DRAFT_COMMENT = "feedback.comment"
+    }
 
     private lateinit var stars: List<ImageView>
     private lateinit var tvRatingLabel: TextView
@@ -95,6 +101,27 @@ class FeedbackActivity : AppCompatActivity() {
 
         btnAttach.setOnClickListener { pickAttachments.launch("*/*") }
         btnSubmit.setOnClickListener { submitFeedback() }
+
+        // Restore draft. Rating snaps the stars back; comment rehydrates the
+        // text field. Category chip intentionally isn't persisted because
+        // rating + comment are the costly inputs to re-enter.
+        val savedRating = DraftStore.getInt(DRAFT_RATING, 0)
+        if (savedRating in 1..5) {
+            selectedRating = savedRating
+            updateStars(animateIndex = savedRating - 1)
+        }
+        DraftStore.getString(DRAFT_COMMENT)?.let { editComment.setText(it) }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        val comment = editComment.text?.toString()?.trim().orEmpty()
+        if (selectedRating == 0 && comment.isEmpty()) {
+            DraftStore.remove(DRAFT_RATING, DRAFT_COMMENT)
+        } else {
+            DraftStore.putInt(DRAFT_RATING, selectedRating)
+            DraftStore.putString(DRAFT_COMMENT, comment)
+        }
     }
 
     private fun refreshAttachments() {
@@ -162,6 +189,7 @@ class FeedbackActivity : AppCompatActivity() {
                     val msg = if (uploadFailed) R.string.sdk_feedback_submitted_attach_failed
                               else R.string.sdk_feedback_submitted
                     Toast.makeText(this@FeedbackActivity, msg, Toast.LENGTH_SHORT).show()
+                    DraftStore.remove(DRAFT_RATING, DRAFT_COMMENT)
                     setResult(RESULT_OK)
                     finish()
                 }

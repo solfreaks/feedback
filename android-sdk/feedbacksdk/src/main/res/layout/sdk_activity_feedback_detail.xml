@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="?android:attr/colorBackground">
@@ -20,6 +21,19 @@
             app:navigationContentDescription="@string/sdk_back"
             app:title="@string/sdk_feedback_detail" />
     </com.google.android.material.appbar.AppBarLayout>
+
+    <LinearLayout
+        android:id="@+id/statusBanner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_margin="12dp"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="10dp"
+        android:background="@drawable/sdk_bg_banner"
+        android:visibility="gone"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
@@ -173,7 +187,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                android:visibility="gone" />
+                android:visibility="gone"
+                tools:itemCount="2"
+                tools:listitem="@layout/sdk_item_attachment"
+                tools:visibility="visible" />
 
             <TextView
                 android:id="@+id/tvRepliesHeader"

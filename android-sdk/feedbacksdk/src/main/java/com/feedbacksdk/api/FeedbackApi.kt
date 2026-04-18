@@ -45,6 +45,22 @@ internal interface FeedbackApi {
         @Part file: MultipartBody.Part
     ): Response<Attachment>
 
+    @PATCH("tickets/{id}/comments/{commentId}")
+    suspend fun editComment(
+        @Path("id") ticketId: String,
+        @Path("commentId") commentId: String,
+        @Body request: Map<String, @JvmSuppressWildcards Any?>,
+    ): Response<Comment>
+
+    @DELETE("tickets/{id}/comments/{commentId}")
+    suspend fun deleteComment(
+        @Path("id") ticketId: String,
+        @Path("commentId") commentId: String,
+    ): Response<SuccessResponse>
+
+    @POST("tickets/{id}/typing")
+    suspend fun sendTyping(@Path("id") ticketId: String): Response<SuccessResponse>
+
     // ── Feedback ──
 
     @POST("feedbacks")
@@ -70,6 +86,17 @@ internal interface FeedbackApi {
         @Part file: MultipartBody.Part
     ): Response<Attachment>
 
+    @PATCH("feedbacks/{id}")
+    suspend fun editFeedback(
+        @Path("id") feedbackId: String,
+        @Body request: Map<String, @JvmSuppressWildcards Any?>,
+    ): Response<Feedback>
+
+    @DELETE("feedbacks/{id}")
+    suspend fun deleteFeedback(
+        @Path("id") feedbackId: String,
+    ): Response<SuccessResponse>
+
     // ── Device Token ──
 
     @POST("device-tokens")
@@ -81,4 +108,33 @@ internal interface FeedbackApi {
     suspend fun removeDeviceToken(
         @Body request: Map<String, String>
     ): Response<SuccessResponse>
+
+    // ── Summary ──
+
+    @GET("summary")
+    suspend fun getSummary(): Response<SummaryResponse>
+
+    // ── Notifications ──
+
+    @GET("notifications")
+    suspend fun listNotifications(
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 20,
+    ): Response<NotificationListResponse>
+
+    @PATCH("notifications/{id}/read")
+    suspend fun markNotificationRead(
+        @Path("id") notificationId: String,
+    ): Response<SuccessResponse>
+
+    @PATCH("notifications/read-all")
+    suspend fun markAllNotificationsRead(): Response<SuccessResponse>
+
+    @GET("notifications/unread-count")
+    suspend fun getUnreadNotificationCount(): Response<UnreadCountResponse>
+
+    // ── Announcements ──
+
+    @GET("announcements")
+    suspend fun listAnnouncements(): Response<AnnouncementListResponse>
 }

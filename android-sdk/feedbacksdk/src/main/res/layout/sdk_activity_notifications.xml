@@ -19,20 +19,34 @@
             android:layout_height="?attr/actionBarSize"
             app:navigationIcon="@drawable/sdk_ic_back"
             app:navigationContentDescription="@string/sdk_back"
-            app:title="@string/sdk_my_tickets" />
+            app:title="@string/sdk_notifications" />
     </com.google.android.material.appbar.AppBarLayout>
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerView"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:clipToPadding="false"
-        android:paddingHorizontal="16dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="96dp"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior"
-        tools:itemCount="3"
-        tools:listitem="@layout/sdk_item_ticket" />
+        android:orientation="vertical"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <com.google.android.material.tabs.TabLayout
+            android:id="@+id/tabs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:tabMode="fixed"
+            app:tabGravity="fill"
+            app:tabIndicatorFullWidth="false" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:paddingTop="4dp"
+            android:paddingBottom="16dp"
+            tools:itemCount="4"
+            tools:listitem="@layout/sdk_item_notification" />
+    </LinearLayout>
 
     <LinearLayout
         android:id="@+id/statusBanner"
@@ -47,7 +61,6 @@
         android:visibility="gone"
         app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
-    <!-- Empty state -->
     <LinearLayout
         android:id="@+id/emptyState"
         android:layout_width="match_parent"
@@ -62,23 +75,25 @@
             android:layout_width="96dp"
             android:layout_height="96dp"
             android:src="@drawable/sdk_ic_inbox"
-            android:contentDescription="@string/sdk_no_tickets" />
+            android:contentDescription="@string/sdk_no_notifications"
+            app:tint="?attr/colorOnSurfaceVariant" />
 
         <TextView
+            android:id="@+id/tvEmptyTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/sdk_no_tickets"
+            android:text="@string/sdk_no_notifications"
             android:textAppearance="?attr/textAppearanceTitleMedium"
             android:textColor="?attr/colorOnSurface"
             android:layout_marginTop="16dp" />
 
         <TextView
+            android:id="@+id/tvEmptySubtitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/sdk_no_tickets_subtitle"
+            android:text="@string/sdk_no_notifications_subtitle"
             android:textAppearance="?attr/textAppearanceBodyMedium"
             android:textColor="?attr/colorOnSurfaceVariant"
-            android:gravity="center"
             android:layout_marginTop="4dp" />
     </LinearLayout>
 
@@ -89,25 +104,5 @@
         android:layout_gravity="center"
         android:indeterminate="true"
         android:visibility="gone" />
-
-    <LinearLayout
-        android:id="@+id/bottomBar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        android:orientation="vertical"
-        android:background="?attr/colorSurface"
-        android:paddingHorizontal="20dp"
-        android:paddingVertical="12dp">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnCreate"
-            style="@style/Widget.FeedbackSDK.Button"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/sdk_create_ticket"
-            app:icon="@drawable/sdk_ic_add"
-            app:iconGravity="textStart" />
-    </LinearLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -27,6 +27,11 @@ open class FeedbackFirebaseService : com.google.firebase.messaging.FirebaseMessa
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
+        // Re-subscribe the announcements topic every time the device token
+        // rolls — topic subscriptions live on the device but a token swap
+        // usually means Firebase cleared them.
+        FeedbackSDK.maybeSubscribeAnnouncementTopic()
+
         if (TokenStore.isLoggedIn) {
             CoroutineScope(Dispatchers.IO).launch {
                 try {

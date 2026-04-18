@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="?android:attr/colorBackground">
@@ -26,6 +27,19 @@
         android:layout_height="match_parent"
         android:orientation="vertical"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <LinearLayout
+            android:id="@+id/statusBanner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginHorizontal="12dp"
+            android:layout_marginTop="8dp"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="10dp"
+            android:background="@drawable/sdk_bg_banner"
+            android:visibility="gone" />
 
         <androidx.core.widget.NestedScrollView
             android:layout_width="match_parent"
@@ -145,7 +159,10 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="16dp"
-                    android:visibility="gone" />
+                    android:visibility="gone"
+                    tools:itemCount="2"
+                    tools:listitem="@layout/sdk_item_attachment"
+                    tools:visibility="visible" />
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -188,17 +205,47 @@
             </LinearLayout>
         </androidx.core.widget.NestedScrollView>
 
+        <!-- Typing indicator — visible when someone else is composing a reply. -->
+        <TextView
+            android:id="@+id/tvTyping"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="4dp"
+            android:textAppearance="?attr/textAppearanceLabelSmall"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textStyle="italic"
+            android:background="?attr/colorSurface"
+            android:visibility="gone" />
+
         <!-- Comment composer -->
         <LinearLayout
             android:id="@+id/bottomBar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
+            android:orientation="vertical"
             android:background="?attr/colorSurface"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="10dp"
-            android:gravity="center_vertical"
             android:elevation="6dp">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvPendingAttachments"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clipToPadding="false"
+                android:paddingHorizontal="12dp"
+                android:paddingTop="10dp"
+                android:visibility="gone"
+                tools:itemCount="2"
+                tools:listitem="@layout/sdk_item_pending_attachment"
+                tools:visibility="visible" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="10dp"
+                android:gravity="center_vertical">
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -224,11 +271,25 @@
             </LinearLayout>
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAttach"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="4dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:contentDescription="@string/sdk_add_attachment"
+                app:icon="@drawable/sdk_ic_attach"
+                app:iconPadding="0dp"
+                app:iconGravity="textStart"
+                app:iconTint="?attr/colorOnSurfaceVariant" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSend"
                 style="@style/Widget.Material3.Button.IconButton.Filled"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="4dp"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
                 android:contentDescription="@string/sdk_send_comment"
@@ -236,6 +297,7 @@
                 app:iconPadding="0dp"
                 app:iconGravity="textStart"
                 app:iconTint="?attr/colorOnPrimary" />
+            </LinearLayout>
         </LinearLayout>
     </LinearLayout>
 

@@ -16,7 +16,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.feedbacksdk.FeedbackSDK
 import com.feedbacksdk.R
+import com.feedbacksdk.internal.ConnectivityMonitor
 import com.feedbacksdk.internal.SdkResult
+import com.feedbacksdk.internal.StatusBanner
 import com.feedbacksdk.internal.applySystemBarInsets
 import com.feedbacksdk.internal.resolveThemeColor
 import com.feedbacksdk.internal.statusColor
@@ -33,6 +35,11 @@ class FeedbackListActivity : AppCompatActivity() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var progressBar: ProgressBar
     private lateinit var emptyState: View
+    private lateinit var statusBanner: android.widget.LinearLayout
+    private var lastLoadFailed = false
+    private val connectivityListener = ConnectivityMonitor.Listener { online ->
+        runOnUiThread { refreshBanner(online) }
+    }
     private val feedbacks = mutableListOf<Feedback>()
     private lateinit var adapter: FeedbackAdapter
 
@@ -42,7 +49,15 @@ class FeedbackListActivity : AppCompatActivity() {
         setTheme(R.style.FeedbackSDK_Theme)
         setContentView(R.layout.sdk_activity_feedback_list)
 
-        findViewById<MaterialToolbar>(R.id.toolbar).setNavigationOnClickListener { finish() }
+        val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
+        toolbar.setNavigationOnClickListener { finish() }
+        toolbar.inflateMenu(R.menu.sdk_list_menu)
+        toolbar.setOnMenuItemClickListener { item ->
+            if (item.itemId == R.id.action_notifications) {
+                FeedbackSDK.openNotifications(this)
+                true
+            } else false
+        }
         applySystemBarInsets(
             topView = findViewById<AppBarLayout>(R.id.appBar),
             bottomView = findViewById(R.id.bottomBar),
@@ -51,6 +66,8 @@ class FeedbackListActivity : AppCompatActivity() {
         recyclerView = findViewById(R.id.recyclerView)
         progressBar = findViewById(R.id.progressBar)
         emptyState = findViewById(R.id.emptyState)
+        statusBanner = findViewById(R.id.statusBanner)
+        ConnectivityMonitor.addListener(connectivityListener)
 
         adapter = FeedbackAdapter(feedbacks) { feedback ->
             FeedbackSDK.openFeedbackDetail(this, feedback.id)
@@ -79,13 +96,32 @@ class FeedbackListActivity : AppCompatActivity() {
                     adapter.notifyDataSetChanged()
                     progressBar.visibility = View.GONE
                     emptyState.visibility = if (feedbacks.isEmpty()) View.VISIBLE else View.GONE
+                    lastLoadFailed = false
+                    refreshBanner(ConnectivityMonitor.isOnline)
                 }
                 is SdkResult.Error -> {
                     progressBar.visibility = View.GONE
-                    Toast.makeText(this@FeedbackListActivity, result.message, Toast.LENGTH_LONG).show()
+                    lastLoadFailed = true
+                    refreshBanner(ConnectivityMonitor.isOnline)
+                    if (feedbacks.isEmpty()) {
+                        Toast.makeText(this@FeedbackListActivity, result.message, Toast.LENGTH_LONG).show()
+                    }
                 }
             }
         }
+    }
+
+    private fun refreshBanner(online: Boolean) {
+        when {
+            !online -> StatusBanner.showOffline(statusBanner)
+            lastLoadFailed -> StatusBanner.showError(statusBanner) { loadFeedbacks() }
+            else -> StatusBanner.hide(statusBanner)
+        }
+    }
+
+    override fun onDestroy() {
+        ConnectivityMonitor.removeListener(connectivityListener)
+        super.onDestroy()
     }
 
     private class FeedbackAdapter(
@@ -105,6 +141,7 @@ class FeedbackListActivity : AppCompatActivity() {
             val tvComment: TextView = view.findViewById(R.id.tvComment)
             val tvCategory: TextView = view.findViewById(R.id.tvCategory)
             val tvDate: TextView = view.findViewById(R.id.tvDate)
+            val unreadDot: View = view.findViewById(R.id.unreadDot)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -141,6 +178,12 @@ class FeedbackListActivity : AppCompatActivity() {
                 .replaceFirstChar { it.uppercase() }
 
             holder.tvDate.text = formatDate(feedback.createdAt)
+            holder.unreadDot.visibility =
+                if (com.feedbacksdk.internal.UnreadStore.isFeedbackUnread(
+                        feedback.id,
+                        feedback.count?.replies ?: 0,
+                    )
+                ) View.VISIBLE else View.GONE
             holder.itemView.setOnClickListener { onClick(feedback) }
         }
 

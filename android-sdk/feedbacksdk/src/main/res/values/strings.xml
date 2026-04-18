@@ -55,6 +55,44 @@
     <string name="sdk_remove_attachment">Remove attachment</string>
     <string name="sdk_open_external">Open with…</string>
     <string name="sdk_attachment_load_failed">Could not load attachment</string>
+    <string name="sdk_attachment_upload_failed">Could not upload attachment</string>
+    <string name="sdk_sending">Sending…</string>
+    <string name="sdk_send_failed_tap_to_retry">Failed · tap to retry</string>
+
+    <!-- Edit / delete own content -->
+    <string name="sdk_more_actions">More actions</string>
+    <string name="sdk_edit">Edit</string>
+    <string name="sdk_delete">Delete</string>
+    <string name="sdk_save">Save</string>
+    <string name="sdk_cancel_edit">Cancel</string>
+    <string name="sdk_delete_feedback_confirm">Delete this feedback? This cannot be undone.</string>
+    <string name="sdk_delete_comment_confirm">Delete this comment?</string>
+    <string name="sdk_edit_window_expired">The 24-hour edit window has passed.</string>
+    <string name="sdk_feedback_updated">Feedback updated</string>
+    <string name="sdk_feedback_deleted">Feedback deleted</string>
+    <string name="sdk_comment_updated">Comment updated</string>
+    <string name="sdk_comment_deleted">Comment deleted</string>
+
+    <!-- Live -->
+    <string name="sdk_typing">Support is typing…</string>
+
+    <!-- Offline / errors -->
+    <string name="sdk_offline_banner">You\'re offline · showing cached data</string>
+    <string name="sdk_server_unreachable">Couldn\'t reach server</string>
+    <string name="sdk_retry">Retry</string>
+    <string name="sdk_couldnt_load">Couldn\'t load this</string>
+    <string name="sdk_offline">Offline</string>
+    <string name="sdk_draft_saved">Draft saved</string>
+
+    <!-- Notifications -->
+    <string name="sdk_notifications">Notifications</string>
+    <string name="sdk_mark_all_read">Mark all as read</string>
+    <string name="sdk_no_notifications">No notifications</string>
+    <string name="sdk_no_notifications_subtitle">You\'re all caught up.</string>
+    <string name="sdk_tab_activity">Activity</string>
+    <string name="sdk_tab_announcements">Announcements</string>
+    <string name="sdk_no_announcements">No announcements</string>
+    <string name="sdk_no_announcements_subtitle">Updates from the team will appear here.</string>
     <string name="sdk_no_app_to_open">No app available to open this file</string>
     <string name="sdk_ticket_created_attach_failed">Ticket created, but one or more attachments failed to upload.</string>
     <string name="sdk_feedback_submitted_attach_failed">Feedback submitted, but one or more attachments failed to upload.</string>

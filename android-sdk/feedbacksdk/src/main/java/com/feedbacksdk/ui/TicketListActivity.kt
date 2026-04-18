@@ -15,7 +15,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.feedbacksdk.FeedbackSDK
 import com.feedbacksdk.R
+import com.feedbacksdk.internal.ConnectivityMonitor
 import com.feedbacksdk.internal.SdkResult
+import com.feedbacksdk.internal.StatusBanner
 import com.feedbacksdk.internal.applySystemBarInsets
 import com.feedbacksdk.internal.priorityColor
 import com.feedbacksdk.internal.resolveThemeColor
@@ -33,6 +35,11 @@ class TicketListActivity : AppCompatActivity() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var progressBar: ProgressBar
     private lateinit var emptyState: View
+    private lateinit var statusBanner: android.widget.LinearLayout
+    private var lastLoadFailed = false
+    private val connectivityListener = ConnectivityMonitor.Listener { online ->
+        runOnUiThread { refreshBanner(online) }
+    }
     private val tickets = mutableListOf<Ticket>()
     private lateinit var adapter: TicketAdapter
 
@@ -42,7 +49,15 @@ class TicketListActivity : AppCompatActivity() {
         setTheme(R.style.FeedbackSDK_Theme)
         setContentView(R.layout.sdk_activity_ticket_list)
 
-        findViewById<MaterialToolbar>(R.id.toolbar).setNavigationOnClickListener { finish() }
+        val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
+        toolbar.setNavigationOnClickListener { finish() }
+        toolbar.inflateMenu(R.menu.sdk_list_menu)
+        toolbar.setOnMenuItemClickListener { item ->
+            if (item.itemId == R.id.action_notifications) {
+                FeedbackSDK.openNotifications(this)
+                true
+            } else false
+        }
         applySystemBarInsets(
             topView = findViewById<AppBarLayout>(R.id.appBar),
             bottomView = findViewById(R.id.bottomBar),
@@ -51,6 +66,8 @@ class TicketListActivity : AppCompatActivity() {
         recyclerView = findViewById(R.id.recyclerView)
         progressBar = findViewById(R.id.progressBar)
         emptyState = findViewById(R.id.emptyState)
+        statusBanner = findViewById(R.id.statusBanner)
+        ConnectivityMonitor.addListener(connectivityListener)
 
         adapter = TicketAdapter(tickets) { ticket ->
             FeedbackSDK.openTicketDetail(this, ticket.id)
@@ -79,13 +96,39 @@ class TicketListActivity : AppCompatActivity() {
                     adapter.notifyDataSetChanged()
                     progressBar.visibility = View.GONE
                     emptyState.visibility = if (tickets.isEmpty()) View.VISIBLE else View.GONE
+                    lastLoadFailed = false
+                    refreshBanner(ConnectivityMonitor.isOnline)
                 }
                 is SdkResult.Error -> {
                     progressBar.visibility = View.GONE
-                    Toast.makeText(this@TicketListActivity, result.message, Toast.LENGTH_LONG).show()
+                    lastLoadFailed = true
+                    refreshBanner(ConnectivityMonitor.isOnline)
+                    // Only surface the toast if we had nothing to show — otherwise
+                    // the banner is enough feedback and the stale list is useful.
+                    if (tickets.isEmpty()) {
+                        Toast.makeText(this@TicketListActivity, result.message, Toast.LENGTH_LONG).show()
+                    }
                 }
             }
         }
+    }
+
+    /**
+     * Resolve banner state: offline wins; otherwise show a retry banner if
+     * the last fetch failed; otherwise hide. Exposed for the connectivity
+     * listener and the load callbacks.
+     */
+    private fun refreshBanner(online: Boolean) {
+        when {
+            !online -> StatusBanner.showOffline(statusBanner)
+            lastLoadFailed -> StatusBanner.showError(statusBanner) { loadTickets() }
+            else -> StatusBanner.hide(statusBanner)
+        }
+    }
+
+    override fun onDestroy() {
+        ConnectivityMonitor.removeListener(connectivityListener)
+        super.onDestroy()
     }
 
     private class TicketAdapter(
@@ -99,6 +142,7 @@ class TicketListActivity : AppCompatActivity() {
             val tvPriority: TextView = view.findViewById(R.id.tvPriority)
             val tvDate: TextView = view.findViewById(R.id.tvDate)
             val priorityDot: View = view.findViewById(R.id.priorityDot)
+            val unreadDot: View = view.findViewById(R.id.unreadDot)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -121,6 +165,9 @@ class TicketListActivity : AppCompatActivity() {
             holder.tvPriority.text = ticket.priority.replaceFirstChar { it.uppercase() }
 
             holder.tvDate.text = formatDate(ticket.createdAt)
+            holder.unreadDot.visibility =
+                if (com.feedbacksdk.internal.UnreadStore.isTicketUnread(ticket.id, ticket.updatedAt))
+                    View.VISIBLE else View.GONE
             holder.itemView.setOnClickListener { onClick(ticket) }
         }
 

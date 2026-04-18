@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- Allow ACTION_VIEW intent resolution (Android 11+ package visibility). -->
     <queries>
@@ -48,6 +49,11 @@
 
         <activity
             android:name=".ui.AttachmentViewerActivity"
+            android:theme="@style/FeedbackSDK.Theme"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.NotificationsActivity"
             android:theme="@style/FeedbackSDK.Theme"
             android:exported="false" />
     </application>

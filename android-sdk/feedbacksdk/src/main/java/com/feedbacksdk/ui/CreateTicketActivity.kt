@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.feedbacksdk.FeedbackSDK
 import com.feedbacksdk.R
+import com.feedbacksdk.internal.DraftStore
 import com.feedbacksdk.internal.SdkResult
 import com.feedbacksdk.internal.applySystemBarInsets
 import com.feedbacksdk.internal.uriToCacheFile
@@ -24,6 +25,11 @@ import kotlinx.coroutines.launch
 import java.io.File
 
 class CreateTicketActivity : AppCompatActivity() {
+
+    private companion object {
+        const val DRAFT_TITLE = "create_ticket.title"
+        const val DRAFT_DESCRIPTION = "create_ticket.description"
+    }
 
     private lateinit var editTitle: TextInputEditText
     private lateinit var editDescription: TextInputEditText
@@ -76,6 +82,24 @@ class CreateTicketActivity : AppCompatActivity() {
 
         btnAttach.setOnClickListener { pickAttachments.launch("*/*") }
         btnSubmit.setOnClickListener { submitTicket() }
+
+        // Restore any draft from a previous session. Attachments aren't
+        // persisted — they live in cache files and re-hydrating them would be
+        // brittle (cache can be evicted any time).
+        editTitle.setText(DraftStore.getString(DRAFT_TITLE))
+        editDescription.setText(DraftStore.getString(DRAFT_DESCRIPTION))
+    }
+
+    override fun onPause() {
+        super.onPause()
+        val title = editTitle.text?.toString()?.trim().orEmpty()
+        val description = editDescription.text?.toString()?.trim().orEmpty()
+        if (title.isEmpty() && description.isEmpty()) {
+            DraftStore.remove(DRAFT_TITLE, DRAFT_DESCRIPTION)
+        } else {
+            DraftStore.putString(DRAFT_TITLE, title)
+            DraftStore.putString(DRAFT_DESCRIPTION, description)
+        }
     }
 
     private fun refreshAttachments() {
@@ -117,6 +141,8 @@ class CreateTicketActivity : AppCompatActivity() {
                     val msg = if (uploadFailed) R.string.sdk_ticket_created_attach_failed
                               else R.string.sdk_ticket_created
                     Toast.makeText(this@CreateTicketActivity, msg, Toast.LENGTH_SHORT).show()
+                    // Submitted → drop the draft so the next open starts clean.
+                    DraftStore.remove(DRAFT_TITLE, DRAFT_DESCRIPTION)
                     setResult(RESULT_OK)
                     finish()
                 }

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="?android:attr/colorBackground">
@@ -29,6 +30,21 @@
         android:paddingHorizontal="16dp"
         android:paddingTop="8dp"
         android:paddingBottom="96dp"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        tools:itemCount="3"
+        tools:listitem="@layout/sdk_item_feedback" />
+
+    <LinearLayout
+        android:id="@+id/statusBanner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_margin="12dp"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="10dp"
+        android:background="@drawable/sdk_bg_banner"
+        android:visibility="gone"
         app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
     <LinearLayout

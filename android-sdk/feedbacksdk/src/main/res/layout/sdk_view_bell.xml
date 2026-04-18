@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <ImageView
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_gravity="center"
+        android:src="@drawable/sdk_ic_bell"
+        android:contentDescription="@string/sdk_notifications"
+        app:tint="?attr/colorOnSurface" />
+
+    <TextView
+        android:id="@+id/bellBadge"
+        android:layout_width="wrap_content"
+        android:layout_height="18dp"
+        android:layout_gravity="top|end"
+        android:minWidth="18dp"
+        android:paddingHorizontal="5dp"
+        android:gravity="center"
+        android:background="@drawable/sdk_bg_bell_badge"
+        android:textSize="10sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFF"
+        android:visibility="gone"
+        tools:text="3" />
+</merge>

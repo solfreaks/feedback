@@ -65,7 +65,18 @@ data class Feedback(
     val category: String,
     val status: String,
     val comment: String?,
-    val createdAt: String
+    val createdAt: String,
+    // Server currently does not emit this field for feedback; future-proofing
+    // in case it's added. Nullable so older server responses still parse.
+    val updatedAt: String? = null,
+    // Server includes Prisma's `_count: { replies }`; Gson maps by name so
+    // this has to stay `@SerializedName` to keep the underscore.
+    @com.google.gson.annotations.SerializedName("_count")
+    val count: FeedbackCount? = null,
+)
+
+data class FeedbackCount(
+    val replies: Int = 0,
 )
 
 data class FeedbackDetail(
@@ -76,7 +87,10 @@ data class FeedbackDetail(
     val comment: String?,
     val createdAt: String,
     val replies: List<FeedbackReply>,
-    val attachments: List<Attachment>
+    val attachments: List<Attachment>,
+    // Owner — used on the client to decide whether to show edit/delete
+    // affordances. Nullable so older server responses still parse.
+    val user: User? = null,
 )
 
 data class CreateFeedbackRequest(
@@ -144,3 +158,58 @@ data class SuccessResponse(
 data class ErrorResponse(
     val error: String
 )
+
+// ── Summary ──
+
+data class SummaryResponse(
+    val tickets: TicketsSummary,
+    val feedback: FeedbackSummaryBlock,
+)
+
+data class TicketsSummary(
+    val total: Int,
+    val byStatus: Map<String, Int>,
+)
+
+data class FeedbackSummaryBlock(
+    val total: Int,
+    val averageRating: Double,
+    val byStatus: Map<String, Int>,
+)
+
+// ── Notifications ──
+
+data class Notification(
+    val id: String,
+    val type: String,
+    val title: String,
+    val message: String,
+    val link: String?,
+    val isRead: Boolean,
+    val createdAt: String,
+)
+
+data class NotificationListResponse(
+    val notifications: List<Notification>,
+    val total: Int,
+    val unreadCount: Int,
+    val page: Int,
+    val totalPages: Int,
+)
+
+// ── Announcements ──
+
+data class Announcement(
+    val id: String,
+    val appId: String,
+    val title: String,
+    val body: String,
+    val link: String?,
+    val createdAt: String,
+)
+
+data class AnnouncementListResponse(
+    val announcements: List<Announcement>,
+)
+
+data class UnreadCountResponse(val count: Int)

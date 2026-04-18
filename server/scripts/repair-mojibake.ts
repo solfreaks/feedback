@@ -44,7 +44,11 @@ const CP1252_TO_BYTE: Record<number, number> = {
 
 function fixMojibake(s: string | null | undefined): string {
   if (!s) return s ?? "";
-  if (!/[\u00C0-\u00FF]{2,}/.test(s)) return s;
+  // Quick exit: no chars above 0x7F means ASCII — nothing to fix.
+  if (!/[^\x00-\x7F]/.test(s)) return s;
+
+  // Try to reverse the cp1252 round-trip. If any char is outside both latin1
+  // and the cp1252 0x80-0x9F range, the string isn't actually mojibake — bail.
   const bytes = Buffer.alloc(s.length * 2);
   let n = 0;
   for (const ch of s) {
@@ -54,11 +58,16 @@ function fixMojibake(s: string | null | undefined): string {
     } else if (CP1252_TO_BYTE[cp] !== undefined) {
       bytes[n++] = CP1252_TO_BYTE[cp];
     } else {
+      // e.g. already-correct Cyrillic/Arabic/CJK char — pass through.
       return s;
     }
   }
   const decoded = bytes.slice(0, n).toString("utf8");
-  if (decoded.length < 2 || /^\uFFFD+$/.test(decoded)) return s;
+  // A good decode should have fewer replacement chars than the input had
+  // "suspicious" chars (a bad decode replaces everything).
+  const replacementCount = (decoded.match(/\uFFFD/g) || []).length;
+  if (replacementCount > decoded.length / 4) return s;
+  if (decoded.length < 1) return s;
   return decoded;
 }
 

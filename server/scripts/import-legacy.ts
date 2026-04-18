@@ -179,9 +179,8 @@ const CP1252_TO_BYTE: Record<number, number> = {
  */
 function fixMojibake(s: string | null | undefined): string {
   if (!s) return s ?? "";
-  // Heuristic: if there's no pair of U+00C0-U+00FF chars (the classic
-  // Ã/Â/Ø/Ð prefixes), skip — the string is probably already correct.
-  if (!/[\u00C0-\u00FF]{2,}/.test(s)) return s;
+  // ASCII-only input has nothing to fix — common for English names / emails.
+  if (!/[^\x00-\x7F]/.test(s)) return s;
   const bytes = Buffer.alloc(s.length * 2);
   let n = 0;
   for (const ch of s) {
@@ -191,13 +190,15 @@ function fixMojibake(s: string | null | undefined): string {
     } else if (CP1252_TO_BYTE[cp] !== undefined) {
       bytes[n++] = CP1252_TO_BYTE[cp];
     } else {
-      // Out-of-range char — can't round-trip safely. Leave the string alone.
+      // Already-correct non-mojibake char (Cyrillic/Arabic/CJK) — bail.
       return s;
     }
   }
   const decoded = bytes.slice(0, n).toString("utf8");
-  // Sanity: all-replacement result means the assumption was wrong.
-  if (decoded.length < 2 || /^\uFFFD+$/.test(decoded)) return s;
+  // Guard: a good decode has few replacement chars. Bad decodes fill with ?.
+  const replacementCount = (decoded.match(/\uFFFD/g) || []).length;
+  if (replacementCount > decoded.length / 4) return s;
+  if (decoded.length < 1) return s;
   return decoded;
 }
 

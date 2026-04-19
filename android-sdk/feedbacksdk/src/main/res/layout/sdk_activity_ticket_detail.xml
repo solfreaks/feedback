@@ -264,6 +264,8 @@
                     android:hint="@string/sdk_write_comment"
                     android:inputType="textCapSentences|textMultiLine"
                     android:maxLines="4"
+                    android:scrollbars="vertical"
+                    android:scrollbarStyle="insideInset"
                     android:background="@android:color/transparent"
                     android:textColor="?attr/colorOnSurface"
                     android:textColorHint="?attr/colorOnSurfaceVariant"

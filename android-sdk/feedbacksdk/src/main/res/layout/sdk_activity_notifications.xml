@@ -68,33 +68,55 @@
         android:layout_gravity="center"
         android:orientation="vertical"
         android:gravity="center"
-        android:padding="32dp"
+        android:paddingHorizontal="40dp"
+        android:paddingVertical="32dp"
         android:visibility="gone">
 
-        <ImageView
-            android:layout_width="96dp"
-            android:layout_height="96dp"
-            android:src="@drawable/sdk_ic_inbox"
-            android:contentDescription="@string/sdk_no_notifications"
-            app:tint="?attr/colorOnSurfaceVariant" />
+        <FrameLayout
+            android:layout_width="128dp"
+            android:layout_height="128dp"
+            android:background="@drawable/sdk_bg_avatar">
+
+            <ImageView
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:layout_gravity="center"
+                android:src="@drawable/sdk_ic_inbox"
+                android:contentDescription="@string/sdk_no_notifications"
+                app:tint="?attr/colorOnPrimaryContainer" />
+        </FrameLayout>
 
         <TextView
             android:id="@+id/tvEmptyTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/sdk_no_notifications"
-            android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:textAppearance="?attr/textAppearanceTitleLarge"
             android:textColor="?attr/colorOnSurface"
-            android:layout_marginTop="16dp" />
+            android:textStyle="bold"
+            android:layout_marginTop="24dp"
+            android:gravity="center" />
 
         <TextView
             android:id="@+id/tvEmptySubtitle"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/sdk_no_notifications_subtitle"
             android:textAppearance="?attr/textAppearanceBodyMedium"
             android:textColor="?attr/colorOnSurfaceVariant"
-            android:layout_marginTop="4dp" />
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:lineSpacingMultiplier="1.3" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnEmptyRefresh"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/sdk_refresh"
+            app:icon="@drawable/sdk_ic_refresh"
+            app:iconGravity="textStart" />
     </LinearLayout>
 
     <com.google.android.material.progressindicator.CircularProgressIndicator

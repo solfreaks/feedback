@@ -20,6 +20,7 @@
         <activity
             android:name=".ui.CreateTicketActivity"
             android:theme="@style/FeedbackSDK.Theme"
+            android:windowSoftInputMode="adjustResize"
             android:exported="false" />
 
         <activity
@@ -30,11 +31,13 @@
         <activity
             android:name=".ui.TicketDetailActivity"
             android:theme="@style/FeedbackSDK.Theme"
+            android:windowSoftInputMode="adjustResize"
             android:exported="false" />
 
         <activity
             android:name=".ui.FeedbackActivity"
             android:theme="@style/FeedbackSDK.Theme"
+            android:windowSoftInputMode="adjustResize"
             android:exported="false" />
 
         <activity
@@ -45,6 +48,7 @@
         <activity
             android:name=".ui.FeedbackDetailActivity"
             android:theme="@style/FeedbackSDK.Theme"
+            android:windowSoftInputMode="adjustResize"
             android:exported="false" />
 
         <activity

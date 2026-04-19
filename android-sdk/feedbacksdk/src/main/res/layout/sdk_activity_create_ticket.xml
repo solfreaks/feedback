@@ -56,7 +56,9 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:inputType="textCapSentences"
-                    android:maxLines="2" />
+                    android:maxLines="2"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textColorHint="?attr/colorOnSurfaceVariant" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
@@ -72,7 +74,9 @@
                     android:layout_height="wrap_content"
                     android:inputType="textCapSentences|textMultiLine"
                     android:minLines="5"
-                    android:gravity="top|start" />
+                    android:gravity="top|start"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textColorHint="?attr/colorOnSurfaceVariant" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <TextView

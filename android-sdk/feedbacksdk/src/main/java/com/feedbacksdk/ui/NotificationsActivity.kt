@@ -81,6 +81,7 @@ class NotificationsActivity : AppCompatActivity() {
         recycler = findViewById(R.id.recyclerView)
         progress = findViewById(R.id.progressBar)
         emptyState = findViewById(R.id.emptyState)
+        emptyState.findViewById<View>(R.id.btnEmptyRefresh)?.setOnClickListener { load() }
         statusBanner = findViewById(R.id.statusBanner)
         tabs = findViewById(R.id.tabs)
         ConnectivityMonitor.addListener(connectivityListener)

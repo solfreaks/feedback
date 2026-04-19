@@ -23,6 +23,7 @@
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.core.widget.NestedScrollView
+        android:id="@+id/scrollView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"
@@ -187,7 +188,9 @@
                     android:layout_height="wrap_content"
                     android:inputType="textCapSentences|textMultiLine"
                     android:minLines="3"
-                    android:gravity="top|start" />
+                    android:gravity="top|start"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textColorHint="?attr/colorOnSurfaceVariant" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <TextView

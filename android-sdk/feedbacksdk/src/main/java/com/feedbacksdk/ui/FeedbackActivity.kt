@@ -70,6 +70,14 @@ class FeedbackActivity : AppCompatActivity() {
         findViewById<MaterialToolbar>(R.id.toolbar).setNavigationOnClickListener { finish() }
         applySystemBarInsets(topView = appBar, bottomView = findViewById(R.id.bottomBar))
 
+        val scrollView = findViewById<androidx.core.widget.NestedScrollView>(R.id.scrollView)
+        val basePadBottom = scrollView.paddingBottom
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(scrollView) { v, insets ->
+            val ime = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.ime()).bottom
+            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, basePadBottom + ime)
+            insets
+        }
+
         stars = listOf(
             findViewById(R.id.star1),
             findViewById(R.id.star2),

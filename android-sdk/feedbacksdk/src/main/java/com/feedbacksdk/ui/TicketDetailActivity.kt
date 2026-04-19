@@ -284,6 +284,7 @@ class TicketDetailActivity : AppCompatActivity() {
         view.findViewById<TextView>(R.id.tvAuthor).text = comment.user?.name ?: "User"
         view.findViewById<TextView>(R.id.tvBody).text = comment.body
         view.findViewById<TextView>(R.id.tvTime).text = formatDate(comment.createdAt)
+        com.feedbacksdk.internal.AvatarBinder.bind(view, comment.user)
 
         // Only the author can edit/delete, and only within the 10-min window.
         // Server enforces both; this just suppresses the affordance when it
@@ -438,6 +439,7 @@ class TicketDetailActivity : AppCompatActivity() {
             FeedbackSDK.currentUser?.name ?: getString(R.string.sdk_sending)
         view.findViewById<TextView>(R.id.tvBody).text = body
         view.findViewById<TextView>(R.id.tvTime).text = getString(R.string.sdk_sending)
+        com.feedbacksdk.internal.AvatarBinder.bind(view, FeedbackSDK.currentUser)
         view.alpha = 0.55f
         commentsContainer.addView(view)
         return view
@@ -454,6 +456,7 @@ class TicketDetailActivity : AppCompatActivity() {
         view.findViewById<TextView>(R.id.tvAuthor).text = comment.user?.name ?: "User"
         view.findViewById<TextView>(R.id.tvBody).text = comment.body
         view.findViewById<TextView>(R.id.tvTime).text = formatDate(comment.createdAt)
+        com.feedbacksdk.internal.AvatarBinder.bind(view, comment.user)
         commentsContainer.addView(view, index)
     }
 

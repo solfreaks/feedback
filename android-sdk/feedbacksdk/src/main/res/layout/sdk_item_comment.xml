@@ -11,10 +11,19 @@
         android:background="@drawable/sdk_bg_avatar">
 
         <ImageView
+            android:id="@+id/ivAvatarPlaceholder"
             android:layout_width="22dp"
             android:layout_height="22dp"
             android:layout_gravity="center"
             android:src="@drawable/sdk_ic_circle_user"
+            android:contentDescription="@null" />
+
+        <ImageView
+            android:id="@+id/ivAvatar"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:visibility="gone"
             android:contentDescription="@null" />
     </FrameLayout>
 

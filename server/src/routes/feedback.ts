@@ -122,6 +122,39 @@ router.delete("/:id", async (req: Request, res: Response) => {
   }
 });
 
+// Mobile users adding a reply on their own feedback. Legacy PHP proxy relies
+// on this — old installs POSTed to /api/feedback/:id/replies with optional
+// multipart attachments under the `attachments` field. We accept both JSON
+// (body only) and multipart (body + up to 10 files) so the proxy can stream
+// files through without pre-uploading them.
+router.post("/:id/replies", upload.array("attachments", 10), async (req: Request, res: Response) => {
+  try {
+    const { body, message } = req.body as { body?: string; message?: string };
+    const text = (body ?? message ?? "").toString().trim();
+    if (!text) return res.status(400).json({ error: "body is required" });
+    const existing = await feedbackService.getFeedbackDetail(req.params.id);
+    if (!existing) return res.status(404).json({ error: "Feedback not found" });
+    if (existing.userId !== req.user!.id) {
+      return res.status(403).json({ error: "You can only reply on your own feedback" });
+    }
+    const files = (req.files as Express.Multer.File[] | undefined) || [];
+    const reply = await feedbackService.addReply({
+      feedbackId: req.params.id,
+      userId: req.user!.id,
+      body: text,
+      attachments: files.map((f) => ({
+        fileUrl: `/uploads/${f.filename}`,
+        fileName: f.originalname,
+        fileSize: f.size,
+      })),
+    });
+    return res.status(201).json(reply);
+  } catch (err) {
+    console.error("Add feedback reply error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Upload attachment to feedback
 router.post("/:id/attachments", upload.single("file"), async (req: Request, res: Response) => {
   try {

@@ -27,6 +27,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 
 object FeedbackSDK {
@@ -322,6 +323,30 @@ object FeedbackSDK {
             ApiClient.getApi().uploadFeedbackAttachment(feedbackId, part).toResult()
         } catch (e: Exception) {
             SdkResult.Error(e.message ?: "Failed to upload attachment")
+        }
+    }
+
+    /**
+     * User reply on their own feedback, optionally with attachments. Replies
+     * thread under the feedback detail and notify the assigned admin. Files
+     * are streamed via multipart in the same request — no separate upload
+     * step — which matches what the legacy PHP proxy expects.
+     */
+    suspend fun sendFeedbackReply(
+        feedbackId: String,
+        body: String,
+        attachments: List<File> = emptyList(),
+    ): SdkResult<FeedbackReply> {
+        checkInit()
+        return try {
+            val bodyPart = body.toRequestBody("text/plain".toMediaTypeOrNull())
+            val fileParts = attachments.map { file ->
+                val rb = file.asRequestBody("application/octet-stream".toMediaTypeOrNull())
+                MultipartBody.Part.createFormData("attachments", file.name, rb)
+            }.ifEmpty { null }
+            ApiClient.getApi().addFeedbackReply(feedbackId, bodyPart, fileParts).toResult()
+        } catch (e: Exception) {
+            SdkResult.Error(e.message ?: "Failed to send reply")
         }
     }
 

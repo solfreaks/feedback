@@ -214,26 +214,33 @@ model Feedback {
 }
 
 model FeedbackAttachment {
-  id         String   @id @default(uuid())
-  feedbackId String   @map("feedback_id")
-  fileUrl    String   @map("file_url")
-  fileName   String   @map("file_name")
-  fileSize   Int      @map("file_size")
-  createdAt  DateTime @default(now()) @map("created_at")
-  feedback   Feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  id              String         @id @default(uuid())
+  feedbackId      String         @map("feedback_id")
+  // Nullable: an attachment can belong directly to the feedback (no reply)
+  // OR be attached to a specific reply thread entry. Both rows still point
+  // at the parent feedbackId so a single query surfaces every file.
+  feedbackReplyId String?        @map("feedback_reply_id")
+  fileUrl         String         @map("file_url")
+  fileName        String         @map("file_name")
+  fileSize        Int            @map("file_size")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  feedback        Feedback       @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  feedbackReply   FeedbackReply? @relation(fields: [feedbackReplyId], references: [id], onDelete: Cascade)
 
   @@index([feedbackId])
+  @@index([feedbackReplyId])
   @@map("feedback_attachments")
 }
 
 model FeedbackReply {
-  id         String   @id @default(uuid())
-  feedbackId String   @map("feedback_id")
-  userId     String   @map("user_id")
-  body       String   @db.Text
-  createdAt  DateTime @default(now()) @map("created_at")
-  feedback   Feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String               @id @default(uuid())
+  feedbackId  String               @map("feedback_id")
+  userId      String               @map("user_id")
+  body        String               @db.Text
+  createdAt   DateTime             @default(now()) @map("created_at")
+  feedback    Feedback             @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attachments FeedbackAttachment[]
 
   @@index([feedbackId])
   @@map("feedback_replies")

@@ -110,7 +110,10 @@ data class FeedbackReply(
     val id: String,
     val body: String,
     val createdAt: String,
-    val user: User?
+    val user: User?,
+    // Populated when the server includes them (reply-level attachments).
+    // Nullable + defaulted so older server responses still deserialize.
+    val attachments: List<Attachment>? = null,
 )
 
 // ── Comment ──

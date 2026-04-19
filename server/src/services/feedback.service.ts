@@ -139,10 +139,39 @@ export async function deleteFeedback(feedbackId: string) {
   return prisma.feedback.delete({ where: { id: feedbackId } });
 }
 
-export async function addReply(data: { feedbackId: string; userId: string; body: string }) {
+export async function addReply(data: {
+  feedbackId: string;
+  userId: string;
+  body: string;
+  // Files are saved to disk upstream; caller passes metadata only. Kept
+  // optional so existing admin-path callers (which don't attach files) stay
+  // unchanged.
+  attachments?: Array<{ fileUrl: string; fileName: string; fileSize: number }>;
+}) {
   const reply = await prisma.feedbackReply.create({
-    data,
-    include: { user: { select: { id: true, name: true, avatarUrl: true } } },
+    data: {
+      feedbackId: data.feedbackId,
+      userId: data.userId,
+      body: data.body,
+      // Nested create: each attachment row gets feedbackId + feedbackReplyId
+      // wired up in one transaction so partial writes aren't possible.
+      ...(data.attachments && data.attachments.length > 0
+        ? {
+            attachments: {
+              create: data.attachments.map((a) => ({
+                feedbackId: data.feedbackId,
+                fileUrl: a.fileUrl,
+                fileName: a.fileName,
+                fileSize: a.fileSize,
+              })),
+            },
+          }
+        : {}),
+    },
+    include: {
+      user: { select: { id: true, name: true, avatarUrl: true } },
+      attachments: true,
+    },
   });
 
   // Bump the parent feedback's updatedAt so clients can detect "new reply since

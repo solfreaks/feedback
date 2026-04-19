@@ -12,6 +12,10 @@
     <string name="sdk_submit">Submit</string>
     <string name="sdk_send">Send</string>
     <string name="sdk_cancel">Cancel</string>
+    <string name="sdk_reply_hint">Write a reply…</string>
+    <string name="sdk_attach_file">Attach file</string>
+    <string name="sdk_reply_sent">Reply sent</string>
+    <string name="sdk_reply_empty">Write something first</string>
     <string name="sdk_loading">Loading…</string>
     <string name="sdk_no_tickets">No tickets yet</string>
     <string name="sdk_no_comments">No comments yet</string>
@@ -80,6 +84,7 @@
     <string name="sdk_offline_banner">You\'re offline · showing cached data</string>
     <string name="sdk_server_unreachable">Couldn\'t reach server</string>
     <string name="sdk_retry">Retry</string>
+    <string name="sdk_refresh">Refresh</string>
     <string name="sdk_couldnt_load">Couldn\'t load this</string>
     <string name="sdk_offline">Offline</string>
     <string name="sdk_draft_saved">Draft saved</string>

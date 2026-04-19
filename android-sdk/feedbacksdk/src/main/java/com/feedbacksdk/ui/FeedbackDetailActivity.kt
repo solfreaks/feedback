@@ -3,7 +3,11 @@ package com.feedbacksdk.ui
 import android.app.AlertDialog
 import android.content.Intent
 import android.content.res.ColorStateList
+import android.net.Uri
 import android.os.Bundle
+import android.provider.OpenableColumns
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -12,6 +16,7 @@ import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -48,6 +53,26 @@ class FeedbackDetailActivity : AppCompatActivity() {
     private lateinit var repliesContainer: LinearLayout
     private lateinit var emptyReplies: View
     private lateinit var progressBar: View
+
+    // Reply composer — only shown for the feedback owner.
+    private lateinit var replyComposer: LinearLayout
+    private lateinit var editReply: TextInputEditText
+    private lateinit var btnAttach: ImageView
+    private lateinit var btnSendReply: ImageView
+    private lateinit var attachChipRow: LinearLayout
+    // File URIs selected by the user; resolved to real Files at send time so
+    // we don't hold the content-resolver cursor open across the async call.
+    private val pendingAttachments = mutableListOf<Uri>()
+    private var sendingReply = false
+
+    private val pickAttachment = registerForActivityResult(
+        ActivityResultContracts.GetMultipleContents()
+    ) { uris ->
+        if (uris.isNotEmpty()) {
+            pendingAttachments.addAll(uris)
+            renderAttachChips()
+        }
+    }
 
     private var feedbackId: String = ""
     private var currentFeedback: FeedbackDetail? = null
@@ -97,6 +122,22 @@ class FeedbackDetailActivity : AppCompatActivity() {
         ConnectivityMonitor.addListener(connectivityListener)
 
         rvAttachments.layoutManager = LinearLayoutManager(this, RecyclerView.HORIZONTAL, false)
+
+        replyComposer = findViewById(R.id.replyComposer)
+        editReply = findViewById(R.id.editReply)
+        btnAttach = findViewById(R.id.btnAttach)
+        btnSendReply = findViewById(R.id.btnSendReply)
+        attachChipRow = findViewById(R.id.attachChipRow)
+
+        editReply.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                refreshSendButton()
+            }
+        })
+        btnAttach.setOnClickListener { pickAttachment.launch("*/*") }
+        btnSendReply.setOnClickListener { sendReply() }
 
         loadFeedback()
     }
@@ -269,6 +310,14 @@ class FeedbackDetailActivity : AppCompatActivity() {
                         emptyReplies.visibility = View.GONE
                         feedback.replies.forEach { addReplyView(it) }
                     }
+                    // Show the reply composer for the feedback owner only —
+                    // other users (including admins viewing their own copy)
+                    // don't need it on this screen.
+                    val me = FeedbackSDK.currentUser
+                    replyComposer.visibility =
+                        if (me != null && feedback.user?.id == me.id) View.VISIBLE
+                        else View.GONE
+
                     lastLoadFailed = false
                     refreshBanner(ConnectivityMonitor.isOnline)
                 }
@@ -320,7 +369,89 @@ class FeedbackDetailActivity : AppCompatActivity() {
         view.findViewById<TextView>(R.id.tvAuthor).text = reply.user?.name ?: "Support"
         view.findViewById<TextView>(R.id.tvBody).text = reply.body
         view.findViewById<TextView>(R.id.tvTime).text = formatDate(reply.createdAt)
+        com.feedbacksdk.internal.AvatarBinder.bind(view, reply.user)
         repliesContainer.addView(view)
+    }
+
+    private fun refreshSendButton() {
+        val enabled = !sendingReply && !editReply.text.isNullOrBlank()
+        btnSendReply.isEnabled = enabled
+        btnSendReply.alpha = if (enabled) 1f else 0.5f
+    }
+
+    private fun renderAttachChips() {
+        attachChipRow.removeAllViews()
+        attachChipRow.visibility = if (pendingAttachments.isEmpty()) View.GONE else View.VISIBLE
+        pendingAttachments.forEachIndexed { idx, uri ->
+            val chip = layoutInflater.inflate(R.layout.sdk_item_attach_chip, attachChipRow, false)
+            chip.findViewById<TextView>(R.id.tvChipName).text = displayName(uri)
+            chip.findViewById<ImageView>(R.id.btnChipRemove).setOnClickListener {
+                pendingAttachments.removeAt(idx)
+                renderAttachChips()
+            }
+            attachChipRow.addView(chip)
+        }
+    }
+
+    private fun displayName(uri: Uri): String {
+        // contentResolver.query + OpenableColumns gives the user-friendly
+        // filename for content:// URIs; fall back to the last path segment.
+        val cursor = contentResolver.query(uri, null, null, null, null)
+        cursor?.use {
+            val idx = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (idx >= 0 && it.moveToFirst()) return it.getString(idx) ?: uri.lastPathSegment.orEmpty()
+        }
+        return uri.lastPathSegment.orEmpty().ifEmpty { "file" }
+    }
+
+    private fun sendReply() {
+        val text = editReply.text?.toString()?.trim().orEmpty()
+        if (text.isEmpty()) {
+            Toast.makeText(this, R.string.sdk_reply_empty, Toast.LENGTH_SHORT).show()
+            return
+        }
+        sendingReply = true
+        refreshSendButton()
+        lifecycleScope.launch {
+            val tempFiles = pendingAttachments.mapNotNull { uri ->
+                runCatching { copyUriToCache(uri) }.getOrNull()
+            }
+            try {
+                when (val r = FeedbackSDK.sendFeedbackReply(feedbackId, text, tempFiles)) {
+                    is SdkResult.Success -> {
+                        Toast.makeText(this@FeedbackDetailActivity, R.string.sdk_reply_sent, Toast.LENGTH_SHORT).show()
+                        editReply.setText("")
+                        pendingAttachments.clear()
+                        renderAttachChips()
+                        loadFeedback()
+                    }
+                    is SdkResult.Error -> {
+                        Toast.makeText(this@FeedbackDetailActivity, r.message, Toast.LENGTH_LONG).show()
+                    }
+                }
+            } finally {
+                // Scratch files live in cache — delete them regardless of outcome.
+                tempFiles.forEach { runCatching { it.delete() } }
+                sendingReply = false
+                refreshSendButton()
+            }
+        }
+    }
+
+    /**
+     * Copy a content:// URI to a temp file in cacheDir so Retrofit can stream
+     * it as multipart. Returns the File or throws on I/O failure; caller
+     * handles the cleanup.
+     */
+    private fun copyUriToCache(uri: Uri): java.io.File {
+        val name = displayName(uri).take(100).ifEmpty { "upload" }
+        val outFile = java.io.File.createTempFile("fbreply_", "_$name", cacheDir)
+        contentResolver.openInputStream(uri).use { input ->
+            outFile.outputStream().use { out ->
+                input?.copyTo(out) ?: error("Cannot open $uri")
+            }
+        }
+        return outFile
     }
 
     private fun formatDate(dateStr: String): String = try {

@@ -86,6 +86,17 @@ internal interface FeedbackApi {
         @Part file: MultipartBody.Part
     ): Response<Attachment>
 
+    // Mobile user replying on their own feedback. Multipart so the same call
+    // can carry optional attachments — server accepts 0..10 files under
+    // `attachments`. Always multipart keeps the caller simple.
+    @Multipart
+    @POST("feedbacks/{id}/replies")
+    suspend fun addFeedbackReply(
+        @Path("id") feedbackId: String,
+        @Part("body") body: okhttp3.RequestBody,
+        @Part attachments: List<MultipartBody.Part>? = null,
+    ): Response<FeedbackReply>
+
     @PATCH("feedbacks/{id}")
     suspend fun editFeedback(
         @Path("id") feedbackId: String,

@@ -90,6 +90,27 @@ export async function getFeedbackDetail(feedbackId: string) {
   });
 }
 
+/**
+ * Accept either the UUID or the legacy int id. Purely a pass-through — the
+ * route uses this to transparently handle old mobile clients that still
+ * cache integer ids from the old PHP backend.
+ */
+export async function getFeedbackDetailByIdOrLegacy(idOrLegacy: string) {
+  const asInt = /^\d+$/.test(idOrLegacy) ? parseInt(idOrLegacy, 10) : null;
+  const where = asInt !== null ? { legacyId: asInt } : { id: idOrLegacy };
+  return prisma.feedback.findUnique({
+    where,
+    include: {
+      ...feedbackInclude,
+      replies: {
+        include: { user: { select: { id: true, name: true, avatarUrl: true } } },
+        orderBy: { createdAt: "asc" },
+      },
+      attachments: true,
+    },
+  });
+}
+
 export async function updateFeedbackStatus(feedbackId: string, status: FeedbackStatus) {
   return prisma.feedback.update({
     where: { id: feedbackId },

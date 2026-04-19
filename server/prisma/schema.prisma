@@ -198,6 +198,11 @@ model Feedback {
   category    FeedbackCategory     @default(general)
   status      FeedbackStatus       @default(new)
   comment     String?              @db.Text
+  // Legacy int PK from the old PHP DB. Populated by import + backfill so
+  // old mobile clients (which store int IDs locally) can round-trip their
+  // history against the new API via the write-proxy. Null for anything
+  // created post-migration.
+  legacyId    Int?                 @unique @map("legacy_id")
   createdAt   DateTime             @default(now()) @map("created_at")
   updatedAt   DateTime             @updatedAt @map("updated_at")
   adminLastViewedAt DateTime?      @map("admin_last_viewed_at")

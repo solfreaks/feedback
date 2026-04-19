@@ -55,10 +55,12 @@ router.get("/", async (req: Request, res: Response) => {
   }
 });
 
-// Get feedback detail
+// Get feedback detail. Accepts either a UUID or a legacy int ID — the old
+// PHP proxy passes whichever the mobile client has cached. Numeric ids are
+// resolved via the legacyId column populated by the import backfill.
 router.get("/:id", async (req: Request, res: Response) => {
   try {
-    const feedback = await feedbackService.getFeedbackDetail(req.params.id);
+    let feedback = await feedbackService.getFeedbackDetailByIdOrLegacy(req.params.id);
     if (!feedback) return res.status(404).json({ error: "Feedback not found" });
     return res.json(feedback);
   } catch (err) {

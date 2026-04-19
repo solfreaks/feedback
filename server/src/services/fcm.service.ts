@@ -76,6 +76,16 @@ export async function sendPushToUser(
   const firebaseApp = getFirebaseApp(appId, app.firebaseProjectId, app.firebaseClientEmail, app.firebasePrivateKey);
   const messaging = firebaseApp.messaging();
 
+  // Data-only payload. The SDK's FirebaseMessagingService builds the local
+  // notification and attaches a PendingIntent that deep-links based on
+  // `type` + id fields — this only works if FCM delivers to
+  // onMessageReceived, which it only does when the top-level `notification`
+  // block is absent. See FeedbackFirebaseService.onMessageReceived.
+  const mergedData: Record<string, string> = {
+    ...(data || {}),
+    title: notification.title,
+    body: notification.body,
+  };
   const staleTokenIds: string[] = [];
 
   await Promise.all(
@@ -83,10 +93,15 @@ export async function sendPushToUser(
       try {
         await messaging.send({
           token: dt.token,
-          notification,
-          data,
+          data: mergedData,
           android: { priority: "high" },
-          apns: { payload: { aps: { sound: "default", badge: 1 } } },
+          apns: {
+            // `content-available: 1` makes the message wake the app even
+            // when no user-visible alert is attached. Without it iOS
+            // silently drops data-only pushes in the background.
+            headers: { "apns-priority": "5", "apns-push-type": "background" },
+            payload: { aps: { "content-available": 1 } },
+          },
         });
       } catch (err: any) {
         // Remove invalid tokens
@@ -142,12 +157,21 @@ export async function sendPushToTopic(
   }
   try {
     const firebaseApp = getFirebaseApp(appId, app.firebaseProjectId, app.firebaseClientEmail, app.firebasePrivateKey);
+    // Data-only — same reason as sendPushToUser. The SDK renders its own
+    // notification so taps deep-link to the right screen.
+    const mergedData: Record<string, string> = {
+      ...(data || {}),
+      title: notification.title,
+      body: notification.body,
+    };
     await firebaseApp.messaging().send({
       topic,
-      notification,
-      data,
+      data: mergedData,
       android: { priority: "high" },
-      apns: { payload: { aps: { sound: "default" } } },
+      apns: {
+        headers: { "apns-priority": "5", "apns-push-type": "background" },
+        payload: { aps: { "content-available": 1 } },
+      },
     });
     return true;
   } catch (err: any) {

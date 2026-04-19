@@ -15,10 +15,12 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  const rows = await prisma.feedback.findMany({
-    where: { legacyId: null, comment: { contains: "[legacy:fb" } },
-    select: { id: true, comment: true },
-  });
+  // Use $queryRawUnsafe so MySQL's LIKE sees the literal `[legacy:fb` — some
+  // Prisma versions escape bracket chars through the query engine and then
+  // no rows match even when the data has the markers. Raw SQL sidesteps it.
+  const rows = await prisma.$queryRawUnsafe<{ id: string; comment: string | null }[]>(
+    "SELECT id, comment FROM feedbacks WHERE legacy_id IS NULL AND comment LIKE '%[legacy:fb%'"
+  );
   console.log(`Found ${rows.length} feedback rows with legacy markers`);
 
   const seen = new Set<number>();

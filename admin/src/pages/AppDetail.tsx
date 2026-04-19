@@ -161,6 +161,14 @@ export default function AppDetail() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingIcon, setUploadingIcon] = useState(false);
 
+  // Firebase service-account JSON importer. Dragging / pasting the downloaded
+  // .json avoids admins hand-copying three fields (and getting newline escaping
+  // on the private key wrong).
+  const fbJsonInputRef = useRef<HTMLInputElement>(null);
+  const [fbImportError, setFbImportError] = useState<string | null>(null);
+  const [fbImportOk, setFbImportOk] = useState(false);
+  const [fbImportDragOver, setFbImportDragOver] = useState(false);
+
   const [showSettingsHelp, setShowSettingsHelp] = useState(false);
 
   // Flip true once the initial fetch resolves — gates the count-up animation
@@ -360,6 +368,55 @@ export default function AppDetail() {
       await api.patch(`/admin/apps/${app.id}`, { isActive: !app.isActive });
       await load();
     } catch { /* ignore */ }
+  };
+
+  // ---- Firebase service-account JSON importer ----
+  // Accepts a raw JSON string from a file-read or paste, validates the three
+  // fields we care about, and pushes them into the form. Does NOT save — the
+  // admin still has to hit "Save changes" below.
+  const applyFirebaseJson = (raw: string) => {
+    setFbImportError(null);
+    setFbImportOk(false);
+    let parsed: any;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      setFbImportError("Invalid JSON — make sure you're pasting the service-account file contents.");
+      return;
+    }
+    const projectId = parsed?.project_id || parsed?.projectId;
+    const clientEmail = parsed?.client_email || parsed?.clientEmail;
+    const privateKey = parsed?.private_key || parsed?.privateKey;
+    const missing: string[] = [];
+    if (!projectId) missing.push("project_id");
+    if (!clientEmail) missing.push("client_email");
+    if (!privateKey) missing.push("private_key");
+    if (missing.length) {
+      setFbImportError(`Missing fields: ${missing.join(", ")}`);
+      return;
+    }
+    if (parsed.type && parsed.type !== "service_account") {
+      setFbImportError(`Expected a service_account JSON (got "${parsed.type}").`);
+      return;
+    }
+    setForm((f) => ({
+      ...f,
+      firebaseProjectId: String(projectId),
+      firebaseClientEmail: String(clientEmail),
+      firebasePrivateKey: String(privateKey),
+    }));
+    setFbImportOk(true);
+    setFbResult(null);
+    // Tuck the success state back so it doesn't linger on subsequent loads.
+    setTimeout(() => setFbImportOk(false), 3000);
+  };
+
+  const readFirebaseJsonFile = (file: File) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => applyFirebaseJson(typeof reader.result === "string" ? reader.result : "");
+    reader.onerror = () => setFbImportError("Failed to read file");
+    reader.readAsText(file);
   };
 
   // ---- Firebase validate / test push ----
@@ -1130,6 +1187,104 @@ export default function AppDetail() {
             {firebaseOk ? "Configured" : "Not set up"}
           </span>
         </h4>
+
+        {/* Service-account JSON importer — drop/browse/paste and we parse
+            project_id / client_email / private_key into the fields below. */}
+        <div
+          onDragOver={(e) => { e.preventDefault(); setFbImportDragOver(true); }}
+          onDragLeave={() => setFbImportDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setFbImportDragOver(false);
+            const f = e.dataTransfer.files?.[0];
+            if (f) readFirebaseJsonFile(f);
+          }}
+          className={`relative rounded-xl border-2 border-dashed p-4 mb-4 transition-all ${
+            fbImportDragOver
+              ? "border-violet-400 bg-violet-50"
+              : fbImportOk
+                ? "border-emerald-300 bg-emerald-50/50"
+                : fbImportError
+                  ? "border-red-300 bg-red-50/50"
+                  : "border-gray-200 bg-gray-50/50 hover:border-gray-300"
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            <span className={`inline-flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0 ${
+              fbImportOk ? "bg-emerald-100 text-emerald-600" : "bg-violet-100 text-violet-600"
+            }`}>
+              {fbImportOk ? (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                </svg>
+              )}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900">
+                {fbImportOk ? "JSON imported — fields populated below" : "Import service-account JSON"}
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {fbImportOk
+                  ? "Review the filled-in fields below, then hit Save."
+                  : "Drop the file from Firebase → Project settings → Service accounts → Generate new private key."}
+              </p>
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => fbJsonInputRef.current?.click()}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776" />
+                  </svg>
+                  Choose file
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const text = await navigator.clipboard.readText();
+                      if (text) applyFirebaseJson(text);
+                    } catch {
+                      setFbImportError("Clipboard read blocked — paste manually into the Private Key field.");
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
+                  </svg>
+                  Paste from clipboard
+                </button>
+                <span className="text-[11px] text-gray-400">or drop the .json file here</span>
+              </div>
+              {fbImportError && (
+                <p className="text-xs text-red-600 mt-2 flex items-start gap-1">
+                  <svg className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                  </svg>
+                  {fbImportError}
+                </p>
+              )}
+            </div>
+          </div>
+          <input
+            ref={fbJsonInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) readFirebaseJsonFile(f);
+              e.target.value = "";
+            }}
+          />
+        </div>
+
         <div className="space-y-3">
           <Field label="Firebase Project ID" optional>
             <input type="text" value={form.firebaseProjectId} onChange={(e) => setForm({ ...form, firebaseProjectId: e.target.value })} placeholder="my-app-12345" className={`${inputCls} font-mono text-xs`} />

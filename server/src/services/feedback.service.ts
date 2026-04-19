@@ -1,5 +1,5 @@
 import { PrismaClient, FeedbackCategory, FeedbackStatus } from "@prisma/client";
-import { notifyAdmins } from "./notification.service";
+import { notifyAdmins, createNotification } from "./notification.service";
 import { notifyAdminNewFeedback } from "./email.service";
 import { sendPushToUser } from "./fcm.service";
 import { config } from "../config";
@@ -210,8 +210,19 @@ export async function addReply(data: {
       : { updatedAt: new Date() },
   });
 
-  // FCM push to feedback creator
+  // Feedback creator gets both a Notification row (drives the bell badge +
+  // Activity tab in the SDK) and an FCM push (system tray). Without the row
+  // insert, the push arrives but the in-app bell stays at 0 — the bell's
+  // counter is a /notifications/unread-count lookup, not an FCM side effect.
   if (feedback && feedback.userId !== data.userId) {
+    createNotification({
+      userId: feedback.userId,
+      type: "feedback_reply",
+      title: "Feedback Reply",
+      message: `${reply.user.name} replied to your ${feedback.rating}★ feedback`,
+      link: `/feedback/${data.feedbackId}`,
+    }).catch((err) => console.warn("createNotification (feedback_reply) failed:", err));
+
     sendPushToUser(feedback.userId, feedback.appId, {
       title: "Feedback Reply",
       body: `${reply.user.name} replied to your ${feedback.rating}★ feedback`,

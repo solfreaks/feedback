@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import api from "../api";
 import Avatar from "../components/Avatar";
 
 interface FeedbackAttachment {
   id: string;
+  feedbackReplyId?: string;
   fileUrl: string;
   fileName: string;
   fileSize: number;
@@ -17,10 +18,13 @@ interface FeedbackFull {
   category: string;
   status: string;
   comment?: string;
+  deviceType?: string;
+  osVersion?: string;
+  appVersion?: string;
   createdAt: string;
   user: { id: string; name: string; email: string; avatarUrl?: string };
   app: { id: string; name: string };
-  replies: { id: string; body: string; createdAt: string; user: { id: string; name: string; avatarUrl?: string } }[];
+  replies: { id: string; body: string; createdAt: string; user: { id: string; name: string; avatarUrl?: string }; attachments?: FeedbackAttachment[] }[];
   attachments?: FeedbackAttachment[];
 }
 
@@ -58,14 +62,6 @@ const statusIcons: Record<string, string> = {
   resolved: "M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
 };
 
-const quickReplies = [
-  { label: "Thank you", body: "Thank you for your feedback! We really appreciate you taking the time to share your thoughts with us.", icon: "heart" },
-  { label: "Looking into it", body: "Thank you for reporting this. We're looking into it and will get back to you with an update soon.", icon: "search" },
-  { label: "Bug acknowledged", body: "We've confirmed this issue and our team is working on a fix. We'll notify you once it's resolved.", icon: "bug" },
-  { label: "Feature noted", body: "Great suggestion! We've added this to our feature backlog and will consider it for a future update.", icon: "lightbulb" },
-  { label: "Need more info", body: "Thank you for reaching out. Could you provide more details about this? Specifically, what device/OS version are you using, and can you describe the steps to reproduce the issue?", icon: "question" },
-  { label: "Resolved", body: "We've addressed this issue in our latest update. Please update to the latest version and let us know if the problem persists.", icon: "check" },
-];
 
 function Stars({ rating }: { rating: number }) {
   return (
@@ -125,8 +121,54 @@ export default function FeedbackDetail() {
   const [deleteReplyId, setDeleteReplyId] = useState<string | null>(null);
   const [deletingReply, setDeletingReply] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
+  const [cannedReplies, setCannedReplies] = useState<{ id: string; title: string; body: string }[]>([]);
+  const [cannedLocale, setCannedLocale] = useState("");
+  const [admins, setAdmins] = useState<{ id: string; name: string; avatarUrl?: string }[]>([]);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionActiveIdx, setMentionActiveIdx] = useState(0);
+  const replyRef = useRef<HTMLTextAreaElement>(null);
+  const replyFileRef = useRef<HTMLInputElement>(null);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const params = cannedLocale ? `?locale=${cannedLocale}` : "";
+    api.get(`/admin/canned-replies${params}`).then(r => setCannedReplies(r.data)).catch(() => {});
+  }, [cannedLocale]);
+
+  useEffect(() => {
+    api.get("/admin/admins").then(r => setAdmins(r.data)).catch(() => {});
+  }, []);
+
+  const detectMention = (value: string, caret: number) => {
+    const match = /@([a-zA-Z0-9._-]*)$/.exec(value.slice(0, caret));
+    if (match) { setMentionQuery(match[1].toLowerCase()); setMentionActiveIdx(0); }
+    else setMentionQuery(null);
+  };
+
+  const insertMention = (admin: { id: string; name: string }) => {
+    const el = replyRef.current;
+    if (!el) return;
+    const caret = el.selectionStart ?? reply.length;
+    const replaced = reply.slice(0, caret).replace(/@([a-zA-Z0-9._-]*)$/, `@${admin.name.split(" ")[0]} `);
+    const next = replaced + reply.slice(caret);
+    setReply(next);
+    setMentionQuery(null);
+    setTimeout(() => { el.focus(); el.setSelectionRange(replaced.length, replaced.length); }, 0);
+  };
+
+  const mentionCandidates = mentionQuery !== null
+    ? [
+        // feedback submitter first
+        ...(feedback?.user ? [{ id: feedback.user.id, name: feedback.user.name, avatarUrl: feedback.user.avatarUrl, isUser: true }] : []),
+        ...admins.map(a => ({ ...a, isUser: false })),
+      ].filter(a =>
+        mentionQuery === "" ||
+        a.name.toLowerCase().includes(mentionQuery) ||
+        a.name.split(" ")[0].toLowerCase().startsWith(mentionQuery)
+      ).slice(0, 7)
+    : [];
 
   const fetchFeedback = () => {
     api.get(`/admin/feedbacks/${id}`).then((r) => { setFeedback(r.data); setLoading(false); });
@@ -135,10 +177,20 @@ export default function FeedbackDetail() {
   useEffect(() => { fetchFeedback(); }, [id]);
 
   const sendReply = async () => {
-    if (!reply.trim()) return;
+    if (!reply.trim() && pendingFiles.length === 0) return;
     setSending(true);
-    await api.post(`/admin/feedbacks/${id}/reply`, { body: reply });
+    const res = await api.post(`/admin/feedbacks/${id}/reply`, { body: reply || " " });
+    const replyId = res.data?.id;
+    if (replyId && pendingFiles.length > 0) {
+      for (const file of pendingFiles) {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("replyId", replyId);
+        await api.post(`/admin/feedbacks/${id}/attachments`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+      }
+    }
     setReply("");
+    setPendingFiles([]);
     setSending(false);
     fetchFeedback();
   };
@@ -414,6 +466,25 @@ export default function FeedbackDetail() {
                         <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
                           <p className="text-sm text-gray-700 whitespace-pre-wrap">{r.body}</p>
                         </div>
+                        {/* Per-reply attachments */}
+                        {(() => {
+                          const replyAtts = feedback.attachments?.filter(a => a.feedbackReplyId === r.id) || [];
+                          if (replyAtts.length === 0) return null;
+                          return (
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {replyAtts.map(a => (
+                                <a key={a.id} href={`/api${a.fileUrl}`} target="_blank" rel="noreferrer"
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 hover:bg-blue-100 text-xs text-blue-700 font-medium transition-colors">
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                  </svg>
+                                  {a.fileName}
+                                  <span className="text-blue-400">{(a.fileSize / 1024).toFixed(0)} KB</span>
+                                </a>
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   ))}
@@ -432,67 +503,136 @@ export default function FeedbackDetail() {
               <div className="mt-5 pt-5 border-t border-gray-200">
                 {/* Quick replies toggle */}
                 <div className="mb-3">
-                  <button onClick={() => setShowQuickReplies(!showQuickReplies)}
-                    className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors">
-                    <svg className={`w-4 h-4 transition-transform ${showQuickReplies ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                    </svg>
-                    Quick Replies
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setShowQuickReplies(!showQuickReplies)}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors">
+                      <svg className={`w-4 h-4 transition-transform ${showQuickReplies ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                      </svg>
+                      Quick Replies
+                    </button>
+                    {showQuickReplies && (
+                      <select value={cannedLocale} onChange={e => setCannedLocale(e.target.value)}
+                        className="text-xs border border-gray-200 rounded-md px-2 py-0.5 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+                        <option value="">All languages</option>
+                        <option value="en">🇬🇧 English</option>
+                        <option value="es">🇪🇸 Spanish</option>
+                        <option value="fr">🇫🇷 French</option>
+                        <option value="de">🇩🇪 German</option>
+                        <option value="ar">🇸🇦 Arabic</option>
+                        <option value="ur">🇵🇰 Urdu</option>
+                      </select>
+                    )}
+                  </div>
 
                   {showQuickReplies && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2 mt-2">
-                      {quickReplies.map((qr) => (
-                        <button key={qr.label} onClick={() => { setReply(qr.body); setShowQuickReplies(false); }}
-                          className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 hover:bg-blue-50 hover:border-blue-200 text-left transition-all group">
-                          <span className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-200 transition-colors">
-                            {qr.icon === "heart" && <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>}
-                            {qr.icon === "search" && <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>}
-                            {qr.icon === "bug" && <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 12.75c1.148 0 2.278.08 3.383.237 1.037.146 1.866.966 1.866 2.013 0 3.728-2.35 6.75-5.25 6.75S6.75 18.728 6.75 15c0-1.046.83-1.867 1.866-2.013A24.204 24.204 0 0112 12.75zm0 0c2.883 0 5.647.508 8.207 1.44a23.91 23.91 0 01-1.152-6.135c-.22-2.057-1.907-3.555-3.966-3.555h-6.178c-2.06 0-3.746 1.498-3.966 3.555a23.908 23.908 0 01-1.152 6.135C5.353 13.258 9.117 12.75 12 12.75z" /></svg>}
-                            {qr.icon === "lightbulb" && <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" /></svg>}
-                            {qr.icon === "question" && <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" /></svg>}
-                            {qr.icon === "check" && <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
-                          </span>
-                          <span className="text-xs font-medium text-gray-700 group-hover:text-blue-700">{qr.label}</span>
-                        </button>
-                      ))}
+                    <div className="mt-2">
+                      {cannedReplies.length === 0 ? (
+                        <div className="text-xs text-gray-400 py-2">
+                          No quick replies saved. <a href="/settings" className="text-blue-500 hover:underline" onClick={e => { e.preventDefault(); navigate("/settings"); }}>Add some in Settings → Quick Replies</a>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2">
+                          {cannedReplies.map((qr) => (
+                            <button key={qr.id} onClick={() => { setReply(qr.body.replace(/\{\{user\}\}/gi, feedback?.user?.name || "there")); setShowQuickReplies(false); }}
+                              className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 hover:bg-blue-50 hover:border-blue-200 text-left transition-all group">
+                              <span className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-200 transition-colors">
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" /></svg>
+                              </span>
+                              <span className="text-xs font-medium text-gray-700 group-hover:text-blue-700">{qr.title}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
 
-                <div className="rounded-xl border border-gray-200 bg-white">
-                  <textarea value={reply} onChange={(e) => setReply(e.target.value)}
-                    placeholder="Write a reply to this feedback..."
+                <div className="rounded-xl border border-gray-200 bg-white relative">
+                  <textarea
+                    ref={replyRef}
+                    value={reply}
+                    onChange={(e) => { setReply(e.target.value); detectMention(e.target.value, e.target.selectionStart ?? e.target.value.length); }}
+                    onKeyDown={(e) => {
+                      if (mentionQuery === null || mentionCandidates.length === 0) return;
+                      if (e.key === "ArrowDown") { e.preventDefault(); setMentionActiveIdx(i => Math.min(i + 1, mentionCandidates.length - 1)); }
+                      else if (e.key === "ArrowUp") { e.preventDefault(); setMentionActiveIdx(i => Math.max(i - 1, 0)); }
+                      else if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); insertMention(mentionCandidates[mentionActiveIdx]); }
+                      else if (e.key === "Escape") setMentionQuery(null);
+                    }}
+                    placeholder="Write a reply to this feedback... (type @ to mention an admin)"
                     className="w-full p-4 text-sm rounded-t-xl resize-none outline-none placeholder-gray-400"
                     rows={3} />
-                  <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-                    <div className="text-xs text-gray-400">
-                      {reply.length > 0 && `${reply.length} characters`}
+                  {mentionQuery !== null && mentionCandidates.length > 0 && (
+                    <div className="absolute left-4 top-full mt-1 z-20 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[220px] overflow-hidden">
+                      {mentionCandidates.map((a, i) => (
+                        <button key={a.id} onClick={() => insertMention(a)}
+                          className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm ${i === mentionActiveIdx ? "bg-blue-50 text-blue-700" : "hover:bg-gray-50"}`}>
+                          <Avatar name={a.name} avatarUrl={a.avatarUrl} size={20} />
+                          <span className="flex-1">{a.name}</span>
+                          {a.isUser && <span className="text-[10px] px-1.5 py-0.5 bg-green-100 text-green-600 rounded-full font-medium">User</span>}
+                          {!a.isUser && <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-600 rounded-full font-medium">Admin</span>}
+                        </button>
+                      ))}
                     </div>
-                    <div className="flex items-center gap-2">
+                  )}
+                  {/* Pending file chips */}
+                  {pendingFiles.length > 0 && (
+                    <div className="px-4 pb-2 flex flex-wrap gap-1.5">
+                      {pendingFiles.map((f, idx) => (
+                        <span key={idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-100 text-xs text-blue-700 font-medium">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                          </svg>
+                          {f.name}
+                          <button onClick={() => setPendingFiles(prev => prev.filter((_, i) => i !== idx))}
+                            className="hover:text-red-500 transition-colors ml-0.5">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+                    <div className="flex items-center gap-3">
+                      {/* File picker */}
+                      <label className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-blue-600 cursor-pointer transition-colors" title="Attach file">
+                        <input ref={replyFileRef} type="file" className="hidden" multiple
+                          onChange={(e) => {
+                            if (e.target.files) setPendingFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+                            e.target.value = "";
+                          }} />
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                        </svg>
+                        {pendingFiles.length > 0 ? `${pendingFiles.length} file${pendingFiles.length > 1 ? "s" : ""}` : "Attach"}
+                      </label>
+                      {reply.length > 0 && <span className="text-xs text-gray-400">{reply.length} chars</span>}
                       {reply.trim() && (
                         <button onClick={() => setReply("")}
                           className="text-xs text-gray-400 hover:text-gray-600 font-medium transition-colors">
                           Clear
                         </button>
                       )}
-                      <button onClick={sendReply} disabled={sending || !reply.trim()}
-                        className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                        {sending ? (
-                          <>
-                            <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
-                            Sending...
-                          </>
-                        ) : (
-                          <>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                            </svg>
-                            Reply
-                          </>
-                        )}
-                      </button>
                     </div>
+                    <button onClick={sendReply} disabled={sending || (!reply.trim() && pendingFiles.length === 0)}
+                      className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                      {sending ? (
+                        <>
+                          <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                          </svg>
+                          Reply
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -549,6 +689,50 @@ export default function FeedbackDetail() {
             </div>
           </div>
 
+          {/* Device Info */}
+          {(feedback.deviceType || feedback.osVersion || feedback.appVersion) && (
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="px-5 py-3.5 bg-gray-50 border-b border-gray-200">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Device Info</h3>
+              </div>
+              <div className="p-5 space-y-3">
+                {feedback.deviceType && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500 flex items-center gap-1.5">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                      Device
+                    </span>
+                    <span className="font-medium text-gray-700 capitalize">{feedback.deviceType}</span>
+                  </div>
+                )}
+                {feedback.osVersion && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500 flex items-center gap-1.5">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18" />
+                      </svg>
+                      OS Version
+                    </span>
+                    <span className="font-medium text-gray-700">{feedback.osVersion}</span>
+                  </div>
+                )}
+                {feedback.appVersion && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500 flex items-center gap-1.5">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 012-2z" />
+                      </svg>
+                      App Version
+                    </span>
+                    <span className="font-medium text-gray-700">v{feedback.appVersion}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Quick Actions */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="px-5 py-3.5 bg-gray-50 border-b border-gray-200">
@@ -582,13 +766,15 @@ export default function FeedbackDetail() {
                   Mark as Resolved
                 </button>
               )}
-              <button onClick={() => { setReply(quickReplies[0].body); setShowQuickReplies(false); }}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-                </svg>
-                Send Thank You
-              </button>
+              {cannedReplies.length > 0 && (
+                <button onClick={() => { setReply(cannedReplies[0].body.replace(/\{\{user\}\}/gi, feedback?.user?.name || "there")); setShowQuickReplies(false); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                  </svg>
+                  {cannedReplies[0].title}
+                </button>
+              )}
             </div>
           </div>
 

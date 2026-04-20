@@ -232,6 +232,7 @@ export async function deleteComment(commentId: string) {
 
 export async function addAttachment(data: {
   ticketId: string;
+  commentId?: string;
   fileUrl: string;
   fileName: string;
   fileSize: number;

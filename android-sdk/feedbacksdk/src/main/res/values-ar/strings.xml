@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sdk_app_name">Feedback SDK</string>
+    <string name="sdk_create_ticket">إنشاء تذكرة</string>
+    <string name="sdk_my_tickets">تذاكري</string>
+    <string name="sdk_ticket_detail">تفاصيل التذكرة</string>
+    <string name="sdk_submit_feedback">إرسال الملاحظات</string>
+    <string name="sdk_title">العنوان</string>
+    <string name="sdk_description">الوصف</string>
+    <string name="sdk_category">الفئة</string>
+    <string name="sdk_priority">الأولوية</string>
+    <string name="sdk_submit">إرسال</string>
+    <string name="sdk_send">إرسال</string>
+    <string name="sdk_cancel">إلغاء</string>
+    <string name="sdk_reply_hint">اكتب ردًا…</string>
+    <string name="sdk_attach_file">إرفاق ملف</string>
+    <string name="sdk_reply_sent">تم إرسال الرد</string>
+    <string name="sdk_reply_empty">اكتب شيئًا أولاً</string>
+    <string name="sdk_loading">جارٍ التحميل…</string>
+    <string name="sdk_no_tickets">لا توجد تذاكر بعد</string>
+    <string name="sdk_no_comments">لا توجد تعليقات بعد</string>
+    <string name="sdk_write_comment">اكتب تعليقًا…</string>
+    <string name="sdk_rate_experience">قيّم تجربتك</string>
+    <string name="sdk_comment_optional">تعليق (اختياري)</string>
+    <string name="sdk_feedback_submitted">تم إرسال الملاحظات!</string>
+    <string name="sdk_ticket_created">تم إنشاء التذكرة!</string>
+    <string name="sdk_error_title_required">العنوان مطلوب</string>
+    <string name="sdk_error_desc_required">الوصف مطلوب</string>
+    <string name="sdk_error_rating_required">يرجى اختيار تقييم</string>
+    <string name="sdk_error_not_logged_in">يرجى تسجيل الدخول أولاً</string>
+    <string name="sdk_title_hint">ملخص موجز للمشكلة</string>
+    <string name="sdk_description_hint">صف المشكلة بالتفصيل…</string>
+
+    <string name="sdk_back">رجوع</string>
+    <string name="sdk_send_comment">إرسال تعليق</string>
+    <string name="sdk_create_ticket_subtitle">صف ما يحدث وسنتواصل معك.</string>
+    <string name="sdk_comments">التعليقات</string>
+    <string name="sdk_no_tickets_subtitle">ستظهر تذاكر الدعم هنا.</string>
+    <string name="sdk_rating_1">سيء جداً</string>
+    <string name="sdk_rating_2">سيء</string>
+    <string name="sdk_rating_3">مقبول</string>
+    <string name="sdk_rating_4">جيد</string>
+    <string name="sdk_rating_5">ممتاز!</string>
+    <string name="sdk_tap_to_rate">اضغط على نجمة للتقييم</string>
+
+    <string name="sdk_my_feedback">ملاحظاتي</string>
+    <string name="sdk_feedback_detail">تفاصيل الملاحظة</string>
+    <string name="sdk_no_feedback">لا توجد ملاحظات بعد</string>
+    <string name="sdk_no_feedback_subtitle">ستظهر ملاحظاتك المُرسلة هنا.</string>
+    <string name="sdk_replies">الردود</string>
+    <string name="sdk_no_replies">لا توجد ردود بعد</string>
+
+    <string name="sdk_attachment">مرفق</string>
+    <string name="sdk_attachments">المرفقات</string>
+    <string name="sdk_add_attachment">إضافة مرفق</string>
+    <string name="sdk_remove_attachment">إزالة المرفق</string>
+    <string name="sdk_open_external">فتح باستخدام…</string>
+    <string name="sdk_attachment_load_failed">تعذّر تحميل المرفق</string>
+    <string name="sdk_attachment_upload_failed">تعذّر رفع المرفق</string>
+    <string name="sdk_sending">جارٍ الإرسال…</string>
+    <string name="sdk_send_failed_tap_to_retry">فشل الإرسال · اضغط للمحاولة مجدداً</string>
+
+    <string name="sdk_more_actions">مزيد من الإجراءات</string>
+    <string name="sdk_edit">تعديل</string>
+    <string name="sdk_delete">حذف</string>
+    <string name="sdk_save">حفظ</string>
+    <string name="sdk_cancel_edit">إلغاء</string>
+    <string name="sdk_delete_feedback_confirm">حذف هذه الملاحظة؟ لا يمكن التراجع عن ذلك.</string>
+    <string name="sdk_delete_comment_confirm">حذف هذا التعليق؟</string>
+    <string name="sdk_edit_window_expired">انتهت فترة التعديل المسموحة (24 ساعة).</string>
+    <string name="sdk_feedback_updated">تم تحديث الملاحظة</string>
+    <string name="sdk_feedback_deleted">تم حذف الملاحظة</string>
+    <string name="sdk_comment_updated">تم تحديث التعليق</string>
+    <string name="sdk_comment_deleted">تم حذف التعليق</string>
+
+    <string name="sdk_typing">الدعم يكتب…</string>
+
+    <string name="sdk_offline_banner">أنت غير متصل · تعرض بيانات محفوظة</string>
+    <string name="sdk_server_unreachable">تعذّر الوصول إلى الخادم</string>
+    <string name="sdk_retry">إعادة المحاولة</string>
+    <string name="sdk_refresh">تحديث</string>
+    <string name="sdk_couldnt_load">تعذّر تحميل هذا</string>
+    <string name="sdk_offline">غير متصل</string>
+    <string name="sdk_draft_saved">تم حفظ المسودة</string>
+
+    <string name="sdk_notifications">الإشعارات</string>
+    <string name="sdk_mark_all_read">تحديد الكل كمقروء</string>
+    <string name="sdk_no_notifications">لا توجد إشعارات</string>
+    <string name="sdk_no_notifications_subtitle">لقد اطّلعت على كل شيء.</string>
+    <string name="sdk_tab_activity">النشاط</string>
+    <string name="sdk_tab_announcements">الإعلانات</string>
+    <string name="sdk_no_announcements">لا توجد إعلانات</string>
+    <string name="sdk_no_announcements_subtitle">ستظهر تحديثات الفريق هنا.</string>
+    <string name="sdk_no_app_to_open">لا يوجد تطبيق لفتح هذا الملف</string>
+    <string name="sdk_ticket_created_attach_failed">تم إنشاء التذكرة، لكن فشل رفع بعض المرفقات.</string>
+    <string name="sdk_feedback_submitted_attach_failed">تم إرسال الملاحظة، لكن فشل رفع بعض المرفقات.</string>
+</resources>

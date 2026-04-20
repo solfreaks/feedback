@@ -24,7 +24,7 @@ router.use(authenticate, validateAppKey);
 // Submit feedback
 router.post("/", async (req: Request, res: Response) => {
   try {
-    const { rating, category, comment } = req.body;
+    const { rating, category, comment, deviceType, osVersion, appVersion } = req.body;
     if (!rating || rating < 1 || rating > 5) {
       return res.status(400).json({ error: "rating (1-5) is required" });
     }
@@ -34,6 +34,9 @@ router.post("/", async (req: Request, res: Response) => {
       rating,
       category,
       comment,
+      deviceType,
+      osVersion,
+      appVersion,
     });
     return res.status(201).json(feedback);
   } catch (err) {

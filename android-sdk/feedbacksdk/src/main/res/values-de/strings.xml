@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sdk_app_name">Feedback SDK</string>
+    <string name="sdk_create_ticket">Ticket erstellen</string>
+    <string name="sdk_my_tickets">Meine Tickets</string>
+    <string name="sdk_ticket_detail">Ticket-Details</string>
+    <string name="sdk_submit_feedback">Feedback senden</string>
+    <string name="sdk_title">Titel</string>
+    <string name="sdk_description">Beschreibung</string>
+    <string name="sdk_category">Kategorie</string>
+    <string name="sdk_priority">Priorität</string>
+    <string name="sdk_submit">Absenden</string>
+    <string name="sdk_send">Senden</string>
+    <string name="sdk_cancel">Abbrechen</string>
+    <string name="sdk_reply_hint">Antwort schreiben…</string>
+    <string name="sdk_attach_file">Datei anhängen</string>
+    <string name="sdk_reply_sent">Antwort gesendet</string>
+    <string name="sdk_reply_empty">Bitte zuerst etwas schreiben</string>
+    <string name="sdk_loading">Wird geladen…</string>
+    <string name="sdk_no_tickets">Noch keine Tickets</string>
+    <string name="sdk_no_comments">Noch keine Kommentare</string>
+    <string name="sdk_write_comment">Kommentar schreiben…</string>
+    <string name="sdk_rate_experience">Bewerte deine Erfahrung</string>
+    <string name="sdk_comment_optional">Kommentar (optional)</string>
+    <string name="sdk_feedback_submitted">Feedback gesendet!</string>
+    <string name="sdk_ticket_created">Ticket erstellt!</string>
+    <string name="sdk_error_title_required">Titel ist erforderlich</string>
+    <string name="sdk_error_desc_required">Beschreibung ist erforderlich</string>
+    <string name="sdk_error_rating_required">Bitte eine Bewertung auswählen</string>
+    <string name="sdk_error_not_logged_in">Bitte zuerst anmelden</string>
+    <string name="sdk_title_hint">Kurze Zusammenfassung des Problems</string>
+    <string name="sdk_description_hint">Problem im Detail beschreiben…</string>
+
+    <string name="sdk_back">Zurück</string>
+    <string name="sdk_send_comment">Kommentar senden</string>
+    <string name="sdk_create_ticket_subtitle">Beschreibe das Problem und wir melden uns bei dir.</string>
+    <string name="sdk_comments">Kommentare</string>
+    <string name="sdk_no_tickets_subtitle">Deine Support-Tickets erscheinen hier.</string>
+    <string name="sdk_rating_1">Sehr schlecht</string>
+    <string name="sdk_rating_2">Schlecht</string>
+    <string name="sdk_rating_3">Okay</string>
+    <string name="sdk_rating_4">Gut</string>
+    <string name="sdk_rating_5">Ausgezeichnet!</string>
+    <string name="sdk_tap_to_rate">Stern antippen zum Bewerten</string>
+
+    <string name="sdk_my_feedback">Mein Feedback</string>
+    <string name="sdk_feedback_detail">Feedback-Details</string>
+    <string name="sdk_no_feedback">Noch kein Feedback</string>
+    <string name="sdk_no_feedback_subtitle">Dein gesendetes Feedback erscheint hier.</string>
+    <string name="sdk_replies">Antworten</string>
+    <string name="sdk_no_replies">Noch keine Antworten</string>
+
+    <string name="sdk_attachment">Anhang</string>
+    <string name="sdk_attachments">Anhänge</string>
+    <string name="sdk_add_attachment">Anhang hinzufügen</string>
+    <string name="sdk_remove_attachment">Anhang entfernen</string>
+    <string name="sdk_open_external">Öffnen mit…</string>
+    <string name="sdk_attachment_load_failed">Anhang konnte nicht geladen werden</string>
+    <string name="sdk_attachment_upload_failed">Anhang konnte nicht hochgeladen werden</string>
+    <string name="sdk_sending">Wird gesendet…</string>
+    <string name="sdk_send_failed_tap_to_retry">Fehlgeschlagen · antippen zum Wiederholen</string>
+
+    <string name="sdk_more_actions">Weitere Aktionen</string>
+    <string name="sdk_edit">Bearbeiten</string>
+    <string name="sdk_delete">Löschen</string>
+    <string name="sdk_save">Speichern</string>
+    <string name="sdk_cancel_edit">Abbrechen</string>
+    <string name="sdk_delete_feedback_confirm">Dieses Feedback löschen? Das kann nicht rückgängig gemacht werden.</string>
+    <string name="sdk_delete_comment_confirm">Diesen Kommentar löschen?</string>
+    <string name="sdk_edit_window_expired">Das 24-Stunden-Bearbeitungsfenster ist abgelaufen.</string>
+    <string name="sdk_feedback_updated">Feedback aktualisiert</string>
+    <string name="sdk_feedback_deleted">Feedback gelöscht</string>
+    <string name="sdk_comment_updated">Kommentar aktualisiert</string>
+    <string name="sdk_comment_deleted">Kommentar gelöscht</string>
+
+    <string name="sdk_typing">Support schreibt…</string>
+
+    <string name="sdk_offline_banner">Offline · zeige zwischengespeicherte Daten</string>
+    <string name="sdk_server_unreachable">Server nicht erreichbar</string>
+    <string name="sdk_retry">Wiederholen</string>
+    <string name="sdk_refresh">Aktualisieren</string>
+    <string name="sdk_couldnt_load">Konnte nicht geladen werden</string>
+    <string name="sdk_offline">Offline</string>
+    <string name="sdk_draft_saved">Entwurf gespeichert</string>
+
+    <string name="sdk_notifications">Benachrichtigungen</string>
+    <string name="sdk_mark_all_read">Alle als gelesen markieren</string>
+    <string name="sdk_no_notifications">Keine Benachrichtigungen</string>
+    <string name="sdk_no_notifications_subtitle">Du bist auf dem neuesten Stand.</string>
+    <string name="sdk_tab_activity">Aktivität</string>
+    <string name="sdk_tab_announcements">Ankündigungen</string>
+    <string name="sdk_no_announcements">Keine Ankündigungen</string>
+    <string name="sdk_no_announcements_subtitle">Team-Updates erscheinen hier.</string>
+    <string name="sdk_no_app_to_open">Keine App zum Öffnen dieser Datei verfügbar</string>
+    <string name="sdk_ticket_created_attach_failed">Ticket erstellt, aber ein oder mehrere Anhänge konnten nicht hochgeladen werden.</string>
+    <string name="sdk_feedback_submitted_attach_failed">Feedback gesendet, aber ein oder mehrere Anhänge konnten nicht hochgeladen werden.</string>
+</resources>

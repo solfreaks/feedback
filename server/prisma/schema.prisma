@@ -154,6 +154,7 @@ model TicketComment {
 model TicketAttachment {
   id        String   @id @default(uuid())
   ticketId  String   @map("ticket_id")
+  commentId String?  @map("comment_id")
   fileUrl   String   @map("file_url")
   fileName  String   @map("file_name")
   fileSize  Int      @map("file_size")
@@ -161,6 +162,7 @@ model TicketAttachment {
   ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@index([ticketId])
+  @@index([commentId])
   @@map("ticket_attachments")
 }
 
@@ -203,6 +205,9 @@ model Feedback {
   // history against the new API via the write-proxy. Null for anything
   // created post-migration.
   legacyId    Int?                 @unique @map("legacy_id")
+  deviceType  String?              @map("device_type")
+  osVersion   String?              @map("os_version")
+  appVersion  String?              @map("app_version")
   createdAt   DateTime             @default(now()) @map("created_at")
   updatedAt   DateTime             @updatedAt @map("updated_at")
   adminLastViewedAt DateTime?      @map("admin_last_viewed_at")
@@ -288,6 +293,8 @@ model CannedReply {
   shared    Boolean  @default(false)
   // Optional tag so admins can group replies (e.g. "triage", "refunds").
   tag       String?
+  // BCP-47 locale code (e.g. "en", "es", "ar", "ur", "fr", "de"). Null = all locales.
+  locale    String?
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)

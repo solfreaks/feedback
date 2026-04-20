@@ -2,8 +2,9 @@ import { useState, useEffect, type FormEvent } from "react";
 import api from "../api";
 import Avatar from "../components/Avatar";
 
-type TabKey = "profile" | "security" | "email" | "notifications" | "admins" | "categories" | "system";
+type TabKey = "profile" | "security" | "email" | "notifications" | "admins" | "categories" | "quick-replies" | "system";
 type AdminItem = { id: string; name: string; email: string; avatarUrl?: string; role: string };
+type CannedReply = { id: string; title: string; body: string; shared: boolean; tag?: string; locale?: string };
 type CategoryItem = { id: string; appId: string; name: string; description?: string };
 type NotifPref = { type: string; inApp: boolean; email: boolean };
 type SystemInfo = {
@@ -64,6 +65,14 @@ export default function Settings() {
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifSaving, setNotifSaving] = useState(false);
   const [notifMsg, setNotifMsg] = useState("");
+
+  // Quick Replies state
+  const [cannedReplies, setCannedReplies] = useState<CannedReply[]>([]);
+  const [cannedLoading, setCannedLoading] = useState(false);
+  const [cannedForm, setCannedForm] = useState({ title: "", body: "", shared: false, tag: "", locale: "" });
+  const [editCanned, setEditCanned] = useState<CannedReply | null>(null);
+  const [savingCanned, setSavingCanned] = useState(false);
+  const [cannedMsg, setCannedMsg] = useState({ text: "", type: "" });
 
   // Categories state
   const [categories, setCategories] = useState<CategoryItem[]>([]);
@@ -270,11 +279,40 @@ export default function Settings() {
     api.get("/admin/system-info").then((r) => setSysInfo(r.data)).catch(() => {}).finally(() => setSysLoading(false));
   };
 
+  const fetchCannedReplies = async () => {
+    setCannedLoading(true);
+    try { const r = await api.get("/admin/canned-replies"); setCannedReplies(r.data); } catch {}
+    setCannedLoading(false);
+  };
+  const saveCannedReply = async () => {
+    if (!cannedForm.title.trim() || !cannedForm.body.trim()) return;
+    setSavingCanned(true);
+    try {
+      if (editCanned) {
+        const r = await api.patch(`/admin/canned-replies/${editCanned.id}`, cannedForm);
+        setCannedReplies(prev => prev.map(c => c.id === editCanned.id ? r.data : c));
+        setCannedMsg({ text: "Updated!", type: "success" });
+      } else {
+        const r = await api.post("/admin/canned-replies", cannedForm);
+        setCannedReplies(prev => [...prev, r.data]);
+        setCannedMsg({ text: "Added!", type: "success" });
+      }
+      setEditCanned(null);
+      setCannedForm({ title: "", body: "", shared: false, tag: "", locale: "" });
+    } catch { setCannedMsg({ text: "Failed to save.", type: "error" }); }
+    setSavingCanned(false);
+    setTimeout(() => setCannedMsg({ text: "", type: "" }), 3000);
+  };
+  const deleteCannedReply = async (id: string) => {
+    try { await api.delete(`/admin/canned-replies/${id}`); setCannedReplies(prev => prev.filter(c => c.id !== id)); } catch {}
+  };
+
   // Tab change handlers
   useEffect(() => {
     if (activeTab === "admins" && user.role === "super_admin") fetchAdmins();
     if (activeTab === "notifications") fetchNotifPrefs();
     if (activeTab === "categories") { setCatApps(testEmailApps); if (testEmailApps.length > 0 && !catAppId) { setCatAppId(testEmailApps[0].id); fetchCategories(testEmailApps[0].id); } }
+    if (activeTab === "quick-replies") fetchCannedReplies();
     if (activeTab === "system" && user.role === "super_admin") fetchSysInfo();
   }, [activeTab]);
 
@@ -305,6 +343,7 @@ export default function Settings() {
     { key: "notifications", label: "Notifications", icon: "M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" },
     { key: "email", label: "Test Email", icon: "M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" },
     { key: "categories", label: "Categories", icon: "M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z M6 6h.008v.008H6V6z" },
+    { key: "quick-replies", label: "Quick Replies", icon: "M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" },
     { key: "admins", label: "Manage Admins", icon: "M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z", superOnly: true },
     { key: "system", label: "System Info", icon: "M11.42 15.17l-5.1-3.07a2.25 2.25 0 01-1.07-1.916V6.75m0 0l5.1-3.07a2.25 2.25 0 012.14 0l5.1 3.07M3.25 6.75l8.75 5.25m0 0l8.75-5.25M12 12v9.75m-4.13-4.92l-3.62-2.17a2.25 2.25 0 01-1.07-1.916V6.75", superOnly: true },
   ];
@@ -737,6 +776,110 @@ export default function Settings() {
           )}
 
           {/* Manage Admins Tab (super_admin only) */}
+          {activeTab === "quick-replies" && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-base font-semibold text-gray-900">{editCanned ? "Edit Quick Reply" : "Add Quick Reply"}</h2>
+                <p className="text-sm text-gray-500 mt-0.5">Saved replies you can insert while responding to feedback.</p>
+              </div>
+              {cannedMsg.text && <MsgBox text={cannedMsg.text} type={cannedMsg.type} />}
+              <div className="bg-gray-50 rounded-xl border border-gray-200 p-5 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Title</label>
+                    <input className={inputCls} placeholder="e.g. Thank you" value={cannedForm.title}
+                      onChange={e => setCannedForm(p => ({ ...p, title: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Tag (optional)</label>
+                    <input className={inputCls} placeholder="e.g. triage, billing" value={cannedForm.tag}
+                      onChange={e => setCannedForm(p => ({ ...p, tag: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Reply Body</label>
+                    <textarea rows={4} className={inputCls} placeholder="Write your reply template..."
+                      value={cannedForm.body} onChange={e => setCannedForm(p => ({ ...p, body: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Language (optional)
+                      <span className="ml-1 text-gray-400 font-normal">— leave blank for all languages</span>
+                    </label>
+                    <select className={inputCls} value={cannedForm.locale}
+                      onChange={e => setCannedForm(p => ({ ...p, locale: e.target.value }))}>
+                      <option value="">All languages</option>
+                      <option value="en">🇬🇧 English (en)</option>
+                      <option value="es">🇪🇸 Spanish (es)</option>
+                      <option value="ar">🇸🇦 Arabic (ar)</option>
+                      <option value="fr">🇫🇷 French (fr)</option>
+                      <option value="de">🇩🇪 German (de)</option>
+                      <option value="ur">🇵🇰 Urdu (ur)</option>
+                      <option value="zh">🇨🇳 Chinese (zh)</option>
+                      <option value="hi">🇮🇳 Hindi (hi)</option>
+                      <option value="pt">🇧🇷 Portuguese (pt)</option>
+                      <option value="tr">🇹🇷 Turkish (tr)</option>
+                      <option value="ru">🇷🇺 Russian (ru)</option>
+                      <option value="ja">🇯🇵 Japanese (ja)</option>
+                      <option value="ko">🇰🇷 Korean (ko)</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" className="rounded" checked={cannedForm.shared}
+                      onChange={e => setCannedForm(p => ({ ...p, shared: e.target.checked }))} />
+                    <span className="text-sm text-gray-700">Shared with all admins</span>
+                  </label>
+                  <div className="flex gap-2">
+                    {editCanned && (
+                      <button onClick={() => { setEditCanned(null); setCannedForm({ title: "", body: "", shared: false, tag: "", locale: "" }); }}
+                        className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+                    )}
+                    <button onClick={saveCannedReply} disabled={savingCanned || !cannedForm.title.trim() || !cannedForm.body.trim()}
+                      className={btnPrimary}>{savingCanned ? "Saving..." : editCanned ? "Update Reply" : "Add Reply"}</button>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Saved Replies ({cannedReplies.length})</h3>
+                {cannedLoading ? (
+                  <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" /></div>
+                ) : cannedReplies.length === 0 ? (
+                  <div className="text-center py-10 text-sm text-gray-400 border border-dashed border-gray-200 rounded-xl">No quick replies yet. Add one above.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {cannedReplies.map(cr => (
+                      <div key={cr.id} className="flex items-start gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-gray-300 transition-colors">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className="text-sm font-medium text-gray-900">{cr.title}</span>
+                            {cr.shared && <span className="px-2 py-0.5 text-[10px] font-medium bg-blue-50 text-blue-600 rounded-full">Shared</span>}
+                            {cr.tag && <span className="px-2 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-500 rounded-full">{cr.tag}</span>}
+                            {cr.locale && <span className="px-2 py-0.5 text-[10px] font-medium bg-violet-50 text-violet-600 rounded-full uppercase">{cr.locale}</span>}
+                          </div>
+                          <p className="text-xs text-gray-500 line-clamp-2">{cr.body}</p>
+                        </div>
+                        <div className="flex gap-1 flex-shrink-0">
+                          <button onClick={() => { setEditCanned(cr); setCannedForm({ title: cr.title, body: cr.body, shared: cr.shared, tag: cr.tag || "", locale: cr.locale || "" }); }}
+                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" /></svg>
+                          </button>
+                          <button onClick={() => deleteCannedReply(cr.id)}
+                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {activeTab === "admins" && user.role === "super_admin" && (
             <div className="space-y-5">
               {/* Admin List */}

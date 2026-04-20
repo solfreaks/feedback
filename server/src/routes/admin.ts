@@ -14,6 +14,7 @@ import * as emailService from "../services/email.service";
 import { config } from "../config";
 import { toCsv } from "../utils/csv";
 import * as announcementService from "../services/announcement.service";
+import { resolveMentions } from "../utils/mentions";
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -384,6 +385,7 @@ router.post("/tickets/:id/attachments", upload.single("file"), async (req: Reque
     if (!req.file) return res.status(400).json({ error: "file is required" });
     const attachment = await ticketService.addAttachment({
       ticketId: req.params.id,
+      commentId: req.body.commentId || undefined,
       fileUrl: `/uploads/${req.file.filename}`,
       fileName: req.file.originalname,
       fileSize: req.file.size,
@@ -1058,6 +1060,20 @@ router.post("/feedbacks/:id/reply", async (req: Request, res: Response) => {
       userId: req.user!.id,
       body,
     });
+    // Fire mention notifications
+    const mentionedIds = await resolveMentions(body);
+    const recipients = mentionedIds.filter(id => id !== req.user!.id);
+    for (const recipientId of recipients) {
+      await prisma.notification.create({
+        data: {
+          userId: recipientId,
+          type: "mention",
+          title: `${req.user!.name} mentioned you`,
+          message: body.slice(0, 100),
+          link: `/feedbacks/${req.params.id}`,
+        },
+      });
+    }
     return res.status(201).json(reply);
   } catch (err) {
     console.error("Admin reply feedback error:", err);
@@ -1071,6 +1087,7 @@ router.post("/feedbacks/:id/attachments", upload.single("file"), async (req: Req
     if (!req.file) return res.status(400).json({ error: "file is required" });
     const attachment = await feedbackService.addFeedbackAttachment({
       feedbackId: req.params.id,
+      feedbackReplyId: req.body.replyId || undefined,
       fileUrl: `/uploads/${req.file.filename}`,
       fileName: req.file.originalname,
       fileSize: req.file.size,
@@ -1271,6 +1288,17 @@ router.patch("/users/:id/role", async (req: Request, res: Response) => {
     if (!["user", "admin", "super_admin"].includes(role)) {
       return res.status(400).json({ error: "Invalid role" });
     }
+    // Only super_admin can assign or change super_admin role
+    if (req.user!.role !== "super_admin") {
+      if (role === "super_admin") {
+        return res.status(403).json({ error: "Only super admins can assign the super_admin role" });
+      }
+      // Check if target user is a super_admin — admin cannot touch them
+      const target = await prisma.user.findUnique({ where: { id: req.params.id }, select: { role: true } });
+      if (target?.role === "super_admin") {
+        return res.status(403).json({ error: "Cannot change the role of a super admin" });
+      }
+    }
     const user = await userService.updateUserRole(req.params.id, role);
     return res.json(user);
   } catch (err) {
@@ -1282,6 +1310,12 @@ router.patch("/users/:id/role", async (req: Request, res: Response) => {
 // Ban/unban user
 router.patch("/users/:id/ban", async (req: Request, res: Response) => {
   try {
+    if (req.user!.role !== "super_admin") {
+      const target = await prisma.user.findUnique({ where: { id: req.params.id }, select: { role: true } });
+      if (target?.role === "super_admin") {
+        return res.status(403).json({ error: "Cannot ban a super admin" });
+      }
+    }
     const { isBanned } = req.body;
     const user = await userService.toggleBan(req.params.id, isBanned);
     return res.json(user);
@@ -1294,9 +1328,14 @@ router.patch("/users/:id/ban", async (req: Request, res: Response) => {
 // Delete user
 router.delete("/users/:id", async (req: Request, res: Response) => {
   try {
-    // Prevent self-deletion
     if (req.params.id === req.user!.id) {
       return res.status(400).json({ error: "Cannot delete your own account" });
+    }
+    if (req.user!.role !== "super_admin") {
+      const target = await prisma.user.findUnique({ where: { id: req.params.id }, select: { role: true } });
+      if (target?.role === "super_admin") {
+        return res.status(403).json({ error: "Cannot delete a super admin" });
+      }
     }
     await userService.deleteUser(req.params.id);
     return res.json({ success: true });
@@ -1380,15 +1419,19 @@ router.get("/system-info", async (req: Request, res: Response) => {
 
 // ==================== CANNED REPLIES ====================
 
-// Returns the admin's own replies + every admin's shared replies, so the
-// reply composer can show a merged list without a second request.
+// Returns the admin's own replies + every admin's shared replies.
+// Optional ?locale=es filter: returns replies matching that locale + replies with no locale set.
 router.get("/canned-replies", async (req: Request, res: Response) => {
   try {
+    const locale = typeof req.query.locale === "string" ? req.query.locale.trim() : null;
+    const localeFilter = locale
+      ? { OR: [{ locale }, { locale: null }] }
+      : {};
     const replies = await prisma.cannedReply.findMany({
       where: {
-        OR: [
-          { ownerId: req.user!.id },
-          { shared: true },
+        AND: [
+          { OR: [{ ownerId: req.user!.id }, { shared: true }] },
+          ...(locale ? [localeFilter] : []),
         ],
       },
       orderBy: [{ shared: "desc" }, { title: "asc" }],
@@ -1402,7 +1445,7 @@ router.get("/canned-replies", async (req: Request, res: Response) => {
 
 router.post("/canned-replies", async (req: Request, res: Response) => {
   try {
-    const { title, body, shared, tag } = req.body;
+    const { title, body, shared, tag, locale } = req.body;
     if (!title || !body) return res.status(400).json({ error: "title and body are required" });
     const reply = await prisma.cannedReply.create({
       data: {
@@ -1411,6 +1454,7 @@ router.post("/canned-replies", async (req: Request, res: Response) => {
         body,
         shared: !!shared,
         tag: tag || null,
+        locale: locale || null,
       },
     });
     return res.status(201).json(reply);
@@ -1428,7 +1472,7 @@ router.patch("/canned-replies/:id", async (req: Request, res: Response) => {
     if (!existing.shared && existing.ownerId !== req.user!.id) {
       return res.status(403).json({ error: "Not allowed" });
     }
-    const { title, body, shared, tag } = req.body;
+    const { title, body, shared, tag, locale } = req.body;
     const reply = await prisma.cannedReply.update({
       where: { id: req.params.id },
       data: {
@@ -1436,6 +1480,7 @@ router.patch("/canned-replies/:id", async (req: Request, res: Response) => {
         ...(body !== undefined && { body }),
         ...(shared !== undefined && { shared: !!shared }),
         ...(tag !== undefined && { tag: tag || null }),
+        ...(locale !== undefined && { locale: locale || null }),
       },
     });
     return res.json(reply);

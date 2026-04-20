@@ -18,3 +18,5 @@ node_modules/
 # Legacy SQL dump — contains real user data, never commit
 hhealthc_feedback_db.sql
 *.sql
+# But DO track Prisma migration SQL — losing these breaks prod deploys.
+!server/prisma/migrations/**/migration.sql

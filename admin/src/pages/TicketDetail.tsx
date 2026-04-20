@@ -82,13 +82,16 @@ export default function TicketDetail() {
   // User's saved canned replies merged with the built-in ones in the quick
   // replies panel. Persisted via /admin/canned-replies.
   const [cannedReplies, setCannedReplies] = useState<{ id: string; title: string; body: string; shared: boolean }[]>([]);
+  const [cannedLocale, setCannedLocale] = useState("");
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
   const [newTemplateTitle, setNewTemplateTitle] = useState("");
   const [newTemplateShared, setNewTemplateShared] = useState(false);
   // Mention autocomplete: detect an @token at the cursor and suggest admins.
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionActiveIdx, setMentionActiveIdx] = useState(0);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const commentRef = useRef<HTMLTextAreaElement>(null);
+  const commentFileRef = useRef<HTMLInputElement>(null);
 
   const fetchTicket = () => {
     api.get(`/admin/tickets/${id}`).then((r) => { setTicket(r.data); setLoading(false); });
@@ -97,8 +100,11 @@ export default function TicketDetail() {
   useEffect(() => { fetchTicket(); }, [id]);
   useEffect(() => {
     api.get("/admin/admins").then((r) => setAdmins(r.data));
-    api.get("/admin/canned-replies").then((r) => setCannedReplies(r.data)).catch(() => {});
   }, []);
+  useEffect(() => {
+    const params = cannedLocale ? `?locale=${cannedLocale}` : "";
+    api.get(`/admin/canned-replies${params}`).then((r) => setCannedReplies(r.data)).catch(() => {});
+  }, [cannedLocale]);
 
   // Match an @token immediately before the caret (i.e. currently typing).
   const detectMention = (value: string, caret: number) => {
@@ -205,10 +211,20 @@ export default function TicketDetail() {
   };
 
   const addComment = async () => {
-    if (!comment.trim()) return;
+    if (!comment.trim() && pendingFiles.length === 0) return;
     setSending(true);
-    await api.post(`/admin/tickets/${id}/notes`, { body: comment, isInternalNote: isInternal });
+    const res = await api.post(`/admin/tickets/${id}/notes`, { body: comment || " ", isInternalNote: isInternal });
+    const commentId = res.data?.id;
+    if (commentId && pendingFiles.length > 0) {
+      for (const file of pendingFiles) {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("commentId", commentId);
+        await api.post(`/admin/tickets/${id}/attachments`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+      }
+    }
     setComment("");
+    setPendingFiles([]);
     setIsInternal(false);
     setSending(false);
     fetchTicket();
@@ -469,6 +485,25 @@ export default function TicketDetail() {
                             }`}>
                               <p className="whitespace-pre-wrap">{c.body}</p>
                             </div>
+                            {/* Per-comment attachments */}
+                            {(() => {
+                              const commentAtts = ticket.attachments?.filter(a => a.commentId === c.id) || [];
+                              if (commentAtts.length === 0) return null;
+                              return (
+                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                  {commentAtts.map(a => (
+                                    <a key={a.id} href={`/api${a.fileUrl}`} target="_blank" rel="noreferrer"
+                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 hover:bg-blue-100 text-xs text-blue-700 font-medium transition-colors">
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                      </svg>
+                                      {a.fileName}
+                                      <span className="text-blue-400">{(a.fileSize / 1024).toFixed(0)} KB</span>
+                                    </a>
+                                  ))}
+                                </div>
+                              );
+                            })()}
                           </div>
                         </div>
                       ))}
@@ -487,13 +522,27 @@ export default function TicketDetail() {
                   <div className="mt-5 pt-5 border-t border-gray-200">
                     {/* Quick replies */}
                     <div className="mb-3">
-                      <button onClick={() => setShowQuickReplies(!showQuickReplies)}
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors">
-                        <svg className={`w-4 h-4 transition-transform ${showQuickReplies ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                        </svg>
-                        Quick Replies
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => setShowQuickReplies(!showQuickReplies)}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors">
+                          <svg className={`w-4 h-4 transition-transform ${showQuickReplies ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                          </svg>
+                          Quick Replies
+                        </button>
+                        {showQuickReplies && (
+                          <select value={cannedLocale} onChange={e => setCannedLocale(e.target.value)}
+                            className="text-xs border border-gray-200 rounded-md px-2 py-0.5 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+                            <option value="">All languages</option>
+                            <option value="en">🇬🇧 English</option>
+                            <option value="es">🇪🇸 Spanish</option>
+                            <option value="fr">🇫🇷 French</option>
+                            <option value="de">🇩🇪 German</option>
+                            <option value="ar">🇸🇦 Arabic</option>
+                            <option value="ur">🇵🇰 Urdu</option>
+                          </select>
+                        )}
+                      </div>
 
                       {showQuickReplies && (
                         <>
@@ -599,6 +648,25 @@ export default function TicketDetail() {
                           </div>
                         )}
                       </div>
+                      {/* Pending file chips */}
+                      {pendingFiles.length > 0 && (
+                        <div className="px-4 pb-2 flex flex-wrap gap-1.5 border-t border-gray-100 pt-2">
+                          {pendingFiles.map((f, idx) => (
+                            <span key={idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-100 text-xs text-blue-700 font-medium">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                              </svg>
+                              {f.name}
+                              <button onClick={() => setPendingFiles(prev => prev.filter((_, i) => i !== idx))}
+                                className="hover:text-red-500 transition-colors ml-0.5">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
                         <div className="flex items-center gap-3">
                           <button onClick={() => setIsInternal(!isInternal)}
@@ -612,6 +680,18 @@ export default function TicketDetail() {
                             </svg>
                             {isInternal ? "Internal Note" : "Public Reply"}
                           </button>
+                          {/* File picker */}
+                          <label className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-blue-600 cursor-pointer transition-colors" title="Attach file">
+                            <input ref={commentFileRef} type="file" className="hidden" multiple
+                              onChange={(e) => {
+                                if (e.target.files) setPendingFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+                                e.target.value = "";
+                              }} />
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                            </svg>
+                            {pendingFiles.length > 0 ? `${pendingFiles.length} file${pendingFiles.length > 1 ? "s" : ""}` : "Attach"}
+                          </label>
                           {comment.length > 0 && (
                             <span className="text-xs text-gray-400">{comment.length} chars</span>
                           )}
@@ -628,7 +708,7 @@ export default function TicketDetail() {
                             </button>
                           )}
                         </div>
-                        <button onClick={addComment} disabled={sending || !comment.trim()}
+                        <button onClick={addComment} disabled={sending || (!comment.trim() && pendingFiles.length === 0)}
                           className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                           {sending ? (
                             <>

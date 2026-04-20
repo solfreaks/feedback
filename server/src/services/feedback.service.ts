@@ -18,6 +18,9 @@ export async function createFeedback(data: {
   rating: number;
   category?: FeedbackCategory;
   comment?: string;
+  deviceType?: string;
+  osVersion?: string;
+  appVersion?: string;
 }) {
   if (data.rating < 1 || data.rating > 5) throw new Error("Rating must be 1-5");
 
@@ -28,6 +31,9 @@ export async function createFeedback(data: {
       rating: data.rating,
       category: data.category || "general",
       comment: data.comment,
+      deviceType: data.deviceType,
+      osVersion: data.osVersion,
+      appVersion: data.appVersion,
     },
     include: feedbackInclude,
   });
@@ -234,6 +240,7 @@ export async function addReply(data: {
 
 export async function addFeedbackAttachment(data: {
   feedbackId: string;
+  feedbackReplyId?: string;
   fileUrl: string;
   fileName: string;
   fileSize: number;

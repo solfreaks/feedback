@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sdk_app_name">Feedback SDK</string>
+    <string name="sdk_create_ticket">ٹکٹ بنائیں</string>
+    <string name="sdk_my_tickets">میرے ٹکٹ</string>
+    <string name="sdk_ticket_detail">ٹکٹ کی تفصیل</string>
+    <string name="sdk_submit_feedback">رائے بھیجیں</string>
+    <string name="sdk_title">عنوان</string>
+    <string name="sdk_description">تفصیل</string>
+    <string name="sdk_category">زمرہ</string>
+    <string name="sdk_priority">ترجیح</string>
+    <string name="sdk_submit">جمع کریں</string>
+    <string name="sdk_send">بھیجیں</string>
+    <string name="sdk_cancel">منسوخ کریں</string>
+    <string name="sdk_reply_hint">جواب لکھیں…</string>
+    <string name="sdk_attach_file">فائل منسلک کریں</string>
+    <string name="sdk_reply_sent">جواب بھیج دیا گیا</string>
+    <string name="sdk_reply_empty">پہلے کچھ لکھیں</string>
+    <string name="sdk_loading">لوڈ ہو رہا ہے…</string>
+    <string name="sdk_no_tickets">ابھی کوئی ٹکٹ نہیں</string>
+    <string name="sdk_no_comments">ابھی کوئی تبصرہ نہیں</string>
+    <string name="sdk_write_comment">تبصرہ لکھیں…</string>
+    <string name="sdk_rate_experience">اپنا تجربہ درجہ بندی کریں</string>
+    <string name="sdk_comment_optional">تبصرہ (اختیاری)</string>
+    <string name="sdk_feedback_submitted">رائے بھیج دی گئی!</string>
+    <string name="sdk_ticket_created">ٹکٹ بنا دیا گیا!</string>
+    <string name="sdk_error_title_required">عنوان ضروری ہے</string>
+    <string name="sdk_error_desc_required">تفصیل ضروری ہے</string>
+    <string name="sdk_error_rating_required">براہ کرم درجہ بندی منتخب کریں</string>
+    <string name="sdk_error_not_logged_in">براہ کرم پہلے لاگ ان کریں</string>
+    <string name="sdk_title_hint">مسئلے کا مختصر خلاصہ</string>
+    <string name="sdk_description_hint">مسئلے کی تفصیل بیان کریں…</string>
+
+    <string name="sdk_back">واپس</string>
+    <string name="sdk_send_comment">تبصرہ بھیجیں</string>
+    <string name="sdk_create_ticket_subtitle">بتائیں کیا غلط ہے اور ہم آپ سے رابطہ کریں گے۔</string>
+    <string name="sdk_comments">تبصرے</string>
+    <string name="sdk_no_tickets_subtitle">آپ کے سپورٹ ٹکٹ یہاں دکھائے جائیں گے۔</string>
+    <string name="sdk_rating_1">بہت برا</string>
+    <string name="sdk_rating_2">برا</string>
+    <string name="sdk_rating_3">ٹھیک ہے</string>
+    <string name="sdk_rating_4">اچھا</string>
+    <string name="sdk_rating_5">بہترین!</string>
+    <string name="sdk_tap_to_rate">درجہ بندی کے لیے ستارے پر ٹیپ کریں</string>
+
+    <string name="sdk_my_feedback">میری رائے</string>
+    <string name="sdk_feedback_detail">رائے کی تفصیل</string>
+    <string name="sdk_no_feedback">ابھی کوئی رائے نہیں</string>
+    <string name="sdk_no_feedback_subtitle">آپ کی بھیجی گئی رائے یہاں دکھائی جائے گی۔</string>
+    <string name="sdk_replies">جوابات</string>
+    <string name="sdk_no_replies">ابھی کوئی جواب نہیں</string>
+
+    <string name="sdk_attachment">منسلکہ</string>
+    <string name="sdk_attachments">منسلکات</string>
+    <string name="sdk_add_attachment">منسلکہ شامل کریں</string>
+    <string name="sdk_remove_attachment">منسلکہ ہٹائیں</string>
+    <string name="sdk_open_external">اس سے کھولیں…</string>
+    <string name="sdk_attachment_load_failed">منسلکہ لوڈ نہ ہو سکا</string>
+    <string name="sdk_attachment_upload_failed">منسلکہ اپلوڈ نہ ہو سکا</string>
+    <string name="sdk_sending">بھیجا جا رہا ہے…</string>
+    <string name="sdk_send_failed_tap_to_retry">ناکام · دوبارہ کوشش کریں</string>
+
+    <string name="sdk_more_actions">مزید اقدامات</string>
+    <string name="sdk_edit">ترمیم کریں</string>
+    <string name="sdk_delete">حذف کریں</string>
+    <string name="sdk_save">محفوظ کریں</string>
+    <string name="sdk_cancel_edit">منسوخ کریں</string>
+    <string name="sdk_delete_feedback_confirm">اس رائے کو حذف کریں؟ یہ واپس نہیں ہو سکتا۔</string>
+    <string name="sdk_delete_comment_confirm">اس تبصرے کو حذف کریں؟</string>
+    <string name="sdk_edit_window_expired">24 گھنٹے کی ترمیم کی مہلت ختم ہو گئی۔</string>
+    <string name="sdk_feedback_updated">رائے اپڈیٹ ہو گئی</string>
+    <string name="sdk_feedback_deleted">رائے حذف ہو گئی</string>
+    <string name="sdk_comment_updated">تبصرہ اپڈیٹ ہو گیا</string>
+    <string name="sdk_comment_deleted">تبصرہ حذف ہو گیا</string>
+
+    <string name="sdk_typing">سپورٹ لکھ رہا ہے…</string>
+
+    <string name="sdk_offline_banner">آف لائن · محفوظ ڈیٹا دکھایا جا رہا ہے</string>
+    <string name="sdk_server_unreachable">سرور تک رسائی نہیں ہو سکی</string>
+    <string name="sdk_retry">دوبارہ کوشش کریں</string>
+    <string name="sdk_refresh">تازہ کریں</string>
+    <string name="sdk_couldnt_load">یہ لوڈ نہیں ہو سکا</string>
+    <string name="sdk_offline">آف لائن</string>
+    <string name="sdk_draft_saved">مسودہ محفوظ ہو گیا</string>
+
+    <string name="sdk_notifications">اطلاعات</string>
+    <string name="sdk_mark_all_read">سب کو پڑھا ہوا نشان لگائیں</string>
+    <string name="sdk_no_notifications">کوئی اطلاع نہیں</string>
+    <string name="sdk_no_notifications_subtitle">آپ سب کچھ دیکھ چکے ہیں۔</string>
+    <string name="sdk_tab_activity">سرگرمی</string>
+    <string name="sdk_tab_announcements">اعلانات</string>
+    <string name="sdk_no_announcements">کوئی اعلان نہیں</string>
+    <string name="sdk_no_announcements_subtitle">ٹیم کی اپڈیٹس یہاں آئیں گی۔</string>
+    <string name="sdk_no_app_to_open">اس فائل کو کھولنے کے لیے کوئی ایپ دستیاب نہیں</string>
+    <string name="sdk_ticket_created_attach_failed">ٹکٹ بن گیا، لیکن ایک یا زیادہ منسلکات اپلوڈ نہ ہو سکے۔</string>
+    <string name="sdk_feedback_submitted_attach_failed">رائے بھیج دی گئی، لیکن ایک یا زیادہ منسلکات اپلوڈ نہ ہو سکے۔</string>
+</resources>

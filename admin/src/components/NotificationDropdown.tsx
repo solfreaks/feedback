@@ -29,34 +29,32 @@ export default function NotificationDropdown() {
 
     fetchNotifications();
 
+    let destroyed = false;
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = `${protocol}//${window.location.host}/ws?token=${token}`;
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
 
-    ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        if (msg.type === "notification") {
-          setNotifications((prev) => [msg.data, ...prev].slice(0, 20));
-          setUnreadCount((c) => c + 1);
-        }
-      } catch {}
+    const connect = () => {
+      if (destroyed) return;
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === "notification") {
+            setNotifications((prev) => [msg.data, ...prev].slice(0, 20));
+            setUnreadCount((c) => c + 1);
+          }
+        } catch {}
+      };
+
+      ws.onclose = () => {
+        if (!destroyed) setTimeout(connect, 3000);
+      };
     };
 
-    ws.onclose = () => {
-      // Reconnect after 3s
-      setTimeout(() => {
-        if (wsRef.current === ws) {
-          const newWs = new WebSocket(wsUrl);
-          newWs.onmessage = ws.onmessage;
-          newWs.onclose = ws.onclose;
-          wsRef.current = newWs;
-        }
-      }, 3000);
-    };
-
-    return () => { ws.close(); wsRef.current = null; };
+    connect();
+    return () => { destroyed = true; wsRef.current?.close(); wsRef.current = null; };
   }, []);
 
   // Close on outside click

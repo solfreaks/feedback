@@ -88,15 +88,19 @@ data class FeedbackDetail(
     val createdAt: String,
     val replies: List<FeedbackReply>,
     val attachments: List<Attachment>,
-    // Owner — used on the client to decide whether to show edit/delete
-    // affordances. Nullable so older server responses still parse.
     val user: User? = null,
+    val deviceType: String? = null,
+    val osVersion: String? = null,
+    val appVersion: String? = null,
 )
 
 data class CreateFeedbackRequest(
     val rating: Int,
     val category: String = "general",
-    val comment: String? = null
+    val comment: String? = null,
+    val deviceType: String? = null,
+    val osVersion: String? = null,
+    val appVersion: String? = null
 )
 
 data class FeedbackListResponse(

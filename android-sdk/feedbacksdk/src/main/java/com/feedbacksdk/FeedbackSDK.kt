@@ -14,6 +14,7 @@ import com.feedbacksdk.internal.TokenStore
 import com.feedbacksdk.internal.UnreadStore
 import com.feedbacksdk.internal.toResult
 import com.feedbacksdk.models.*
+import android.os.Build
 import com.feedbacksdk.ui.AttachmentViewerActivity
 import com.feedbacksdk.ui.NotificationsActivity
 import com.feedbacksdk.ui.FeedbackActivity
@@ -34,6 +35,7 @@ object FeedbackSDK {
 
     private var initialized = false
     private var googleClientId: String? = null
+    private lateinit var appContext: Context
     // Stored so the FCM service can subscribe to the matching announcements
     // topic when a device token is registered. Null => topic subscription is
     // skipped (consumer didn't pass an appId, or opted out).
@@ -64,6 +66,7 @@ object FeedbackSDK {
         googleClientId: String? = null,
         debug: Boolean = false
     ) {
+        appContext = context.applicationContext
         TokenStore.init(context.applicationContext)
         UnreadStore.init(context.applicationContext)
         DraftStore.init(context.applicationContext)
@@ -365,8 +368,18 @@ object FeedbackSDK {
     ): SdkResult<Feedback> {
         checkInit()
         return try {
+            val appVersion = try {
+                appContext.packageManager.getPackageInfo(appContext.packageName, 0).versionName
+            } catch (e: Exception) { null }
             ApiClient.getApi().submitFeedback(
-                CreateFeedbackRequest(rating, category, comment)
+                CreateFeedbackRequest(
+                    rating = rating,
+                    category = category,
+                    comment = comment,
+                    deviceType = "android",
+                    osVersion = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
+                    appVersion = appVersion
+                )
             ).toResult()
         } catch (e: Exception) {
             SdkResult.Error(e.message ?: "Failed to submit feedback")

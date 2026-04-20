@@ -68,6 +68,7 @@ export interface Comment {
 
 export interface Attachment {
   id: string;
+  commentId?: string;
   fileUrl: string;
   fileName: string;
   fileSize: number;

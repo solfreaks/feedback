@@ -805,6 +805,164 @@ class _TicketListScreenState extends State<TicketListScreen> {
 
 ---
 
+## Multilanguage Support (Android SDK)
+
+The Android SDK ships with full UI translations out of the box. Android automatically picks the right language based on the device locale.
+
+### Supported Languages
+
+| Locale code | Language | Direction |
+|-------------|----------|-----------|
+| `en` (default) | English | LTR |
+| `es` | Spanish | LTR |
+| `fr` | French | LTR |
+| `de` | German | LTR |
+| `ar` | Arabic | RTL |
+| `ur` | Urdu | RTL |
+
+RTL languages (Arabic, Urdu) are fully supported — Android mirrors layouts and text direction automatically when the device is set to an RTL locale.
+
+### How It Works
+
+The SDK uses standard Android string resources. When you integrate the SDK, translations are included automatically — no extra setup required. The device locale drives language selection:
+
+```
+Device locale = "es"  →  SDK shows Spanish strings
+Device locale = "ar"  →  SDK shows Arabic strings + RTL layout
+Device locale = "fr"  →  SDK shows French strings
+Device locale = "de"  →  SDK shows German strings
+Device locale = "ur"  →  SDK shows Urdu strings + RTL layout
+Device locale = anything else  →  SDK falls back to English
+```
+
+### Overriding a Specific String
+
+All SDK strings are in `res/values/strings.xml` with the `sdk_` prefix. To change any string for your app (or add a new language), declare the same resource name in your own app:
+
+```xml
+<!-- app/src/main/res/values/strings.xml -->
+<resources>
+    <!-- Override the rating prompt copy -->
+    <string name="sdk_rate_experience">How are we doing?</string>
+    <!-- Override the submit button label -->
+    <string name="sdk_submit_feedback">Send Rating</string>
+</resources>
+```
+
+Your declaration takes priority over the SDK's default — Android's resource merging handles this automatically.
+
+### Adding a New Language
+
+To add a language not yet bundled in the SDK, create the appropriate values directory in **your app** (not in the SDK):
+
+```
+app/src/main/res/
+  values-zh/strings.xml   ← Simplified Chinese
+  values-hi/strings.xml   ← Hindi
+  values-pt/strings.xml   ← Portuguese
+  values-tr/strings.xml   ← Turkish
+  values-ja/strings.xml   ← Japanese
+```
+
+Example `values-zh/strings.xml`:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sdk_create_ticket">创建工单</string>
+    <string name="sdk_submit_feedback">提交反馈</string>
+    <string name="sdk_rate_experience">评价您的体验</string>
+    <string name="sdk_loading">加载中…</string>
+    <string name="sdk_send">发送</string>
+    <string name="sdk_cancel">取消</string>
+    <string name="sdk_no_tickets">暂无工单</string>
+    <string name="sdk_no_feedback">暂无反馈</string>
+    <string name="sdk_offline_banner">离线 · 显示缓存数据</string>
+    <string name="sdk_retry">重试</string>
+    <!-- Add all other sdk_* keys you want to translate -->
+</resources>
+```
+
+You only need to include the strings you want to translate — the SDK's English fallback covers any omitted keys.
+
+### Full SDK String Key Reference
+
+These are all the string keys exposed by the SDK. Use them in your own `values-XX/strings.xml` files to override or translate:
+
+```
+sdk_app_name              sdk_create_ticket         sdk_my_tickets
+sdk_ticket_detail         sdk_submit_feedback       sdk_title
+sdk_description           sdk_category              sdk_priority
+sdk_submit                sdk_send                  sdk_cancel
+sdk_reply_hint            sdk_attach_file           sdk_reply_sent
+sdk_reply_empty           sdk_loading               sdk_no_tickets
+sdk_no_comments           sdk_write_comment         sdk_rate_experience
+sdk_comment_optional      sdk_feedback_submitted    sdk_ticket_created
+sdk_error_title_required  sdk_error_desc_required   sdk_error_rating_required
+sdk_error_not_logged_in   sdk_title_hint            sdk_description_hint
+sdk_back                  sdk_send_comment          sdk_create_ticket_subtitle
+sdk_comments              sdk_no_tickets_subtitle   sdk_rating_1 … sdk_rating_5
+sdk_tap_to_rate           sdk_my_feedback           sdk_feedback_detail
+sdk_no_feedback           sdk_no_feedback_subtitle  sdk_replies
+sdk_no_replies            sdk_attachment            sdk_attachments
+sdk_add_attachment        sdk_remove_attachment     sdk_open_external
+sdk_attachment_load_failed  sdk_attachment_upload_failed  sdk_sending
+sdk_send_failed_tap_to_retry  sdk_more_actions      sdk_edit
+sdk_delete                sdk_save                  sdk_cancel_edit
+sdk_delete_feedback_confirm  sdk_delete_comment_confirm  sdk_edit_window_expired
+sdk_feedback_updated      sdk_feedback_deleted      sdk_comment_updated
+sdk_comment_deleted       sdk_typing                sdk_offline_banner
+sdk_server_unreachable    sdk_retry                 sdk_refresh
+sdk_couldnt_load          sdk_offline               sdk_draft_saved
+sdk_notifications         sdk_mark_all_read         sdk_no_notifications
+sdk_no_notifications_subtitle  sdk_tab_activity     sdk_tab_announcements
+sdk_no_announcements      sdk_no_announcements_subtitle  sdk_no_app_to_open
+sdk_ticket_created_attach_failed  sdk_feedback_submitted_attach_failed
+```
+
+---
+
+## Multilanguage Quick Replies (Admin Panel)
+
+Quick Replies (canned response templates in **Settings → Quick Replies**) support per-language variants. When replying to a user, admins can create locale-specific templates so the right language version is always at hand.
+
+### Setting a Language on a Quick Reply
+
+In the admin panel, each Quick Reply has an optional **Language** field. Set it to a [BCP-47 locale code](https://en.wikipedia.org/wiki/IETF_language_tag):
+
+| Language field value | Reply is shown for |
+|----------------------|--------------------|
+| *(blank)* | All locales — always visible |
+| `en` | English users |
+| `es` | Spanish users |
+| `ar` | Arabic users |
+| `ur` | Urdu users |
+| `fr` | French users |
+| `de` | German users |
+
+Replies without a language are always included in results (universal templates). Locale-specific replies appear only when their locale is requested.
+
+### Filtering by Locale via the API
+
+The canned-replies endpoint accepts an optional `locale` query parameter:
+
+```
+GET /api/admin/canned-replies          → all replies (own + shared)
+GET /api/admin/canned-replies?locale=es → Spanish replies + locale-neutral replies
+GET /api/admin/canned-replies?locale=ar → Arabic replies + locale-neutral replies
+```
+
+### Recommended Workflow
+
+1. Create a "universal" template (no language set) for the most common response — it appears for every language.
+2. Create locale-specific variants for languages you actively support, e.g.:
+   - "Thank you (en)" with body in English
+   - "Gracias (es)" with body in Spanish
+   - "شكراً (ar)" with body in Arabic
+3. When replying, filter the quick-replies panel by the user's app locale (pass `?locale=XX` from the device language header or user profile).
+
+---
+
 ## Error Handling
 
 All API errors return `{ "error": "description" }`. Handle common cases:
@@ -880,6 +1038,7 @@ Future<void> _clearToken() async {
 - [ ] Initialize `FeedbackService` with your API key and server URL
 - [ ] Test: Sign in → Create ticket → Add comment → Submit feedback
 - [ ] (Optional) Set up Firebase and register FCM token for push notifications
+- [ ] (Optional) Configure locale-tagged Quick Replies in Settings for multilanguage support
 - [ ] Deploy and update the server URL to production
 
 ---

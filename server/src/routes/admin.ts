@@ -548,7 +548,8 @@ router.get("/analytics", async (req: Request, res: Response) => {
     const appId = req.query.appId as string | undefined;
     const appIdsParam = req.query.appIds as string | undefined;
     const appIds = appIdsParam ? appIdsParam.split(",") : undefined;
-    const stats = await analyticsService.getDashboardStats(appId, appIds);
+    const days = parseInt((req.query.days as string) || "30");
+    const stats = await analyticsService.getDashboardStats(appId, appIds, days);
     return res.json(stats);
   } catch (err) {
     console.error("Analytics error:", err);

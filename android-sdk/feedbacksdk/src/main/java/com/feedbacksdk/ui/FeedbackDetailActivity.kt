@@ -100,7 +100,15 @@ class FeedbackDetailActivity : AppCompatActivity() {
         val appBar = findViewById<AppBarLayout>(R.id.appBar)
         toolbar = findViewById(R.id.toolbar)
         toolbar.setNavigationOnClickListener { finish() }
-        applySystemBarInsets(topView = appBar, bottomView = null)
+        applySystemBarInsets(topView = appBar, bottomView = findViewById(R.id.replyComposer))
+
+        val contentScroll = findViewById<androidx.core.widget.NestedScrollView>(R.id.contentScroll)
+        val baseScrollPadBottom = contentScroll.paddingBottom
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(contentScroll) { v, insets ->
+            val ime = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.ime()).bottom
+            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, baseScrollPadBottom + ime)
+            insets
+        }
 
         stars = listOf(
             findViewById(R.id.star1),

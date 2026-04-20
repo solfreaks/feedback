@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import api from "../api";
 import type { App } from "../types";
 import Avatar from "../components/Avatar";
+import { SearchInput } from "../components/filters/FilterBar";
 
 const platformOptions = [
   { value: "", label: "Not specified" },
@@ -815,18 +816,14 @@ export default function Apps() {
         )}
       </div>
 
-      {/* Search */}
+      {/* Search — only surfaced once the user has enough apps that scanning
+          the list gets cumbersome. */}
       {apps.length > 3 && (
-        <div className="mb-4 relative">
-          <svg className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input
-            type="text"
+        <div className="mb-4">
+          <SearchInput
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={setSearchQuery}
             placeholder="Search apps by name, description, or bundle ID…"
-            className="w-full pl-10 pr-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300"
           />
         </div>
       )}

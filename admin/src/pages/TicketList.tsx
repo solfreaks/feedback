@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import { FilterBar, FilterPill, FilterGroup, SearchInput } from "../components/filters/FilterBar";
 import api from "../api";
 import Avatar from "../components/Avatar";
 import type { Ticket, App, Analytics } from "../types";
@@ -29,25 +30,6 @@ const statusDot: Record<string, string> = {
   resolved: "bg-emerald-500",
   closed: "bg-gray-400",
 };
-
-function FilterPill({ label, active, onClick, dot }: { label: string; active: boolean; onClick: () => void; dot?: string }) {
-  return (
-    <button onClick={onClick}
-      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
-        active
-          ? "bg-blue-50 text-blue-700 border-blue-200 shadow-sm"
-          : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:border-gray-300"
-      }`}>
-      {dot && <span className={`w-2 h-2 rounded-full ${dot}`} />}
-      {label}
-      {active && (
-        <svg className="w-3 h-3 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      )}
-    </button>
-  );
-}
 
 function slaTimeLeft(deadline: string) {
   const diff = new Date(deadline).getTime() - Date.now();
@@ -317,92 +299,98 @@ export default function TicketList() {
         </div>
       )}
 
-      {/* Search + Filters */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 space-y-3">
-        {/* Search bar */}
-        <div className="relative">
-          <svg className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input type="text" value={searchInput} onChange={(e) => setSearchInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            placeholder="Search tickets by title or description..."
-            className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-10 pr-20 py-2.5 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white focus:border-blue-300 transition-all" />
-          {searchInput && (
-            <button onClick={handleSearch}
-              className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 rounded-md bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition-colors">
-              Search
-            </button>
-          )}
-        </div>
-
-        {/* Filter groups */}
-        <div className="space-y-2.5">
-          {/* Flags (quick attention filters) */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-14 flex-shrink-0">Flags</span>
-            <FilterPill label="Unread" active={unread} onClick={() => toggleBoolFilter("unread")} dot="bg-blue-500" />
-            <FilterPill label="Stale · 24h+" active={stale} onClick={() => toggleBoolFilter("stale")} dot="bg-amber-500" />
-          </div>
-
-          {/* Status pills */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-14 flex-shrink-0">Status</span>
+      {/* Filter bar. Primary axis is status (most-used); everything else
+          lives behind "More filters" to keep the row shallow. */}
+      <FilterBar
+        primary={
+          <>
             {(["open", "in_progress", "resolved", "closed"] as const).map((s) => (
-              <FilterPill key={s} label={s.replace("_", " ")} active={status === s}
-                onClick={() => toggleFilter("status", s)} dot={statusDot[s]} />
+              <FilterPill
+                key={s}
+                label={s.replace("_", " ")}
+                active={status === s}
+                onClick={() => toggleFilter("status", s)}
+                dot={statusDot[s]}
+              />
             ))}
-          </div>
-
-          {/* Priority pills */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-14 flex-shrink-0">Priority</span>
-            {(["critical", "high", "medium", "low"] as const).map((p) => (
-              <FilterPill key={p} label={p} active={priority === p}
-                onClick={() => toggleFilter("priority", p)} dot={priorityDot[p]} />
-            ))}
-          </div>
-
-          {/* App pills */}
-          {apps.length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-14 flex-shrink-0">App</span>
-              {apps.map((a) => (
-                <FilterPill key={a.id} label={a.name} active={appId === a.id}
-                  onClick={() => toggleFilter("appId", a.id)} />
+            <span className="w-px h-5 bg-gray-200 mx-1" />
+            <FilterPill
+              label="Unread"
+              active={unread}
+              onClick={() => toggleBoolFilter("unread")}
+              dot="bg-blue-500"
+            />
+            <FilterPill
+              label="Stale · 24h+"
+              active={stale}
+              onClick={() => toggleBoolFilter("stale")}
+              dot="bg-amber-500"
+            />
+          </>
+        }
+        search={
+          <SearchInput
+            value={searchInput}
+            onChange={setSearchInput}
+            onEnter={handleSearch}
+            placeholder="Search tickets by title or description…"
+          />
+        }
+        more={
+          <>
+            <FilterGroup label="Priority">
+              {(["critical", "high", "medium", "low"] as const).map((p) => (
+                <FilterPill
+                  key={p}
+                  label={p}
+                  active={priority === p}
+                  onClick={() => toggleFilter("priority", p)}
+                  dot={priorityDot[p]}
+                />
               ))}
-            </div>
-          )}
-
-          {/* Assignee pills */}
-          {admins.length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-14 flex-shrink-0">Assign</span>
-              <FilterPill label="Unassigned" active={assignedTo === "unassigned"}
-                onClick={() => toggleFilter("assignedTo", "unassigned")} dot="bg-gray-400" />
-              {admins.map((a) => (
-                <FilterPill key={a.id} label={a.name} active={assignedTo === a.id}
-                  onClick={() => toggleFilter("assignedTo", a.id)} />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Active filter count + clear */}
-        {activeFilters > 0 && (
-          <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
-            <span className="text-xs text-gray-500">{activeFilters} filter{activeFilters > 1 ? "s" : ""} active</span>
-            <button onClick={clearAllFilters}
-              className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              Clear all
-            </button>
-            <span className="ml-auto text-xs text-gray-400">{total} result{total !== 1 ? "s" : ""}</span>
-          </div>
-        )}
-      </div>
+            </FilterGroup>
+            {apps.length > 0 && (
+              <FilterGroup label="App">
+                {apps.map((a) => (
+                  <FilterPill
+                    key={a.id}
+                    label={a.name}
+                    active={appId === a.id}
+                    onClick={() => toggleFilter("appId", a.id)}
+                  />
+                ))}
+              </FilterGroup>
+            )}
+            {admins.length > 0 && (
+              <FilterGroup label="Assignee">
+                <FilterPill
+                  label="Unassigned"
+                  active={assignedTo === "unassigned"}
+                  onClick={() => toggleFilter("assignedTo", "unassigned")}
+                  dot="bg-gray-400"
+                />
+                {admins.map((a) => (
+                  <FilterPill
+                    key={a.id}
+                    label={a.name}
+                    active={assignedTo === a.id}
+                    onClick={() => toggleFilter("assignedTo", a.id)}
+                  />
+                ))}
+              </FilterGroup>
+            )}
+          </>
+        }
+        activeCount={activeFilters}
+        onClear={clearAllFilters}
+        rightSlot={
+          activeFilters > 0 ? (
+            <span className="text-xs text-gray-400 ml-1">
+              {total} result{total !== 1 ? "s" : ""}
+            </span>
+          ) : undefined
+        }
+      />
 
       {loading ? (
         <div className="flex items-center justify-center h-40">

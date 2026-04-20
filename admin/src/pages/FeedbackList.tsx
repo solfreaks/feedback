@@ -3,6 +3,7 @@ import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import api from "../api";
 import Avatar from "../components/Avatar";
 import type { App } from "../types";
+import { FilterBar, FilterPill, FilterGroup, SearchInput } from "../components/filters/FilterBar";
 
 interface FeedbackItem {
   id: string;
@@ -78,25 +79,6 @@ function Stars({ rating, size = "w-4 h-4" }: { rating: number; size?: string }) 
   );
 }
 
-function FilterPill({ label, active, onClick, dot }: { label: string; active: boolean; onClick: () => void; dot?: string }) {
-  return (
-    <button onClick={onClick}
-      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
-        active
-          ? "bg-blue-50 text-blue-700 border-blue-200 shadow-sm"
-          : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:border-gray-300"
-      }`}>
-      {dot && <span className={`w-2 h-2 rounded-full ${dot}`} />}
-      {label}
-      {active && (
-        <svg className="w-3 h-3 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      )}
-    </button>
-  );
-}
-
 export default function FeedbackList() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -117,6 +99,17 @@ export default function FeedbackList() {
   const rating = searchParams.get("rating") || "";
   const unread = searchParams.get("unread") === "true";
   const search = searchParams.get("search") || "";
+
+  // Local input mirror so typing stays snappy; we commit to URL on Enter.
+  const [searchInput, setSearchInput] = useState(search);
+  useEffect(() => { setSearchInput(search); }, [search]);
+  const commitSearch = () => {
+    const p = new URLSearchParams(searchParams);
+    const v = searchInput.trim();
+    if (v) p.set("search", v); else p.delete("search");
+    p.delete("page");
+    setSearchParams(p);
+  };
 
   useEffect(() => {
     Promise.all([
@@ -333,67 +326,78 @@ export default function FeedbackList() {
         </div>
       )}
 
-      {/* Filters */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 space-y-2.5">
-        {/* Flags (attention filters) */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-16 flex-shrink-0">Flags</span>
-          <FilterPill label="Unread" active={unread} onClick={() => toggleBoolFilter("unread")} dot="bg-blue-500" />
-        </div>
-
-        {/* Category pills */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-16 flex-shrink-0">Category</span>
-          {Object.entries(categoryLabels).map(([k, v]) => (
-            <FilterPill key={k} label={v} active={category === k}
-              onClick={() => toggleFilter("category", k)} dot={categoryDot[k]} />
-          ))}
-        </div>
-
-        {/* Status pills */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-16 flex-shrink-0">Status</span>
-          {Object.entries(statusLabels).map(([k, v]) => (
-            <FilterPill key={k} label={v} active={status === k}
-              onClick={() => toggleFilter("status", k)} dot={statusDot[k]} />
-          ))}
-        </div>
-
-        {/* Rating pills */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-16 flex-shrink-0">Rating</span>
-          {[5, 4, 3, 2, 1].map((r) => (
-            <FilterPill key={r} label={`${"★".repeat(r)} ${r}`} active={rating === String(r)}
-              onClick={() => toggleFilter("rating", String(r))}
-              dot={r >= 4 ? "bg-emerald-500" : r === 3 ? "bg-amber-500" : "bg-red-500"} />
-          ))}
-        </div>
-
-        {/* App pills */}
-        {apps.length > 0 && (
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-16 flex-shrink-0">App</span>
-            {apps.map((a) => (
-              <FilterPill key={a.id} label={a.name} active={appId === a.id}
-                onClick={() => toggleFilter("appId", a.id)} />
+      {/* Filter bar. Primary axis is status; category/rating/app live behind
+          the "More filters" popover so the bar stays one row at normal widths. */}
+      <FilterBar
+        primary={
+          <>
+            {Object.entries(statusLabels).map(([k, v]) => (
+              <FilterPill
+                key={k}
+                label={v}
+                active={status === k}
+                onClick={() => toggleFilter("status", k)}
+                dot={statusDot[k]}
+              />
             ))}
-          </div>
-        )}
-
-        {/* Active count + clear */}
-        {activeFilters > 0 && (
-          <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
-            <span className="text-xs text-gray-500">{activeFilters} filter{activeFilters > 1 ? "s" : ""} active</span>
-            <button onClick={() => setSearchParams({})}
-              className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              Clear all
-            </button>
-          </div>
-        )}
-      </div>
+            <span className="w-px h-5 bg-gray-200 mx-1" />
+            <FilterPill
+              label="Unread"
+              active={unread}
+              onClick={() => toggleBoolFilter("unread")}
+              dot="bg-blue-500"
+            />
+          </>
+        }
+        search={
+          <SearchInput
+            value={searchInput}
+            onChange={setSearchInput}
+            onEnter={commitSearch}
+            placeholder="Search feedback…"
+          />
+        }
+        more={
+          <>
+            <FilterGroup label="Category">
+              {Object.entries(categoryLabels).map(([k, v]) => (
+                <FilterPill
+                  key={k}
+                  label={v}
+                  active={category === k}
+                  onClick={() => toggleFilter("category", k)}
+                  dot={categoryDot[k]}
+                />
+              ))}
+            </FilterGroup>
+            <FilterGroup label="Rating">
+              {[5, 4, 3, 2, 1].map((r) => (
+                <FilterPill
+                  key={r}
+                  label={`${"★".repeat(r)} ${r}`}
+                  active={rating === String(r)}
+                  onClick={() => toggleFilter("rating", String(r))}
+                  dot={r >= 4 ? "bg-emerald-500" : r === 3 ? "bg-amber-500" : "bg-red-500"}
+                />
+              ))}
+            </FilterGroup>
+            {apps.length > 0 && (
+              <FilterGroup label="App">
+                {apps.map((a) => (
+                  <FilterPill
+                    key={a.id}
+                    label={a.name}
+                    active={appId === a.id}
+                    onClick={() => toggleFilter("appId", a.id)}
+                  />
+                ))}
+              </FilterGroup>
+            )}
+          </>
+        }
+        activeCount={activeFilters}
+        onClear={() => setSearchParams({})}
+      />
 
       {loading ? (
         <div className="flex items-center justify-center h-40">

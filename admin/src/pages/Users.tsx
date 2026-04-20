@@ -3,31 +3,13 @@ import { Link, useSearchParams } from "react-router-dom";
 import api from "../api";
 import type { App, UserDetail } from "../types";
 import Avatar from "../components/Avatar";
+import { FilterBar, FilterPill, FilterGroup, SearchInput } from "../components/filters/FilterBar";
 
 const roleDot: Record<string, string> = {
   super_admin: "bg-purple-500",
   admin: "bg-blue-500",
   user: "bg-gray-400",
 };
-
-function FilterPill({ label, active, onClick, dot }: { label: string; active: boolean; onClick: () => void; dot?: string }) {
-  return (
-    <button onClick={onClick}
-      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
-        active
-          ? "bg-blue-50 text-blue-700 border-blue-200 shadow-sm"
-          : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:border-gray-300"
-      }`}>
-      {dot && <span className={`w-2 h-2 rounded-full ${dot}`} />}
-      {label}
-      {active && (
-        <svg className="w-3 h-3 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      )}
-    </button>
-  );
-}
 
 interface UserStats {
   total: number;
@@ -210,68 +192,69 @@ export default function Users() {
           </div>
         )}
 
-        {/* Search + Filters */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 space-y-3">
-          {/* Search */}
-          <div className="relative">
-            <svg className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input value={search} onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              placeholder="Search by name or email..."
-              className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-10 pr-4 py-2.5 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white focus:border-blue-300 transition-all" />
-          </div>
-
-          {/* Role pills */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-10 flex-shrink-0">Role</span>
-            {(["user", "admin", "super_admin"] as const).map((r) => (
-              <FilterPill key={r} label={r.replace("_", " ")} active={roleFilter === r}
-                onClick={() => { setRoleFilter(roleFilter === r ? "" : r); setPage(1); }}
-                dot={roleDot[r]} />
-            ))}
-          </div>
-
-          {/* Status pills */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-10 flex-shrink-0">Status</span>
-            <FilterPill label="Active" active={bannedFilter === "false"}
-              onClick={() => { setBannedFilter(bannedFilter === "false" ? "" : "false"); setPage(1); }}
-              dot="bg-emerald-500" />
-            <FilterPill label="Banned" active={bannedFilter === "true"}
-              onClick={() => { setBannedFilter(bannedFilter === "true" ? "" : "true"); setPage(1); }}
-              dot="bg-red-500" />
-          </div>
-
-          {/* App pills — shows users with any activity (ticket/feedback/device/admin) for that app */}
-          {apps.length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-10 flex-shrink-0">App</span>
-              {apps.map((a) => (
+        {/* Filter bar. Role = primary axis; banned/app = secondary. */}
+        <FilterBar
+          primary={
+            <>
+              {(["user", "admin", "super_admin"] as const).map((r) => (
                 <FilterPill
-                  key={a.id}
-                  label={a.name}
-                  active={appFilter === a.id}
-                  onClick={() => { setAppFilter(appFilter === a.id ? "" : a.id); setPage(1); }}
+                  key={r}
+                  label={r.replace("_", " ")}
+                  active={roleFilter === r}
+                  onClick={() => { setRoleFilter(roleFilter === r ? "" : r); setPage(1); }}
+                  dot={roleDot[r]}
                 />
               ))}
-            </div>
-          )}
-
-          {(roleFilter || search || bannedFilter || appFilter) && (
-            <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
-              <span className="text-xs text-gray-500">Filters active</span>
-              <button onClick={() => { setRoleFilter(""); setBannedFilter(""); setAppFilter(""); setSearch(""); setPage(1); setSearchTrigger((t) => t + 1); }}
-                className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                Clear all
-              </button>
-            </div>
-          )}
-        </div>
+            </>
+          }
+          search={
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              onEnter={handleSearch}
+              placeholder="Search by name or email…"
+            />
+          }
+          more={
+            <>
+              <FilterGroup label="Status">
+                <FilterPill
+                  label="Active"
+                  active={bannedFilter === "false"}
+                  onClick={() => { setBannedFilter(bannedFilter === "false" ? "" : "false"); setPage(1); }}
+                  dot="bg-emerald-500"
+                />
+                <FilterPill
+                  label="Banned"
+                  active={bannedFilter === "true"}
+                  onClick={() => { setBannedFilter(bannedFilter === "true" ? "" : "true"); setPage(1); }}
+                  dot="bg-red-500"
+                />
+              </FilterGroup>
+              {apps.length > 0 && (
+                <FilterGroup label="App activity">
+                  {apps.map((a) => (
+                    <FilterPill
+                      key={a.id}
+                      label={a.name}
+                      active={appFilter === a.id}
+                      onClick={() => { setAppFilter(appFilter === a.id ? "" : a.id); setPage(1); }}
+                    />
+                  ))}
+                </FilterGroup>
+              )}
+            </>
+          }
+          activeCount={[roleFilter, bannedFilter, appFilter, search].filter(Boolean).length}
+          onClear={() => {
+            setRoleFilter("");
+            setBannedFilter("");
+            setAppFilter("");
+            setSearch("");
+            setPage(1);
+            setSearchTrigger((t) => t + 1);
+          }}
+        />
 
         {/* Table */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">

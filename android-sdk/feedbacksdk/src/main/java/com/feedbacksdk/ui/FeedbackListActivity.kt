@@ -34,6 +34,8 @@ class FeedbackListActivity : AppCompatActivity() {
 
     private lateinit var recyclerView: RecyclerView
     private lateinit var progressBar: ProgressBar
+    private lateinit var shimmerContainer: com.facebook.shimmer.ShimmerFrameLayout
+    private lateinit var swipeRefresh: androidx.swiperefreshlayout.widget.SwipeRefreshLayout
     private lateinit var emptyState: View
     private lateinit var statusBanner: android.widget.LinearLayout
     private var lastLoadFailed = false
@@ -65,17 +67,23 @@ class FeedbackListActivity : AppCompatActivity() {
 
         recyclerView = findViewById(R.id.recyclerView)
         progressBar = findViewById(R.id.progressBar)
+        shimmerContainer = findViewById(R.id.shimmerContainer)
+        swipeRefresh = findViewById(R.id.swipeRefresh)
+        swipeRefresh.setOnRefreshListener { loadFeedbacks() }
         emptyState = findViewById(R.id.emptyState)
         statusBanner = findViewById(R.id.statusBanner)
         ConnectivityMonitor.addListener(connectivityListener)
 
-        adapter = FeedbackAdapter(feedbacks) { feedback ->
+        adapter = FeedbackAdapter { feedback ->
             FeedbackSDK.openFeedbackDetail(this, feedback.id)
         }
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.adapter = adapter
 
         findViewById<MaterialButton>(R.id.btnSubmit).setOnClickListener {
+            FeedbackSDK.openFeedback(this)
+        }
+        emptyState.findViewById<MaterialButton>(R.id.btnEmptySubmit)?.setOnClickListener {
             FeedbackSDK.openFeedback(this)
         }
     }
@@ -87,20 +95,36 @@ class FeedbackListActivity : AppCompatActivity() {
 
     private fun loadFeedbacks() {
         lifecycleScope.launch {
-            progressBar.visibility = View.VISIBLE
+            val firstLoad = feedbacks.isEmpty()
+            val swipe = swipeRefresh.isRefreshing
+            if (firstLoad && !swipe) {
+                shimmerContainer.visibility = View.VISIBLE
+                shimmerContainer.startShimmer()
+                recyclerView.visibility = View.GONE
+            } else if (!swipe) {
+                progressBar.visibility = View.VISIBLE
+            }
             emptyState.visibility = View.GONE
             when (val result = FeedbackSDK.listFeedbacks()) {
                 is SdkResult.Success -> {
                     feedbacks.clear()
                     feedbacks.addAll(result.data.feedbacks)
-                    adapter.notifyDataSetChanged()
+                    adapter.submitList(feedbacks.toList())
+                    shimmerContainer.stopShimmer()
+                    shimmerContainer.visibility = View.GONE
+                    recyclerView.visibility = View.VISIBLE
                     progressBar.visibility = View.GONE
+                    swipeRefresh.isRefreshing = false
                     emptyState.visibility = if (feedbacks.isEmpty()) View.VISIBLE else View.GONE
                     lastLoadFailed = false
                     refreshBanner(ConnectivityMonitor.isOnline)
                 }
                 is SdkResult.Error -> {
+                    shimmerContainer.stopShimmer()
+                    shimmerContainer.visibility = View.GONE
+                    recyclerView.visibility = View.VISIBLE
                     progressBar.visibility = View.GONE
+                    swipeRefresh.isRefreshing = false
                     lastLoadFailed = true
                     refreshBanner(ConnectivityMonitor.isOnline)
                     if (feedbacks.isEmpty()) {
@@ -125,9 +149,8 @@ class FeedbackListActivity : AppCompatActivity() {
     }
 
     private class FeedbackAdapter(
-        private val feedbacks: List<Feedback>,
         private val onClick: (Feedback) -> Unit
-    ) : RecyclerView.Adapter<FeedbackAdapter.ViewHolder>() {
+    ) : androidx.recyclerview.widget.ListAdapter<Feedback, FeedbackAdapter.ViewHolder>(DIFF) {
 
         class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val stars: List<ImageView> = listOf(
@@ -152,7 +175,7 @@ class FeedbackListActivity : AppCompatActivity() {
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val ctx = holder.itemView.context
-            val feedback = feedbacks[position]
+            val feedback = getItem(position)
 
             holder.stars.forEachIndexed { i, star ->
                 star.setImageResource(
@@ -187,8 +210,6 @@ class FeedbackListActivity : AppCompatActivity() {
             holder.itemView.setOnClickListener { onClick(feedback) }
         }
 
-        override fun getItemCount() = feedbacks.size
-
         private fun formatDate(dateStr: String): String = try {
             val input = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
             val output = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
@@ -196,6 +217,13 @@ class FeedbackListActivity : AppCompatActivity() {
             date?.let { output.format(it) } ?: dateStr
         } catch (_: Exception) {
             dateStr.substringBefore('T')
+        }
+
+        companion object {
+            private val DIFF = object : androidx.recyclerview.widget.DiffUtil.ItemCallback<Feedback>() {
+                override fun areItemsTheSame(old: Feedback, new: Feedback) = old.id == new.id
+                override fun areContentsTheSame(old: Feedback, new: Feedback) = old == new
+            }
         }
     }
 }

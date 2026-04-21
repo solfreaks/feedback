@@ -91,6 +91,7 @@ dependencies {
     implementation("com.google.android.material:material:1.13.0")
     implementation("androidx.constraintlayout:constraintlayout:2.2.1")
     implementation("androidx.recyclerview:recyclerview:1.4.0")
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
 
     // Networking
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
@@ -100,6 +101,9 @@ dependencies {
 
     // Image loading
     implementation("io.coil-kt:coil:2.7.0")
+
+    // Shimmer loading placeholders
+    implementation("com.facebook.shimmer:shimmer:0.5.0")
 
     // Google Sign-In
     implementation("com.google.android.gms:play-services-auth:21.5.1")

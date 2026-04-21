@@ -118,6 +118,14 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1" />
 
+            <ImageView
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:layout_marginEnd="4dp"
+                android:src="@drawable/sdk_ic_calendar"
+                android:contentDescription="@null"
+                app:tint="?attr/colorOnSurfaceVariant" />
+
             <TextView
                 android:id="@+id/tvDate"
                 android:layout_width="wrap_content"

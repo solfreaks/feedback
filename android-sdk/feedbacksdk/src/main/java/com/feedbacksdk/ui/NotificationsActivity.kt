@@ -42,6 +42,8 @@ class NotificationsActivity : AppCompatActivity() {
 
     private lateinit var recycler: RecyclerView
     private lateinit var progress: ProgressBar
+    private lateinit var shimmerContainer: com.facebook.shimmer.ShimmerFrameLayout
+    private lateinit var swipeRefresh: androidx.swiperefreshlayout.widget.SwipeRefreshLayout
     private lateinit var emptyState: View
     private lateinit var statusBanner: android.widget.LinearLayout
     private lateinit var tabs: TabLayout
@@ -80,6 +82,9 @@ class NotificationsActivity : AppCompatActivity() {
 
         recycler = findViewById(R.id.recyclerView)
         progress = findViewById(R.id.progressBar)
+        shimmerContainer = findViewById(R.id.shimmerContainer)
+        swipeRefresh = findViewById(R.id.swipeRefresh)
+        swipeRefresh.setOnRefreshListener { load() }
         emptyState = findViewById(R.id.emptyState)
         emptyState.findViewById<View>(R.id.btnEmptyRefresh)?.setOnClickListener { load() }
         statusBanner = findViewById(R.id.statusBanner)
@@ -122,7 +127,15 @@ class NotificationsActivity : AppCompatActivity() {
 
     private fun load() {
         lifecycleScope.launch {
-            progress.visibility = View.VISIBLE
+            val firstLoad = activityItems.isEmpty() && announcementItems.isEmpty()
+            val swipe = swipeRefresh.isRefreshing
+            if (firstLoad && !swipe) {
+                shimmerContainer.visibility = View.VISIBLE
+                shimmerContainer.startShimmer()
+                recycler.visibility = View.GONE
+            } else if (!swipe) {
+                progress.visibility = View.VISIBLE
+            }
             emptyState.visibility = View.GONE
 
             val notificationResult = FeedbackSDK.listNotifications()
@@ -142,7 +155,11 @@ class NotificationsActivity : AppCompatActivity() {
                 anyFailed = true
             }
 
+            shimmerContainer.stopShimmer()
+            shimmerContainer.visibility = View.GONE
+            recycler.visibility = View.VISIBLE
             progress.visibility = View.GONE
+            swipeRefresh.isRefreshing = false
             lastLoadFailed = anyFailed
             refreshBanner(ConnectivityMonitor.isOnline)
             renderCurrent()

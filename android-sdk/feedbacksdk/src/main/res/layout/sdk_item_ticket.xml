@@ -57,17 +57,25 @@
             android:gravity="center_vertical"
             android:layout_marginTop="10dp">
 
+            <ImageView
+                android:id="@+id/ivPriorityIcon"
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:layout_marginEnd="4dp"
+                android:src="@drawable/sdk_ic_flag"
+                android:contentDescription="@null" />
+
             <View
                 android:id="@+id/priorityDot"
                 android:layout_width="8dp"
                 android:layout_height="8dp"
-                android:background="@drawable/sdk_bg_priority_dot" />
+                android:background="@drawable/sdk_bg_priority_dot"
+                android:visibility="gone" />
 
             <TextView
                 android:id="@+id/tvPriority"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
                 android:textAppearance="?attr/textAppearanceBodySmall"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -75,6 +83,14 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1" />
+
+            <ImageView
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:layout_marginEnd="4dp"
+                android:src="@drawable/sdk_ic_calendar"
+                android:contentDescription="@null"
+                app:tint="?attr/colorOnSurfaceVariant" />
 
             <TextView
                 android:id="@+id/tvDate"

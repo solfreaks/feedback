@@ -57,6 +57,10 @@ class FeedbackBellView @JvmOverloads constructor(
             ta.recycle()
         }
         setOnClickListener {
+            // No point opening the notifications screen when logged out — it
+            // would just show an empty shell with 401s in the background. Host
+            // apps that want to trigger sign-in here can override this listener.
+            if (!FeedbackSDK.isLoggedIn) return@setOnClickListener
             val host = findActivity()
             if (host != null) FeedbackSDK.openNotifications(host)
         }
@@ -87,6 +91,13 @@ class FeedbackBellView @JvmOverloads constructor(
     /** Force a badge re-fetch. Safe to call from any thread. */
     fun refresh() {
         refreshJob?.cancel()
+        // Skip the network round-trip entirely when logged out — the endpoint
+        // would just 401 and the badge has nothing to show. Host decides how
+        // to handle taps via its own click listener in that state.
+        if (!FeedbackSDK.isLoggedIn) {
+            applyCount(0)
+            return
+        }
         refreshJob = CoroutineScope(Dispatchers.IO).launch {
             val result = FeedbackSDK.getUnreadNotificationCount()
             withContext(Dispatchers.Main) {

@@ -196,6 +196,28 @@ object FeedbackSDK {
         SdkWebSocket.disconnect()
     }
 
+    /**
+     * Register a callback to run when the server rejects the stored auth token
+     * (HTTP 401). The SDK has already cleared the token and disconnected the
+     * websocket by the time this fires, so [isLoggedIn] will be `false`. Typical
+     * usage: launch the Google Sign-In intent to re-authenticate the user.
+     *
+     * Callback runs on the main thread. Pass `null` to unregister.
+     */
+    fun setOnAuthInvalidatedListener(listener: (() -> Unit)?) {
+        checkInit()
+        ApiClient.onAuthInvalidated = if (listener == null) null else {
+            {
+                // The interceptor already cleared ApiClient.authToken and
+                // TokenStore; mirror that in the websocket + unread cache so
+                // the whole SDK agrees on the logged-out state.
+                UnreadStore.clear()
+                SdkWebSocket.disconnect()
+                listener()
+            }
+        }
+    }
+
     // ── Tickets ──
 
     /** Create a new support ticket */

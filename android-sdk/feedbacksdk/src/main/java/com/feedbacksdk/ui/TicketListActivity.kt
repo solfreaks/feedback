@@ -34,6 +34,8 @@ class TicketListActivity : AppCompatActivity() {
 
     private lateinit var recyclerView: RecyclerView
     private lateinit var progressBar: ProgressBar
+    private lateinit var shimmerContainer: com.facebook.shimmer.ShimmerFrameLayout
+    private lateinit var swipeRefresh: androidx.swiperefreshlayout.widget.SwipeRefreshLayout
     private lateinit var emptyState: View
     private lateinit var statusBanner: android.widget.LinearLayout
     private var lastLoadFailed = false
@@ -65,17 +67,23 @@ class TicketListActivity : AppCompatActivity() {
 
         recyclerView = findViewById(R.id.recyclerView)
         progressBar = findViewById(R.id.progressBar)
+        shimmerContainer = findViewById(R.id.shimmerContainer)
+        swipeRefresh = findViewById(R.id.swipeRefresh)
+        swipeRefresh.setOnRefreshListener { loadTickets() }
         emptyState = findViewById(R.id.emptyState)
         statusBanner = findViewById(R.id.statusBanner)
         ConnectivityMonitor.addListener(connectivityListener)
 
-        adapter = TicketAdapter(tickets) { ticket ->
+        adapter = TicketAdapter { ticket ->
             FeedbackSDK.openTicketDetail(this, ticket.id)
         }
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.adapter = adapter
 
         findViewById<MaterialButton>(R.id.btnCreate).setOnClickListener {
+            FeedbackSDK.openCreateTicket(this)
+        }
+        emptyState.findViewById<MaterialButton>(R.id.btnEmptyCreate)?.setOnClickListener {
             FeedbackSDK.openCreateTicket(this)
         }
     }
@@ -87,20 +95,36 @@ class TicketListActivity : AppCompatActivity() {
 
     private fun loadTickets() {
         lifecycleScope.launch {
-            progressBar.visibility = View.VISIBLE
+            val firstLoad = tickets.isEmpty()
+            val swipe = swipeRefresh.isRefreshing
+            if (firstLoad && !swipe) {
+                shimmerContainer.visibility = View.VISIBLE
+                shimmerContainer.startShimmer()
+                recyclerView.visibility = View.GONE
+            } else if (!swipe) {
+                progressBar.visibility = View.VISIBLE
+            }
             emptyState.visibility = View.GONE
             when (val result = FeedbackSDK.listTickets()) {
                 is SdkResult.Success -> {
                     tickets.clear()
                     tickets.addAll(result.data.tickets)
-                    adapter.notifyDataSetChanged()
+                    adapter.submitList(tickets.toList())
+                    shimmerContainer.stopShimmer()
+                    shimmerContainer.visibility = View.GONE
+                    recyclerView.visibility = View.VISIBLE
                     progressBar.visibility = View.GONE
+                    swipeRefresh.isRefreshing = false
                     emptyState.visibility = if (tickets.isEmpty()) View.VISIBLE else View.GONE
                     lastLoadFailed = false
                     refreshBanner(ConnectivityMonitor.isOnline)
                 }
                 is SdkResult.Error -> {
+                    shimmerContainer.stopShimmer()
+                    shimmerContainer.visibility = View.GONE
+                    recyclerView.visibility = View.VISIBLE
                     progressBar.visibility = View.GONE
+                    swipeRefresh.isRefreshing = false
                     lastLoadFailed = true
                     refreshBanner(ConnectivityMonitor.isOnline)
                     // Only surface the toast if we had nothing to show — otherwise
@@ -132,9 +156,8 @@ class TicketListActivity : AppCompatActivity() {
     }
 
     private class TicketAdapter(
-        private val tickets: List<Ticket>,
         private val onClick: (Ticket) -> Unit
-    ) : RecyclerView.Adapter<TicketAdapter.ViewHolder>() {
+    ) : androidx.recyclerview.widget.ListAdapter<Ticket, TicketAdapter.ViewHolder>(DIFF) {
 
         class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val tvTitle: TextView = view.findViewById(R.id.tvTitle)
@@ -142,6 +165,7 @@ class TicketListActivity : AppCompatActivity() {
             val tvPriority: TextView = view.findViewById(R.id.tvPriority)
             val tvDate: TextView = view.findViewById(R.id.tvDate)
             val priorityDot: View = view.findViewById(R.id.priorityDot)
+            val ivPriorityIcon: android.widget.ImageView = view.findViewById(R.id.ivPriorityIcon)
             val unreadDot: View = view.findViewById(R.id.unreadDot)
         }
 
@@ -153,7 +177,7 @@ class TicketListActivity : AppCompatActivity() {
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val ctx = holder.itemView.context
-            val ticket = tickets[position]
+            val ticket = getItem(position)
 
             holder.tvTitle.text = ticket.title
 
@@ -161,7 +185,9 @@ class TicketListActivity : AppCompatActivity() {
             holder.tvStatus.backgroundTintList = ColorStateList.valueOf(ctx.statusColor(ticket.status))
             holder.tvStatus.setTextColor(ctx.resolveThemeColor(R.attr.sdkColorOnStatus))
 
-            holder.priorityDot.backgroundTintList = ColorStateList.valueOf(ctx.priorityColor(ticket.priority))
+            val priorityTint = ColorStateList.valueOf(ctx.priorityColor(ticket.priority))
+            holder.priorityDot.backgroundTintList = priorityTint
+            holder.ivPriorityIcon.imageTintList = priorityTint
             holder.tvPriority.text = ticket.priority.replaceFirstChar { it.uppercase() }
 
             holder.tvDate.text = formatDate(ticket.createdAt)
@@ -171,8 +197,6 @@ class TicketListActivity : AppCompatActivity() {
             holder.itemView.setOnClickListener { onClick(ticket) }
         }
 
-        override fun getItemCount() = tickets.size
-
         private fun formatDate(dateStr: String): String = try {
             val input = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
             val output = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
@@ -180,6 +204,13 @@ class TicketListActivity : AppCompatActivity() {
             date?.let { output.format(it) } ?: dateStr
         } catch (_: Exception) {
             dateStr.substringBefore('T')
+        }
+
+        companion object {
+            private val DIFF = object : androidx.recyclerview.widget.DiffUtil.ItemCallback<Ticket>() {
+                override fun areItemsTheSame(old: Ticket, new: Ticket) = old.id == new.id
+                override fun areContentsTheSame(old: Ticket, new: Ticket) = old == new
+            }
         }
     }
 }

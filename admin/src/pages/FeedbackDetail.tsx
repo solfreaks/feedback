@@ -326,6 +326,34 @@ function getSentiment(rating: number, category: string) {
   return { label: "Negative", color: "text-red-600 bg-red-50", emoji: "Unsatisfied user", icon: "M15.182 16.318A4.486 4.486 0 0012.016 15a4.486 4.486 0 00-3.198 1.318M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9.75 9.75c0 .414-.168.75-.375.75S9 10.164 9 9.75 9.168 9 9.375 9s.375.336.375.75zm-.375 0h.008v.015h-.008V9.75zm5.625 0c0 .414-.168.75-.375.75s-.375-.336-.375-.75.168-.75.375-.75.375.336.375.75zm-.375 0h.008v.015h-.008V9.75z" };
 }
 
+function detectLanguage(text: string): string {
+  if (!text || text.trim().length < 5) return "";
+  let ar = 0, hi = 0, zh = 0, ja = 0, ko = 0, ru = 0, el = 0, th = 0, he = 0, bn = 0, ta = 0, fa = 0;
+  for (const ch of text) {
+    const cp = ch.codePointAt(0) ?? 0;
+    if (cp >= 0x0600 && cp <= 0x06FF) ar++;        // Arabic/Urdu/Persian script
+    else if (cp >= 0xFB50 && cp <= 0xFDFF) fa++;   // Arabic Presentation Forms (Persian-heavy)
+    else if (cp >= 0x0900 && cp <= 0x097F) hi++;   // Devanagari (Hindi/Nepali)
+    else if ((cp >= 0x3040 && cp <= 0x309F) || (cp >= 0x30A0 && cp <= 0x30FF)) ja++;  // Hiragana/Katakana → Japanese
+    else if (cp >= 0x4E00 && cp <= 0x9FFF) zh++;   // CJK (Chinese or Japanese Kanji)
+    else if (cp >= 0xAC00 && cp <= 0xD7AF) ko++;   // Hangul (Korean)
+    else if (cp >= 0x0400 && cp <= 0x04FF) ru++;   // Cyrillic (Russian/Ukrainian/Bulgarian)
+    else if (cp >= 0x0370 && cp <= 0x03FF) el++;   // Greek
+    else if (cp >= 0x0E00 && cp <= 0x0E7F) th++;   // Thai
+    else if (cp >= 0x0590 && cp <= 0x05FF) he++;   // Hebrew
+    else if (cp >= 0x0980 && cp <= 0x09FF) bn++;   // Bengali
+    else if (cp >= 0x0B80 && cp <= 0x0BFF) ta++;   // Tamil
+  }
+  // Japanese uses both Hiragana/Katakana + CJK; prioritize ja if Hiragana/Katakana present
+  const scores: [string, number][] = [
+    ["ar", ar], ["hi", hi], ["ja", ja > 0 ? zh + ja : 0],
+    ["zh", ja === 0 ? zh : 0], ["ko", ko], ["ru", ru],
+    ["el", el], ["th", th], ["he", he], ["bn", bn], ["ta", ta], ["fa", fa],
+  ];
+  const best = scores.reduce((a, b) => b[1] > a[1] ? b : a, ["", 0] as [string, number]);
+  return (best[1] as number) >= 3 ? best[0] : "";
+}
+
 function getResponseTime(createdAt: string, replies: { createdAt: string }[]) {
   if (replies.length === 0) return null;
   const created = new Date(createdAt).getTime();
@@ -405,6 +433,19 @@ export default function FeedbackDetail() {
   };
 
   useEffect(() => { fetchFeedback(); }, [id]);
+
+  useEffect(() => {
+    if (!feedback) return;
+    // Auto-detect language from user's text so the right quick-reply language is pre-selected
+    const userTexts = [
+      feedback.comment ?? "",
+      ...(feedback.replies ?? [])
+        .filter(r => r.user.id === feedback.user.id)
+        .map(r => r.body),
+    ].join(" ");
+    const detected = detectLanguage(userTexts);
+    if (detected) setCannedLocale(detected);
+  }, [feedback?.id]);
 
   const sendReply = async () => {
     if (!reply.trim() && pendingFiles.length === 0) return;

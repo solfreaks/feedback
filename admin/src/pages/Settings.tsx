@@ -840,6 +840,29 @@ export default function Settings() {
                       <option value="ms">🇲🇾 Malay (ms)</option>
                       <option value="bn">🇧🇩 Bengali (bn)</option>
                       <option value="fa">🇮🇷 Persian (fa)</option>
+                      <option value="uk">🇺🇦 Ukrainian (uk)</option>
+                      <option value="he">🇮🇱 Hebrew (he)</option>
+                      <option value="sr">🇷🇸 Serbian (sr)</option>
+                      <option value="hr">🇭🇷 Croatian (hr)</option>
+                      <option value="sk">🇸🇰 Slovak (sk)</option>
+                      <option value="bg">🇧🇬 Bulgarian (bg)</option>
+                      <option value="lt">🇱🇹 Lithuanian (lt)</option>
+                      <option value="lv">🇱🇻 Latvian (lv)</option>
+                      <option value="sl">🇸🇮 Slovenian (sl)</option>
+                      <option value="az">🇦🇿 Azerbaijani (az)</option>
+                      <option value="kk">🇰🇿 Kazakh (kk)</option>
+                      <option value="uz">🇺🇿 Uzbek (uz)</option>
+                      <option value="sw">🇰🇪 Swahili (sw)</option>
+                      <option value="am">🇪🇹 Amharic (am)</option>
+                      <option value="af">🇿🇦 Afrikaans (af)</option>
+                      <option value="sq">🇦🇱 Albanian (sq)</option>
+                      <option value="mk">🇲🇰 Macedonian (mk)</option>
+                      <option value="mn">🇲🇳 Mongolian (mn)</option>
+                      <option value="my">🇲🇲 Burmese (my)</option>
+                      <option value="km">🇰🇭 Khmer (km)</option>
+                      <option value="ne">🇳🇵 Nepali (ne)</option>
+                      <option value="si">🇱🇰 Sinhala (si)</option>
+                      <option value="ta">🇮🇳 Tamil (ta)</option>
                     </select>
                   </div>
                 </div>

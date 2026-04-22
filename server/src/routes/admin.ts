@@ -1424,14 +1424,11 @@ router.get("/system-info", async (req: Request, res: Response) => {
 router.get("/canned-replies", async (req: Request, res: Response) => {
   try {
     const locale = typeof req.query.locale === "string" ? req.query.locale.trim() : null;
-    const localeFilter = locale
-      ? { OR: [{ locale }, { locale: null }] }
-      : {};
     const replies = await prisma.cannedReply.findMany({
       where: {
         AND: [
           { OR: [{ ownerId: req.user!.id }, { shared: true }] },
-          ...(locale ? [localeFilter] : []),
+          ...(locale ? [{ locale }] : []),
         ],
       },
       orderBy: [{ shared: "desc" }, { title: "asc" }],

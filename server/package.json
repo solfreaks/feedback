@@ -12,7 +12,8 @@
     "db:seed:prod": "tsx prisma/seed-prod.ts",
     "db:seed:canned": "tsx prisma/seed-canned-replies.ts",
     "db:seed:locales": "tsx prisma/seed-missing-locales.ts",
-    "db:fix:titles": "tsx prisma/fix-locale-titles.ts"
+    "db:fix:titles": "tsx prisma/fix-locale-titles.ts",
+    "db:seed:standard": "tsx prisma/seed-standard-replies.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.3.0",

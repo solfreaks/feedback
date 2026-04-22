@@ -812,9 +812,9 @@ export default function Settings() {
                       <option value="">All languages</option>
                       <option value="en">🇬🇧 English (en)</option>
                       <option value="es">🇪🇸 Spanish (es)</option>
-                      <option value="ar">🇸🇦 Arabic (ar)</option>
                       <option value="fr">🇫🇷 French (fr)</option>
                       <option value="de">🇩🇪 German (de)</option>
+                      <option value="ar">🇸🇦 Arabic (ar)</option>
                       <option value="ur">🇵🇰 Urdu (ur)</option>
                       <option value="zh">🇨🇳 Chinese (zh)</option>
                       <option value="hi">🇮🇳 Hindi (hi)</option>
@@ -823,6 +823,23 @@ export default function Settings() {
                       <option value="ru">🇷🇺 Russian (ru)</option>
                       <option value="ja">🇯🇵 Japanese (ja)</option>
                       <option value="ko">🇰🇷 Korean (ko)</option>
+                      <option value="it">🇮🇹 Italian (it)</option>
+                      <option value="nl">🇳🇱 Dutch (nl)</option>
+                      <option value="pl">🇵🇱 Polish (pl)</option>
+                      <option value="sv">🇸🇪 Swedish (sv)</option>
+                      <option value="no">🇳🇴 Norwegian (no)</option>
+                      <option value="da">🇩🇰 Danish (da)</option>
+                      <option value="fi">🇫🇮 Finnish (fi)</option>
+                      <option value="el">🇬🇷 Greek (el)</option>
+                      <option value="cs">🇨🇿 Czech (cs)</option>
+                      <option value="hu">🇭🇺 Hungarian (hu)</option>
+                      <option value="ro">🇷🇴 Romanian (ro)</option>
+                      <option value="th">🇹🇭 Thai (th)</option>
+                      <option value="vi">🇻🇳 Vietnamese (vi)</option>
+                      <option value="id">🇮🇩 Indonesian (id)</option>
+                      <option value="ms">🇲🇾 Malay (ms)</option>
+                      <option value="bn">🇧🇩 Bengali (bn)</option>
+                      <option value="fa">🇮🇷 Persian (fa)</option>
                     </select>
                   </div>
                 </div>

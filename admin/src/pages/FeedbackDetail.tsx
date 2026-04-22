@@ -511,43 +511,49 @@ export default function FeedbackDetail() {
                       </svg>
                       Quick Replies
                     </button>
-                    {showQuickReplies && (
-                      <select value={cannedLocale} onChange={e => setCannedLocale(e.target.value)}
-                        className="text-xs border border-gray-200 rounded-md px-2 py-0.5 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
-                        <option value="">All languages</option>
-                        <option value="en">🇬🇧 English</option>
-                        <option value="es">🇪🇸 Spanish</option>
-                        <option value="fr">🇫🇷 French</option>
-                        <option value="de">🇩🇪 German</option>
-                        <option value="ar">🇸🇦 Arabic</option>
-                        <option value="ur">🇵🇰 Urdu</option>
-                        <option value="zh">🇨🇳 Chinese</option>
-                        <option value="hi">🇮🇳 Hindi</option>
-                        <option value="pt">🇧🇷 Portuguese</option>
-                        <option value="tr">🇹🇷 Turkish</option>
-                        <option value="ru">🇷🇺 Russian</option>
-                        <option value="ja">🇯🇵 Japanese</option>
-                        <option value="ko">🇰🇷 Korean</option>
-                        <option value="it">🇮🇹 Italian</option>
-                        <option value="nl">🇳🇱 Dutch</option>
-                        <option value="pl">🇵🇱 Polish</option>
-                        <option value="sv">🇸🇪 Swedish</option>
-                        <option value="no">🇳🇴 Norwegian</option>
-                        <option value="da">🇩🇰 Danish</option>
-                        <option value="fi">🇫🇮 Finnish</option>
-                        <option value="el">🇬🇷 Greek</option>
-                        <option value="cs">🇨🇿 Czech</option>
-                        <option value="hu">🇭🇺 Hungarian</option>
-                        <option value="ro">🇷🇴 Romanian</option>
-                        <option value="th">🇹🇭 Thai</option>
-                        <option value="vi">🇻🇳 Vietnamese</option>
-                        <option value="id">🇮🇩 Indonesian</option>
-                        <option value="ms">🇲🇾 Malay</option>
-                        <option value="bn">🇧🇩 Bengali</option>
-                        <option value="fa">🇮🇷 Persian</option>
-                      </select>
-                    )}
                   </div>
+                  {showQuickReplies && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {[
+                        { code: "", flag: "🌐", label: "All" },
+                        { code: "en", flag: "🇬🇧", label: "EN" },
+                        { code: "es", flag: "🇪🇸", label: "ES" },
+                        { code: "fr", flag: "🇫🇷", label: "FR" },
+                        { code: "de", flag: "🇩🇪", label: "DE" },
+                        { code: "ar", flag: "🇸🇦", label: "AR" },
+                        { code: "ur", flag: "🇵🇰", label: "UR" },
+                        { code: "zh", flag: "🇨🇳", label: "ZH" },
+                        { code: "hi", flag: "🇮🇳", label: "HI" },
+                        { code: "pt", flag: "🇧🇷", label: "PT" },
+                        { code: "tr", flag: "🇹🇷", label: "TR" },
+                        { code: "ru", flag: "🇷🇺", label: "RU" },
+                        { code: "ja", flag: "🇯🇵", label: "JA" },
+                        { code: "ko", flag: "🇰🇷", label: "KO" },
+                        { code: "it", flag: "🇮🇹", label: "IT" },
+                        { code: "nl", flag: "🇳🇱", label: "NL" },
+                        { code: "pl", flag: "🇵🇱", label: "PL" },
+                        { code: "sv", flag: "🇸🇪", label: "SV" },
+                        { code: "no", flag: "🇳🇴", label: "NO" },
+                        { code: "da", flag: "🇩🇰", label: "DA" },
+                        { code: "fi", flag: "🇫🇮", label: "FI" },
+                        { code: "el", flag: "🇬🇷", label: "EL" },
+                        { code: "cs", flag: "🇨🇿", label: "CS" },
+                        { code: "hu", flag: "🇭🇺", label: "HU" },
+                        { code: "ro", flag: "🇷🇴", label: "RO" },
+                        { code: "th", flag: "🇹🇭", label: "TH" },
+                        { code: "vi", flag: "🇻🇳", label: "VI" },
+                        { code: "id", flag: "🇮🇩", label: "ID" },
+                        { code: "ms", flag: "🇲🇾", label: "MS" },
+                        { code: "bn", flag: "🇧🇩", label: "BN" },
+                        { code: "fa", flag: "🇮🇷", label: "FA" },
+                      ].map(lang => (
+                        <button key={lang.code} onClick={() => setCannedLocale(lang.code)}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border transition-colors ${cannedLocale === lang.code ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600"}`}>
+                          {lang.flag} {lang.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
                   {showQuickReplies && (
                     <div className="mt-2">

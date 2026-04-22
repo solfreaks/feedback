@@ -352,7 +352,7 @@ export default function FeedbackDetail() {
   const [deleteReplyId, setDeleteReplyId] = useState<string | null>(null);
   const [deletingReply, setDeletingReply] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
-  const [cannedReplies, setCannedReplies] = useState<{ id: string; title: string; body: string }[]>([]);
+  const [cannedReplies, setCannedReplies] = useState<{ id: string; title: string; body: string; locale: string | null }[]>([]);
   const [cannedLocale, setCannedLocale] = useState("");
   const [admins, setAdmins] = useState<{ id: string; name: string; avatarUrl?: string }[]>([]);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
@@ -816,13 +816,13 @@ export default function FeedbackDetail() {
 
                   {showQuickReplies && (
                     <div className="mt-2">
-                      {cannedReplies.length === 0 ? (
+                      {cannedReplies.filter(qr => !qr.locale).length === 0 ? (
                         <div className="text-xs text-gray-400 py-2">
                           No quick replies saved. <a href="/settings" className="text-blue-500 hover:underline" onClick={e => { e.preventDefault(); navigate("/settings"); }}>Add some in Settings → Quick Replies</a>
                         </div>
                       ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2">
-                          {cannedReplies.map((qr) => (
+                          {cannedReplies.filter(qr => !qr.locale).map((qr) => (
                             <button key={qr.id} onClick={() => { const body = (cannedLocale && QUICK_REPLY_TRANSLATIONS[qr.title]?.[cannedLocale]) || qr.body; setReply(body.replace(/\{\{user\}\}/gi, feedback?.user?.name || "there")); setShowQuickReplies(false); }}
                               className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 hover:bg-blue-50 hover:border-blue-200 text-left transition-all group">
                               <span className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-200 transition-colors">
@@ -1055,13 +1055,13 @@ export default function FeedbackDetail() {
                   Mark as Resolved
                 </button>
               )}
-              {cannedReplies.length > 0 && (
-                <button onClick={() => { setReply(cannedReplies[0].body.replace(/\{\{user\}\}/gi, feedback?.user?.name || "there")); setShowQuickReplies(false); }}
+              {cannedReplies.filter(qr => !qr.locale).length > 0 && (
+                <button onClick={() => { const first = cannedReplies.filter(qr => !qr.locale)[0]; setReply(first.body.replace(/\{\{user\}\}/gi, feedback?.user?.name || "there")); setShowQuickReplies(false); }}
                   className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
                   </svg>
-                  {cannedReplies[0].title}
+                  {cannedReplies.filter(qr => !qr.locale)[0].title}
                 </button>
               )}
             </div>

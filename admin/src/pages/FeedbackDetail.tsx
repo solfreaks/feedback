@@ -513,68 +513,74 @@ export default function FeedbackDetail() {
                     </button>
                   </div>
                   {showQuickReplies && (
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {[
-                        { code: "", flag: "🌐", label: "All" },
-                        { code: "en", flag: "🇬🇧", label: "EN" },
-                        { code: "es", flag: "🇪🇸", label: "ES" },
-                        { code: "fr", flag: "🇫🇷", label: "FR" },
-                        { code: "de", flag: "🇩🇪", label: "DE" },
-                        { code: "ar", flag: "🇸🇦", label: "AR" },
-                        { code: "ur", flag: "🇵🇰", label: "UR" },
-                        { code: "zh", flag: "🇨🇳", label: "ZH" },
-                        { code: "hi", flag: "🇮🇳", label: "HI" },
-                        { code: "pt", flag: "🇧🇷", label: "PT" },
-                        { code: "tr", flag: "🇹🇷", label: "TR" },
-                        { code: "ru", flag: "🇷🇺", label: "RU" },
-                        { code: "ja", flag: "🇯🇵", label: "JA" },
-                        { code: "ko", flag: "🇰🇷", label: "KO" },
-                        { code: "it", flag: "🇮🇹", label: "IT" },
-                        { code: "nl", flag: "🇳🇱", label: "NL" },
-                        { code: "pl", flag: "🇵🇱", label: "PL" },
-                        { code: "sv", flag: "🇸🇪", label: "SV" },
-                        { code: "no", flag: "🇳🇴", label: "NO" },
-                        { code: "da", flag: "🇩🇰", label: "DA" },
-                        { code: "fi", flag: "🇫🇮", label: "FI" },
-                        { code: "el", flag: "🇬🇷", label: "EL" },
-                        { code: "cs", flag: "🇨🇿", label: "CS" },
-                        { code: "hu", flag: "🇭🇺", label: "HU" },
-                        { code: "ro", flag: "🇷🇴", label: "RO" },
-                        { code: "th", flag: "🇹🇭", label: "TH" },
-                        { code: "vi", flag: "🇻🇳", label: "VI" },
-                        { code: "id", flag: "🇮🇩", label: "ID" },
-                        { code: "ms", flag: "🇲🇾", label: "MS" },
-                        { code: "bn", flag: "🇧🇩", label: "BN" },
-                        { code: "fa", flag: "🇮🇷", label: "FA" },
-                        { code: "uk", flag: "🇺🇦", label: "UK" },
-                        { code: "he", flag: "🇮🇱", label: "HE" },
-                        { code: "sr", flag: "🇷🇸", label: "SR" },
-                        { code: "hr", flag: "🇭🇷", label: "HR" },
-                        { code: "sk", flag: "🇸🇰", label: "SK" },
-                        { code: "bg", flag: "🇧🇬", label: "BG" },
-                        { code: "lt", flag: "🇱🇹", label: "LT" },
-                        { code: "lv", flag: "🇱🇻", label: "LV" },
-                        { code: "sl", flag: "🇸🇮", label: "SL" },
-                        { code: "az", flag: "🇦🇿", label: "AZ" },
-                        { code: "kk", flag: "🇰🇿", label: "KK" },
-                        { code: "uz", flag: "🇺🇿", label: "UZ" },
-                        { code: "sw", flag: "🇰🇪", label: "SW" },
-                        { code: "am", flag: "🇪🇹", label: "AM" },
-                        { code: "af", flag: "🇿🇦", label: "AF" },
-                        { code: "sq", flag: "🇦🇱", label: "SQ" },
-                        { code: "mk", flag: "🇲🇰", label: "MK" },
-                        { code: "mn", flag: "🇲🇳", label: "MN" },
-                        { code: "my", flag: "🇲🇲", label: "MY" },
-                        { code: "km", flag: "🇰🇭", label: "KM" },
-                        { code: "ne", flag: "🇳🇵", label: "NE" },
-                        { code: "si", flag: "🇱🇰", label: "SI" },
-                        { code: "ta", flag: "🇮🇳", label: "TA" },
-                      ].map(lang => (
-                        <button key={lang.code} onClick={() => setCannedLocale(lang.code)}
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border transition-colors ${cannedLocale === lang.code ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600"}`}>
-                          {lang.flag} {lang.label}
-                        </button>
-                      ))}
+                    <div className="mt-2 flex items-center gap-2 flex-wrap">
+                      <button onClick={() => setCannedLocale("")}
+                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${cannedLocale === "" ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600"}`}>
+                        🌐 All Languages
+                      </button>
+                      <select value={cannedLocale} onChange={e => setCannedLocale(e.target.value)}
+                        className="text-xs border border-gray-200 rounded-lg px-2 py-1 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 cursor-pointer">
+                        <option value="">— Select Language —</option>
+                        <option value="en">🇬🇧 English</option>
+                        <option value="es">🇪🇸 Spanish</option>
+                        <option value="fr">🇫🇷 French</option>
+                        <option value="de">🇩🇪 German</option>
+                        <option value="ar">🇸🇦 Arabic</option>
+                        <option value="ur">🇵🇰 Urdu</option>
+                        <option value="zh">🇨🇳 Chinese</option>
+                        <option value="hi">🇮🇳 Hindi</option>
+                        <option value="pt">🇧🇷 Portuguese</option>
+                        <option value="tr">🇹🇷 Turkish</option>
+                        <option value="ru">🇷🇺 Russian</option>
+                        <option value="ja">🇯🇵 Japanese</option>
+                        <option value="ko">🇰🇷 Korean</option>
+                        <option value="it">🇮🇹 Italian</option>
+                        <option value="nl">🇳🇱 Dutch</option>
+                        <option value="pl">🇵🇱 Polish</option>
+                        <option value="sv">🇸🇪 Swedish</option>
+                        <option value="no">🇳🇴 Norwegian</option>
+                        <option value="da">🇩🇰 Danish</option>
+                        <option value="fi">🇫🇮 Finnish</option>
+                        <option value="el">🇬🇷 Greek</option>
+                        <option value="cs">🇨🇿 Czech</option>
+                        <option value="hu">🇭🇺 Hungarian</option>
+                        <option value="ro">🇷🇴 Romanian</option>
+                        <option value="th">🇹🇭 Thai</option>
+                        <option value="vi">🇻🇳 Vietnamese</option>
+                        <option value="id">🇮🇩 Indonesian</option>
+                        <option value="ms">🇲🇾 Malay</option>
+                        <option value="bn">🇧🇩 Bengali</option>
+                        <option value="fa">🇮🇷 Persian</option>
+                        <option value="uk">🇺🇦 Ukrainian</option>
+                        <option value="he">🇮🇱 Hebrew</option>
+                        <option value="sr">🇷🇸 Serbian</option>
+                        <option value="hr">🇭🇷 Croatian</option>
+                        <option value="sk">🇸🇰 Slovak</option>
+                        <option value="bg">🇧🇬 Bulgarian</option>
+                        <option value="lt">🇱🇹 Lithuanian</option>
+                        <option value="lv">🇱🇻 Latvian</option>
+                        <option value="sl">🇸🇮 Slovenian</option>
+                        <option value="az">🇦🇿 Azerbaijani</option>
+                        <option value="kk">🇰🇿 Kazakh</option>
+                        <option value="uz">🇺🇿 Uzbek</option>
+                        <option value="sw">🇰🇪 Swahili</option>
+                        <option value="am">🇪🇹 Amharic</option>
+                        <option value="af">🇿🇦 Afrikaans</option>
+                        <option value="sq">🇦🇱 Albanian</option>
+                        <option value="mk">🇲🇰 Macedonian</option>
+                        <option value="mn">🇲🇳 Mongolian</option>
+                        <option value="my">🇲🇲 Burmese</option>
+                        <option value="km">🇰🇭 Khmer</option>
+                        <option value="ne">🇳🇵 Nepali</option>
+                        <option value="si">🇱🇰 Sinhala</option>
+                        <option value="ta">🇮🇳 Tamil</option>
+                      </select>
+                      {cannedLocale && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                          {cannedLocale.toUpperCase()}
+                          <button onClick={() => setCannedLocale("")} className="ml-0.5 hover:text-blue-900">✕</button>
+                        </span>
+                      )}
                     </div>
                   )}
 

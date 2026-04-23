@@ -387,6 +387,7 @@ export default function FeedbackDetail() {
   const [translatingReplyId, setTranslatingReplyId] = useState<string | null>(null);
   const [translatingReply, setTranslatingReply] = useState(false);
   const [translateToLocale, setTranslateToLocale] = useState("");
+  const [translatingCanned, setTranslatingCanned] = useState<string | null>(null);
   const [cannedReplies, setCannedReplies] = useState<{ id: string; title: string; body: string; locale: string | null }[]>([]);
   const [cannedLocale, setCannedLocale] = useState("");
   const [detectedLocale, setDetectedLocale] = useState("");
@@ -911,10 +912,31 @@ export default function FeedbackDetail() {
                       ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2">
                           {cannedReplies.filter(qr => !qr.locale).map((qr) => (
-                            <button key={qr.id} onClick={() => { const body = (cannedLocale && QUICK_REPLY_TRANSLATIONS[qr.title]?.[cannedLocale]) || qr.body; setReply(body.replace(/\{\{user\}\}/gi, feedback?.user?.name || "there")); setShowQuickReplies(false); }}
-                              className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 hover:bg-blue-50 hover:border-blue-200 text-left transition-all group">
+                            <button key={qr.id} disabled={translatingCanned === qr.id} onClick={async () => {
+                              const userName = feedback?.user?.name || "there";
+                              const preTranslated = cannedLocale && QUICK_REPLY_TRANSLATIONS[qr.title]?.[cannedLocale];
+                              if (preTranslated) {
+                                setReply(preTranslated.replace(/\{\{user\}\}/gi, userName));
+                                setShowQuickReplies(false);
+                                return;
+                              }
+                              if (cannedLocale) {
+                                setTranslatingCanned(qr.id);
+                                try {
+                                  const res = await api.post("/admin/translate", { text: qr.body, to: cannedLocale });
+                                  setReply((res.data.translated || qr.body).replace(/\{\{user\}\}/gi, userName));
+                                } catch { setReply(qr.body.replace(/\{\{user\}\}/gi, userName)); }
+                                finally { setTranslatingCanned(null); setShowQuickReplies(false); }
+                              } else {
+                                setReply(qr.body.replace(/\{\{user\}\}/gi, userName));
+                                setShowQuickReplies(false);
+                              }
+                            }}
+                              className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 hover:bg-blue-50 hover:border-blue-200 text-left transition-all group disabled:opacity-60">
                               <span className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-200 transition-colors">
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" /></svg>
+                                {translatingCanned === qr.id
+                                  ? <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600" />
+                                  : <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" /></svg>}
                               </span>
                               <span className="text-xs font-medium text-gray-700 group-hover:text-blue-700">{qr.title}</span>
                             </button>

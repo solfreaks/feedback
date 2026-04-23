@@ -801,92 +801,92 @@ export default function TicketDetail() {
                           ))}
                         </div>
                       )}
-                      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-                        <div className="flex items-center gap-3">
+                      <div className="px-4 py-3 border-t border-gray-100 space-y-2.5">
+                        {/* Row 1: action buttons */}
+                        <div className="flex items-center gap-3 flex-wrap">
                           <button onClick={() => setIsInternal(!isInternal)}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                              isInternal
-                                ? "bg-amber-200 text-amber-800"
-                                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                              isInternal ? "bg-amber-100 text-amber-800 border border-amber-300" : "bg-gray-100 text-gray-500 hover:bg-gray-200 border border-transparent"
                             }`}>
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                             </svg>
                             {isInternal ? "Internal Note" : "Public Reply"}
                           </button>
-                          {/* File picker */}
-                          <label className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-blue-600 cursor-pointer transition-colors" title="Attach file">
+                          <div className="w-px h-4 bg-gray-200" />
+                          <label className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-blue-600 cursor-pointer transition-colors font-medium" title="Attach file">
                             <input ref={commentFileRef} type="file" className="hidden" multiple
                               onChange={(e) => {
                                 if (e.target.files) setPendingFiles(prev => [...prev, ...Array.from(e.target.files!)]);
                                 e.target.value = "";
                               }} />
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                             </svg>
                             {pendingFiles.length > 0 ? `${pendingFiles.length} file${pendingFiles.length > 1 ? "s" : ""}` : "Attach"}
                           </label>
-                          {comment.length > 0 && (
-                            <span className="text-xs text-gray-400">{comment.length} chars</span>
-                          )}
+                          {comment.length > 0 && <span className="text-xs text-gray-400">{comment.length} chars</span>}
+                          {comment.trim() && <div className="w-px h-4 bg-gray-200" />}
                           {comment.trim() && (
-                            <button onClick={() => setComment("")}
-                              className="text-xs text-gray-400 hover:text-gray-600 font-medium transition-colors">
+                            <button onClick={() => setComment("")} className="text-xs text-gray-400 hover:text-red-500 font-medium transition-colors">
                               Clear
                             </button>
                           )}
                           {comment.trim() && (
-                            <button onClick={() => setSaveTemplateOpen(true)}
-                              className="text-xs text-emerald-600 hover:text-emerald-700 font-medium transition-colors">
+                            <button onClick={() => setSaveTemplateOpen(true)} className="text-xs text-emerald-600 hover:text-emerald-700 font-medium transition-colors">
                               Save as template
                             </button>
                           )}
-                          {comment.trim() && (
-                            <div className="flex items-center gap-2 pl-3 border-l border-gray-200">
-                              <span className="inline-flex items-center gap-1.5 text-xs text-indigo-500 font-medium whitespace-nowrap">
-                                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
-                                </svg>
-                                Translate
-                              </span>
-                              <select
-                                value={translateToLocale}
-                                onChange={e => setTranslateToLocale(e.target.value)}
-                                className="text-xs border border-indigo-200 rounded-lg px-2.5 py-1.5 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 cursor-pointer min-w-[150px]"
-                              >
-                                <option value="">— Pick a language —</option>
-                                {LANGUAGE_OPTIONS.map(opt => (
-                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                ))}
-                              </select>
-                              {translateToLocale && (
-                                <button
-                                  onClick={async () => {
-                                    setTranslatingComment(true);
-                                    try {
-                                      const detFrom = detectLanguage(comment);
-                                      const res = await api.post("/admin/translate", {
-                                        text: comment,
-                                        ...(detFrom && { from: detFrom }),
-                                        to: translateToLocale,
-                                      });
-                                      if (res.data.translated) setComment(res.data.translated);
-                                    } catch (e) { console.error("translate comment:", e); } finally { setTranslatingComment(false); }
-                                  }}
-                                  disabled={translatingComment}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors whitespace-nowrap"
-                                >
-                                  {translatingComment
-                                    ? <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" />
-                                    : <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>}
-                                  {translatingComment ? "Translating…" : `→ ${LANGUAGE_OPTIONS.find(o => o.value === translateToLocale)?.label ?? translateToLocale}`}
-                                </button>
-                              )}
-                            </div>
-                          )}
                         </div>
-                        <button onClick={addComment} disabled={sending || (!comment.trim() && pendingFiles.length === 0)}
-                          className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                        {/* Row 2: translate + send */}
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            {comment.trim() && (
+                              <>
+                                <span className="inline-flex items-center gap-1.5 text-xs text-indigo-500 font-medium whitespace-nowrap">
+                                  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                                  </svg>
+                                  Translate reply
+                                </span>
+                                <select
+                                  value={translateToLocale}
+                                  onChange={e => setTranslateToLocale(e.target.value)}
+                                  className="text-xs border border-indigo-200 rounded-lg px-2.5 py-1.5 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 cursor-pointer min-w-[160px]"
+                                >
+                                  <option value="">— Pick a language —</option>
+                                  {LANGUAGE_OPTIONS.map(opt => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                  ))}
+                                </select>
+                                {translateToLocale && (
+                                  <button
+                                    onClick={async () => {
+                                      setTranslatingComment(true);
+                                      try {
+                                        const detFrom = detectLanguage(comment);
+                                        const res = await api.post("/admin/translate", {
+                                          text: comment,
+                                          ...(detFrom && { from: detFrom }),
+                                          to: translateToLocale,
+                                        });
+                                        if (res.data.translated) setComment(res.data.translated);
+                                      } catch (e) { console.error("translate comment:", e); } finally { setTranslatingComment(false); }
+                                    }}
+                                    disabled={translatingComment}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors whitespace-nowrap"
+                                  >
+                                    {translatingComment
+                                      ? <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" />
+                                      : <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>}
+                                    {translatingComment ? "Translating…" : `→ ${LANGUAGE_OPTIONS.find(o => o.value === translateToLocale)?.label ?? translateToLocale}`}
+                                  </button>
+                                )}
+                              </>
+                            )}
+                          </div>
+                          <button onClick={addComment} disabled={sending || (!comment.trim() && pendingFiles.length === 0)}
+                            className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0">
                           {sending ? (
                             <>
                               <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
@@ -902,6 +902,7 @@ export default function TicketDetail() {
                           )}
                         </button>
                       </div>
+                    </div>
                     </div>
 
                     {/* Save-as-template inline panel */}

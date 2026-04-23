@@ -617,41 +617,39 @@ export default function TicketDetail() {
                           </svg>
                           Quick Replies
                         </button>
-                        {showQuickReplies && (
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {detectedLocale && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200 text-[10px] font-medium">
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                                </svg>
-                                Detected: {LANGUAGE_OPTIONS.find(o => o.value === detectedLocale)?.label ?? detectedLocale}
-                                {cannedLocale !== detectedLocale && (
-                                  <button onClick={() => setCannedLocale(detectedLocale)} className="ml-0.5 font-semibold text-violet-600 hover:text-violet-900">Use</button>
-                                )}
-                              </span>
-                            )}
-                            <button
-                              onClick={() => setCannedLocale("")}
-                              className={`text-xs px-2 py-0.5 rounded-md border transition-colors ${cannedLocale === "" ? "bg-blue-600 text-white border-blue-600" : "border-gray-200 text-gray-500 hover:border-blue-400"}`}
-                            >
-                              🌐 All Languages
-                            </button>
-                            <select value={cannedLocale} onChange={e => setCannedLocale(e.target.value)}
-                              className="text-xs border border-gray-200 rounded-md px-2 py-0.5 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
-                              <option value="">Select language</option>
-                              {LANGUAGE_OPTIONS.map(opt => (
-                                <option key={opt.value} value={opt.value}>{opt.label}</option>
-                              ))}
-                            </select>
-                            {cannedLocale && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-semibold">
-                                {LANGUAGE_OPTIONS.find(o => o.value === cannedLocale)?.label ?? cannedLocale}
-                                <button onClick={() => setCannedLocale("")} className="hover:text-blue-900">✕</button>
-                              </span>
-                            )}
-                          </div>
-                        )}
                       </div>
+                      {showQuickReplies && (
+                        <div className="mt-2 flex items-center gap-2 flex-wrap">
+                          {detectedLocale && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200 text-[10px] font-medium">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                              </svg>
+                              Detected: {LANGUAGE_OPTIONS.find(o => o.value === detectedLocale)?.label ?? detectedLocale}
+                              {cannedLocale !== detectedLocale && (
+                                <button onClick={() => setCannedLocale(detectedLocale)} className="ml-0.5 font-semibold text-violet-600 hover:text-violet-900">Use</button>
+                              )}
+                            </span>
+                          )}
+                          <button onClick={() => setCannedLocale("")}
+                            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${cannedLocale === "" ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600"}`}>
+                            🌐 All Languages
+                          </button>
+                          <select value={cannedLocale} onChange={e => setCannedLocale(e.target.value)}
+                            className="text-xs border border-gray-200 rounded-lg px-2 py-1 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 cursor-pointer">
+                            <option value="">— Select Language —</option>
+                            {LANGUAGE_OPTIONS.map(opt => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                          {cannedLocale && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                              {LANGUAGE_OPTIONS.find(o => o.value === cannedLocale)?.label ?? cannedLocale}
+                              <button onClick={() => setCannedLocale("")} className="ml-0.5 hover:text-blue-900">✕</button>
+                            </span>
+                          )}
+                        </div>
+                      )}
 
                       {showQuickReplies && (
                         <>

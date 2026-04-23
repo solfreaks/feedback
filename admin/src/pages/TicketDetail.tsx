@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import api from "../api";
 import type { Ticket } from "../types";
 import Avatar from "../components/Avatar";
+import { LANGUAGE_OPTIONS, detectLanguage, QUICK_REPLY_TRANSLATIONS, TICKET_REPLY_TRANSLATIONS } from "../utils/translations";
 
 const priorityConfig: Record<string, { bg: string; dot: string; label: string }> = {
   critical: { bg: "bg-red-100 text-red-700 ring-1 ring-red-200", dot: "bg-red-500", label: "Critical" },
@@ -81,8 +82,11 @@ export default function TicketDetail() {
   const [handoffNote, setHandoffNote] = useState("");
   // User's saved canned replies merged with the built-in ones in the quick
   // replies panel. Persisted via /admin/canned-replies.
-  const [cannedReplies, setCannedReplies] = useState<{ id: string; title: string; body: string; shared: boolean }[]>([]);
+  const [cannedReplies, setCannedReplies] = useState<{ id: string; title: string; body: string; shared: boolean; locale: string | null }[]>([]);
   const [cannedLocale, setCannedLocale] = useState("");
+  const [detectedLocale, setDetectedLocale] = useState("");
+  const [translatedDescription, setTranslatedDescription] = useState<string | null>(null);
+  const [translating, setTranslating] = useState(false);
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
   const [newTemplateTitle, setNewTemplateTitle] = useState("");
   const [newTemplateShared, setNewTemplateShared] = useState(false);
@@ -102,9 +106,22 @@ export default function TicketDetail() {
     api.get("/admin/admins").then((r) => setAdmins(r.data));
   }, []);
   useEffect(() => {
-    const params = cannedLocale ? `?locale=${cannedLocale}` : "";
-    api.get(`/admin/canned-replies${params}`).then((r) => setCannedReplies(r.data)).catch(() => {});
-  }, [cannedLocale]);
+    api.get("/admin/canned-replies").then((r) => setCannedReplies(r.data)).catch(() => {});
+  }, []);
+  useEffect(() => {
+    if (!ticket) return;
+    const userTexts = [
+      ticket.description ?? "",
+      ...(ticket.comments ?? [])
+        .filter((c) => c.user.id === ticket.user.id)
+        .map((c) => c.body),
+    ].join(" ");
+    const detected = detectLanguage(userTexts);
+    if (detected) {
+      setDetectedLocale(detected);
+      setCannedLocale(detected);
+    }
+  }, [ticket?.id]);
 
   // Match an @token immediately before the caret (i.e. currently typing).
   const detectMention = (value: string, caret: number) => {
@@ -345,6 +362,45 @@ export default function TicketDetail() {
         {/* Description */}
         <div className="mt-5 bg-gray-50 rounded-xl p-5 border border-gray-100">
           <p className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">{ticket.description}</p>
+          {translatedDescription && (
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <svg className="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                </svg>
+                <span className="text-[10px] font-semibold text-blue-600 uppercase tracking-wide">Translated to English</span>
+              </div>
+              <p className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">{translatedDescription}</p>
+            </div>
+          )}
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              onClick={async () => {
+                if (translatedDescription) { setTranslatedDescription(null); return; }
+                setTranslating(true);
+                try {
+                  const res = await api.post("/admin/translate", { text: ticket.description, from: detectedLocale || undefined });
+                  setTranslatedDescription(res.data.translated);
+                } catch { /* silent */ } finally { setTranslating(false); }
+              }}
+              disabled={translating}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 disabled:opacity-50 transition-colors"
+            >
+              {translating ? (
+                <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-blue-600" />
+              ) : (
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                </svg>
+              )}
+              {translating ? "Translating..." : translatedDescription ? "Hide translation" : "Translate to English"}
+            </button>
+            {detectedLocale && !translatedDescription && (
+              <span className="text-[10px] text-gray-400">
+                Detected: {LANGUAGE_OPTIONS.find(o => o.value === detectedLocale)?.label ?? detectedLocale}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Attachments */}
@@ -531,31 +587,57 @@ export default function TicketDetail() {
                           Quick Replies
                         </button>
                         {showQuickReplies && (
-                          <select value={cannedLocale} onChange={e => setCannedLocale(e.target.value)}
-                            className="text-xs border border-gray-200 rounded-md px-2 py-0.5 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
-                            <option value="">All languages</option>
-                            <option value="en">🇬🇧 English</option>
-                            <option value="es">🇪🇸 Spanish</option>
-                            <option value="fr">🇫🇷 French</option>
-                            <option value="de">🇩🇪 German</option>
-                            <option value="ar">🇸🇦 Arabic</option>
-                            <option value="ur">🇵🇰 Urdu</option>
-                          </select>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {detectedLocale && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200 text-[10px] font-medium">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                                </svg>
+                                Detected: {LANGUAGE_OPTIONS.find(o => o.value === detectedLocale)?.label ?? detectedLocale}
+                                {cannedLocale !== detectedLocale && (
+                                  <button onClick={() => setCannedLocale(detectedLocale)} className="ml-0.5 font-semibold text-violet-600 hover:text-violet-900">Use</button>
+                                )}
+                              </span>
+                            )}
+                            <button
+                              onClick={() => setCannedLocale("")}
+                              className={`text-xs px-2 py-0.5 rounded-md border transition-colors ${cannedLocale === "" ? "bg-blue-600 text-white border-blue-600" : "border-gray-200 text-gray-500 hover:border-blue-400"}`}
+                            >
+                              🌐 All Languages
+                            </button>
+                            <select value={cannedLocale} onChange={e => setCannedLocale(e.target.value)}
+                              className="text-xs border border-gray-200 rounded-md px-2 py-0.5 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+                              <option value="">Select language</option>
+                              {LANGUAGE_OPTIONS.map(opt => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                              ))}
+                            </select>
+                            {cannedLocale && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-semibold">
+                                {LANGUAGE_OPTIONS.find(o => o.value === cannedLocale)?.label ?? cannedLocale}
+                                <button onClick={() => setCannedLocale("")} className="hover:text-blue-900">✕</button>
+                              </span>
+                            )}
+                          </div>
                         )}
                       </div>
 
                       {showQuickReplies && (
                         <>
-                        {cannedReplies.length > 0 && (
+                        {cannedReplies.filter(qr => !qr.locale).length > 0 && (
                           <div className="mt-2">
                             <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
                               Your Saved Replies
                             </div>
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                              {cannedReplies.map((cr) => (
+                              {cannedReplies.filter(qr => !qr.locale).map((cr) => (
                                 <div key={cr.id} className="relative group">
                                   <button
-                                    onClick={() => { setComment(cr.body); setShowQuickReplies(false); }}
+                                    onClick={() => {
+                                      const body = (cannedLocale && QUICK_REPLY_TRANSLATIONS[cr.title]?.[cannedLocale]) || cr.body;
+                                      setComment(body);
+                                      setShowQuickReplies(false);
+                                    }}
                                     className="w-full flex items-center gap-2 px-3 py-2.5 pr-7 rounded-lg border border-gray-200 bg-gray-50 hover:bg-emerald-50 hover:border-emerald-200 text-left transition-all"
                                   >
                                     <span className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0">
@@ -587,7 +669,11 @@ export default function TicketDetail() {
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                           {ticketQuickReplies.map((qr) => (
-                            <button key={qr.label} onClick={() => { setComment(qr.body); setShowQuickReplies(false); }}
+                            <button key={qr.label} onClick={() => {
+                              const body = (cannedLocale && TICKET_REPLY_TRANSLATIONS[qr.label]?.[cannedLocale]) || qr.body;
+                              setComment(body);
+                              setShowQuickReplies(false);
+                            }}
                               className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 hover:bg-blue-50 hover:border-blue-200 text-left transition-all group">
                               <span className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-200 transition-colors">
                                 {qr.icon === "eye" && <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}

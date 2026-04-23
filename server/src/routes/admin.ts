@@ -1502,4 +1502,20 @@ router.delete("/canned-replies/:id", async (req: Request, res: Response) => {
   }
 });
 
+router.post("/translate", async (req: Request, res: Response) => {
+  try {
+    const { text, from } = req.body;
+    if (!text || typeof text !== "string") return res.status(400).json({ error: "text is required" });
+    const langpair = from ? `${from}|en` : "auto|en";
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text.slice(0, 5000))}&langpair=${langpair}`;
+    const response = await fetch(url);
+    const data = await response.json() as { responseStatus: number; responseData: { translatedText: string } };
+    if (data.responseStatus !== 200) return res.status(502).json({ error: "Translation service error" });
+    return res.json({ translated: data.responseData.translatedText });
+  } catch (err) {
+    console.error("Translate error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

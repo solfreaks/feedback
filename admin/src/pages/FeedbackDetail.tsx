@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import api from "../api";
 import Avatar from "../components/Avatar";
+import { LANGUAGE_OPTIONS } from "../utils/translations";
 
 const QUICK_REPLY_TRANSLATIONS: Record<string, Record<string, string>> = {
   "Thank you for your feedback": {
@@ -380,8 +381,11 @@ export default function FeedbackDetail() {
   const [deleteReplyId, setDeleteReplyId] = useState<string | null>(null);
   const [deletingReply, setDeletingReply] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
+  const [translatedComment, setTranslatedComment] = useState<string | null>(null);
+  const [translating, setTranslating] = useState(false);
   const [cannedReplies, setCannedReplies] = useState<{ id: string; title: string; body: string; locale: string | null }[]>([]);
   const [cannedLocale, setCannedLocale] = useState("");
+  const [detectedLocale, setDetectedLocale] = useState("");
   const [admins, setAdmins] = useState<{ id: string; name: string; avatarUrl?: string }[]>([]);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionActiveIdx, setMentionActiveIdx] = useState(0);
@@ -444,7 +448,10 @@ export default function FeedbackDetail() {
         .map(r => r.body),
     ].join(" ");
     const detected = detectLanguage(userTexts);
-    if (detected) setCannedLocale(detected);
+    if (detected) {
+      setDetectedLocale(detected);
+      setCannedLocale(detected);
+    }
   }, [feedback?.id]);
 
   const sendReply = async () => {
@@ -623,6 +630,45 @@ export default function FeedbackDetail() {
             {feedback.comment ? (
               <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
                 <p className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">{feedback.comment}</p>
+                {translatedComment && (
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <svg className="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                      </svg>
+                      <span className="text-[10px] font-semibold text-blue-600 uppercase tracking-wide">Translated to English</span>
+                    </div>
+                    <p className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">{translatedComment}</p>
+                  </div>
+                )}
+                <div className="mt-3 flex items-center gap-2">
+                  <button
+                    onClick={async () => {
+                      if (translatedComment) { setTranslatedComment(null); return; }
+                      setTranslating(true);
+                      try {
+                        const res = await api.post("/admin/translate", { text: feedback.comment, from: detectedLocale || undefined });
+                        setTranslatedComment(res.data.translated);
+                      } catch { /* silent */ } finally { setTranslating(false); }
+                    }}
+                    disabled={translating}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 disabled:opacity-50 transition-colors"
+                  >
+                    {translating ? (
+                      <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-blue-600" />
+                    ) : (
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                      </svg>
+                    )}
+                    {translating ? "Translating..." : translatedComment ? "Hide translation" : "Translate to English"}
+                  </button>
+                  {detectedLocale && !translatedComment && (
+                    <span className="text-[10px] text-gray-400">
+                      Detected: {LANGUAGE_OPTIONS.find(o => o.value === detectedLocale)?.label ?? detectedLocale}
+                    </span>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="bg-gray-50 rounded-xl p-5 border border-gray-100 text-center">
@@ -785,6 +831,17 @@ export default function FeedbackDetail() {
                   </div>
                   {showQuickReplies && (
                     <div className="mt-2 flex items-center gap-2 flex-wrap">
+                      {detectedLocale && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200 text-[10px] font-medium">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                          </svg>
+                          Detected: {LANGUAGE_OPTIONS.find(o => o.value === detectedLocale)?.label ?? detectedLocale}
+                          {cannedLocale !== detectedLocale && (
+                            <button onClick={() => setCannedLocale(detectedLocale)} className="ml-0.5 font-semibold text-violet-600 hover:text-violet-900">Use</button>
+                          )}
+                        </span>
+                      )}
                       <button onClick={() => setCannedLocale("")}
                         className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${cannedLocale === "" ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600"}`}>
                         🌐 All Languages
@@ -792,63 +849,13 @@ export default function FeedbackDetail() {
                       <select value={cannedLocale} onChange={e => setCannedLocale(e.target.value)}
                         className="text-xs border border-gray-200 rounded-lg px-2 py-1 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 cursor-pointer">
                         <option value="">— Select Language —</option>
-                        <option value="en">🇬🇧 English</option>
-                        <option value="es">🇪🇸 Spanish</option>
-                        <option value="fr">🇫🇷 French</option>
-                        <option value="de">🇩🇪 German</option>
-                        <option value="ar">🇸🇦 Arabic</option>
-                        <option value="ur">🇵🇰 Urdu</option>
-                        <option value="zh">🇨🇳 Chinese</option>
-                        <option value="hi">🇮🇳 Hindi</option>
-                        <option value="pt">🇧🇷 Portuguese</option>
-                        <option value="tr">🇹🇷 Turkish</option>
-                        <option value="ru">🇷🇺 Russian</option>
-                        <option value="ja">🇯🇵 Japanese</option>
-                        <option value="ko">🇰🇷 Korean</option>
-                        <option value="it">🇮🇹 Italian</option>
-                        <option value="nl">🇳🇱 Dutch</option>
-                        <option value="pl">🇵🇱 Polish</option>
-                        <option value="sv">🇸🇪 Swedish</option>
-                        <option value="no">🇳🇴 Norwegian</option>
-                        <option value="da">🇩🇰 Danish</option>
-                        <option value="fi">🇫🇮 Finnish</option>
-                        <option value="el">🇬🇷 Greek</option>
-                        <option value="cs">🇨🇿 Czech</option>
-                        <option value="hu">🇭🇺 Hungarian</option>
-                        <option value="ro">🇷🇴 Romanian</option>
-                        <option value="th">🇹🇭 Thai</option>
-                        <option value="vi">🇻🇳 Vietnamese</option>
-                        <option value="id">🇮🇩 Indonesian</option>
-                        <option value="ms">🇲🇾 Malay</option>
-                        <option value="bn">🇧🇩 Bengali</option>
-                        <option value="fa">🇮🇷 Persian</option>
-                        <option value="uk">🇺🇦 Ukrainian</option>
-                        <option value="he">🇮🇱 Hebrew</option>
-                        <option value="sr">🇷🇸 Serbian</option>
-                        <option value="hr">🇭🇷 Croatian</option>
-                        <option value="sk">🇸🇰 Slovak</option>
-                        <option value="bg">🇧🇬 Bulgarian</option>
-                        <option value="lt">🇱🇹 Lithuanian</option>
-                        <option value="lv">🇱🇻 Latvian</option>
-                        <option value="sl">🇸🇮 Slovenian</option>
-                        <option value="az">🇦🇿 Azerbaijani</option>
-                        <option value="kk">🇰🇿 Kazakh</option>
-                        <option value="uz">🇺🇿 Uzbek</option>
-                        <option value="sw">🇰🇪 Swahili</option>
-                        <option value="am">🇪🇹 Amharic</option>
-                        <option value="af">🇿🇦 Afrikaans</option>
-                        <option value="sq">🇦🇱 Albanian</option>
-                        <option value="mk">🇲🇰 Macedonian</option>
-                        <option value="mn">🇲🇳 Mongolian</option>
-                        <option value="my">🇲🇲 Burmese</option>
-                        <option value="km">🇰🇭 Khmer</option>
-                        <option value="ne">🇳🇵 Nepali</option>
-                        <option value="si">🇱🇰 Sinhala</option>
-                        <option value="ta">🇮🇳 Tamil</option>
+                        {LANGUAGE_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
                       </select>
                       {cannedLocale && (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                          {cannedLocale.toUpperCase()}
+                          {LANGUAGE_OPTIONS.find(o => o.value === cannedLocale)?.label ?? cannedLocale}
                           <button onClick={() => setCannedLocale("")} className="ml-0.5 hover:text-blue-900">✕</button>
                         </span>
                       )}

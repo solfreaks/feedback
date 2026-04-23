@@ -90,6 +90,8 @@ export default function TicketDetail() {
   const [translatingComment, setTranslatingComment] = useState(false);
   const [translateToLocale, setTranslateToLocale] = useState("");
   const [translatingCanned, setTranslatingCanned] = useState<string | null>(null);
+  const [translatedComments, setTranslatedComments] = useState<Record<string, string>>({});
+  const [translatingCommentId, setTranslatingCommentId] = useState<string | null>(null);
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
   const [newTemplateTitle, setNewTemplateTitle] = useState("");
   const [newTemplateShared, setNewTemplateShared] = useState(false);
@@ -542,7 +544,33 @@ export default function TicketDetail() {
                                 ? "bg-amber-50 text-amber-900 border border-amber-100"
                                 : "bg-gray-50 text-gray-700 border border-gray-100"
                             }`}>
-                              <p className="whitespace-pre-wrap">{c.body}</p>
+                              <p className="whitespace-pre-wrap">{translatedComments[c.id] || c.body}</p>
+                              {translatedComments[c.id] && (
+                                <p className="mt-2 text-[11px] text-gray-400 italic border-t border-gray-200 pt-1.5">Original: {c.body}</p>
+                              )}
+                            </div>
+                            <div className="mt-1 flex items-center gap-1">
+                              <button
+                                onClick={async () => {
+                                  if (translatedComments[c.id]) {
+                                    setTranslatedComments(prev => { const n = { ...prev }; delete n[c.id]; return n; });
+                                    return;
+                                  }
+                                  setTranslatingCommentId(c.id);
+                                  try {
+                                    const from = detectLanguage(c.body) || undefined;
+                                    const res = await api.post("/admin/translate", { text: c.body, from });
+                                    if (res.data.translated) setTranslatedComments(prev => ({ ...prev, [c.id]: res.data.translated }));
+                                  } catch { /* silent */ } finally { setTranslatingCommentId(null); }
+                                }}
+                                disabled={translatingCommentId === c.id}
+                                className="inline-flex items-center gap-1 text-[11px] text-gray-400 hover:text-blue-600 transition-colors disabled:opacity-50"
+                              >
+                                {translatingCommentId === c.id
+                                  ? <div className="animate-spin rounded-full h-2.5 w-2.5 border-b-2 border-blue-500" />
+                                  : <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" /></svg>}
+                                {translatingCommentId === c.id ? "Translating..." : translatedComments[c.id] ? "Show original" : "Translate"}
+                              </button>
                             </div>
                             {/* Per-comment attachments */}
                             {(() => {

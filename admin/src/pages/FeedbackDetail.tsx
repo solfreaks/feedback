@@ -383,6 +383,10 @@ export default function FeedbackDetail() {
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [translatedComment, setTranslatedComment] = useState<string | null>(null);
   const [translating, setTranslating] = useState(false);
+  const [translatedReplies, setTranslatedReplies] = useState<Record<string, string>>({});
+  const [translatingReplyId, setTranslatingReplyId] = useState<string | null>(null);
+  const [translatingReply, setTranslatingReply] = useState(false);
+  const [translateToLocale, setTranslateToLocale] = useState("");
   const [cannedReplies, setCannedReplies] = useState<{ id: string; title: string; body: string; locale: string | null }[]>([]);
   const [cannedLocale, setCannedLocale] = useState("");
   const [detectedLocale, setDetectedLocale] = useState("");
@@ -782,7 +786,43 @@ export default function FeedbackDetail() {
                         </div>
                         <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
                           <p className="text-sm text-gray-700 whitespace-pre-wrap">{r.body}</p>
+                          {translatedReplies[r.id] && (
+                            <div className="mt-2 pt-2 border-t border-blue-200">
+                              <div className="flex items-center gap-1 mb-1">
+                                <svg className="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                                </svg>
+                                <span className="text-[10px] font-semibold text-blue-600 uppercase tracking-wide">Translated</span>
+                              </div>
+                              <p className="text-sm text-gray-700 whitespace-pre-wrap">{translatedReplies[r.id]}</p>
+                            </div>
+                          )}
                         </div>
+                        <button
+                          onClick={async () => {
+                            if (translatedReplies[r.id]) {
+                              setTranslatedReplies(prev => { const n = {...prev}; delete n[r.id]; return n; });
+                              return;
+                            }
+                            setTranslatingReplyId(r.id);
+                            try {
+                              const from = detectLanguage(r.body) || undefined;
+                              const res = await api.post("/admin/translate", { text: r.body, from });
+                              setTranslatedReplies(prev => ({ ...prev, [r.id]: res.data.translated }));
+                            } catch { /* silent */ } finally { setTranslatingReplyId(null); }
+                          }}
+                          disabled={translatingReplyId === r.id}
+                          className="mt-1 inline-flex items-center gap-1 text-[11px] text-blue-500 hover:text-blue-700 disabled:opacity-50 transition-colors"
+                        >
+                          {translatingReplyId === r.id ? (
+                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500" />
+                          ) : (
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                            </svg>
+                          )}
+                          {translatingReplyId === r.id ? "Translating..." : translatedReplies[r.id] ? "Hide translation" : "Translate"}
+                        </button>
                         {/* Per-reply attachments */}
                         {(() => {
                           const replyAtts = feedback.attachments?.filter(a => a.feedbackReplyId === r.id) || [];
@@ -952,6 +992,46 @@ export default function FeedbackDetail() {
                           className="text-xs text-gray-400 hover:text-gray-600 font-medium transition-colors">
                           Clear
                         </button>
+                      )}
+                      {reply.trim() && (
+                        <div className="flex items-center gap-1.5">
+                          <svg className="w-3 h-3 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                          </svg>
+                          <select
+                            value={translateToLocale}
+                            onChange={e => setTranslateToLocale(e.target.value)}
+                            className="text-[11px] border border-gray-200 rounded px-1.5 py-0.5 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-400 max-w-[130px]"
+                          >
+                            <option value="">Translate to…</option>
+                            {LANGUAGE_OPTIONS.map(opt => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                          {translateToLocale && (
+                            <button
+                              onClick={async () => {
+                                setTranslatingReply(true);
+                                try {
+                                  const detFrom = detectLanguage(reply);
+                                  const res = await api.post("/admin/translate", {
+                                    text: reply,
+                                    ...(detFrom && { from: detFrom }),
+                                    to: translateToLocale,
+                                  });
+                                  if (res.data.translated) setReply(res.data.translated);
+                                } catch (e) { console.error("translate reply:", e); } finally { setTranslatingReply(false); }
+                              }}
+                              disabled={translatingReply}
+                              className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 hover:text-emerald-700 disabled:opacity-50 transition-colors"
+                            >
+                              {translatingReply ? (
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-emerald-600" />
+                              ) : null}
+                              {translatingReply ? "..." : "Go"}
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                     <button onClick={sendReply} disabled={sending || (!reply.trim() && pendingFiles.length === 0)}

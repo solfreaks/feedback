@@ -87,6 +87,8 @@ export default function TicketDetail() {
   const [detectedLocale, setDetectedLocale] = useState("");
   const [translatedDescription, setTranslatedDescription] = useState<string | null>(null);
   const [translating, setTranslating] = useState(false);
+  const [translatingComment, setTranslatingComment] = useState(false);
+  const [translateToLocale, setTranslateToLocale] = useState("");
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
   const [newTemplateTitle, setNewTemplateTitle] = useState("");
   const [newTemplateShared, setNewTemplateShared] = useState(false);
@@ -792,6 +794,46 @@ export default function TicketDetail() {
                               className="text-xs text-emerald-600 hover:text-emerald-700 font-medium transition-colors">
                               Save as template
                             </button>
+                          )}
+                          {comment.trim() && (
+                            <div className="flex items-center gap-1.5">
+                              <svg className="w-3 h-3 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                              </svg>
+                              <select
+                                value={translateToLocale}
+                                onChange={e => setTranslateToLocale(e.target.value)}
+                                className="text-[11px] border border-gray-200 rounded px-1.5 py-0.5 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-400 max-w-[130px]"
+                              >
+                                <option value="">Translate to…</option>
+                                {LANGUAGE_OPTIONS.map(opt => (
+                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
+                              </select>
+                              {translateToLocale && (
+                                <button
+                                  onClick={async () => {
+                                    setTranslatingComment(true);
+                                    try {
+                                      const detFrom = detectLanguage(comment);
+                                      const res = await api.post("/admin/translate", {
+                                        text: comment,
+                                        ...(detFrom && { from: detFrom }),
+                                        to: translateToLocale,
+                                      });
+                                      if (res.data.translated) setComment(res.data.translated);
+                                    } catch (e) { console.error("translate comment:", e); } finally { setTranslatingComment(false); }
+                                  }}
+                                  disabled={translatingComment}
+                                  className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 hover:text-emerald-700 disabled:opacity-50 transition-colors"
+                                >
+                                  {translatingComment ? (
+                                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-emerald-600" />
+                                  ) : null}
+                                  {translatingComment ? "..." : "Go"}
+                                </button>
+                              )}
+                            </div>
                           )}
                         </div>
                         <button onClick={addComment} disabled={sending || (!comment.trim() && pendingFiles.length === 0)}

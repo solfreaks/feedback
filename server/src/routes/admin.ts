@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import https from "https";
 import { authenticate } from "../middleware/auth";
 import { adminGuard } from "../middleware/adminGuard";
 import * as ticketService from "../services/ticket.service";
@@ -1508,10 +1509,30 @@ router.post("/translate", async (req: Request, res: Response) => {
     if (!text || typeof text !== "string") return res.status(400).json({ error: "text is required" });
     const sl = from || "auto";
     const tl = to || "en";
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=${encodeURIComponent(text.slice(0, 5000))}`;
-    const response = await fetch(url);
-    const data = await response.json() as any[][];
-    const translated = (data[0] as any[])?.map((item: any) => item?.[0]).filter(Boolean).join("") || "";
+    const q = encodeURIComponent(text.slice(0, 5000));
+    const urlPath = `/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=${q}`;
+
+    const data = await new Promise<any>((resolve, reject) => {
+      const options = {
+        hostname: "translate.googleapis.com",
+        path: urlPath,
+        method: "GET",
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
+      };
+      const httpReq = https.request(options, (httpRes) => {
+        let body = "";
+        httpRes.on("data", (chunk) => { body += chunk; });
+        httpRes.on("end", () => {
+          try { resolve(JSON.parse(body)); } catch (e) { reject(new Error("Invalid JSON: " + body.slice(0, 200))); }
+        });
+      });
+      httpReq.on("error", reject);
+      httpReq.end();
+    });
+
+    const translated = Array.isArray(data[0])
+      ? (data[0] as any[]).map((item: any) => item?.[0]).filter(Boolean).join("")
+      : "";
     if (!translated) return res.status(502).json({ error: "Translation failed" });
     return res.json({ translated });
   } catch (err) {

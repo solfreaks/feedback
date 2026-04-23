@@ -1016,16 +1016,19 @@ export default function FeedbackDetail() {
                         </button>
                       )}
                       {reply.trim() && (
-                        <div className="flex items-center gap-1.5">
-                          <svg className="w-3 h-3 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
-                          </svg>
+                        <div className="flex items-center gap-2 pl-3 border-l border-gray-200">
+                          <span className="inline-flex items-center gap-1.5 text-xs text-indigo-500 font-medium whitespace-nowrap">
+                            <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                            </svg>
+                            Translate
+                          </span>
                           <select
                             value={translateToLocale}
                             onChange={e => setTranslateToLocale(e.target.value)}
-                            className="text-[11px] border border-gray-200 rounded px-1.5 py-0.5 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-400 max-w-[130px]"
+                            className="text-xs border border-indigo-200 rounded-lg px-2.5 py-1.5 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 cursor-pointer min-w-[150px]"
                           >
-                            <option value="">Translate to…</option>
+                            <option value="">— Pick a language —</option>
                             {LANGUAGE_OPTIONS.map(opt => (
                               <option key={opt.value} value={opt.value}>{opt.label}</option>
                             ))}
@@ -1045,12 +1048,12 @@ export default function FeedbackDetail() {
                                 } catch (e) { console.error("translate reply:", e); } finally { setTranslatingReply(false); }
                               }}
                               disabled={translatingReply}
-                              className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 hover:text-emerald-700 disabled:opacity-50 transition-colors"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors whitespace-nowrap"
                             >
-                              {translatingReply ? (
-                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-emerald-600" />
-                              ) : null}
-                              {translatingReply ? "..." : "Go"}
+                              {translatingReply
+                                ? <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" />
+                                : <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>}
+                              {translatingReply ? "Translating…" : `→ ${LANGUAGE_OPTIONS.find(o => o.value === translateToLocale)?.label ?? translateToLocale}`}
                             </button>
                           )}
                         </div>

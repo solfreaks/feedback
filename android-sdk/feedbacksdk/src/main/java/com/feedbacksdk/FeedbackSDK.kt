@@ -136,6 +136,7 @@ object FeedbackSDK {
      * Get Google Sign-In intent. Launch this with an ActivityResultLauncher,
      * then pass the result to [handleGoogleSignInResult].
      */
+    @Suppress("DEPRECATION")
     fun getGoogleSignInIntent(activity: Activity): Intent {
         checkInit()
         val clientId = googleClientId ?: throw IllegalStateException(
@@ -153,6 +154,7 @@ object FeedbackSDK {
      * Handle the result from Google Sign-In.
      * Call this from your ActivityResultLauncher callback.
      */
+    @Suppress("DEPRECATION")
     suspend fun handleGoogleSignInResult(data: Intent?): SdkResult<AuthResponse> {
         checkInit()
         return try {

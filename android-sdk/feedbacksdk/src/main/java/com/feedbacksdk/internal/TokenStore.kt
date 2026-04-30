@@ -7,6 +7,7 @@ import androidx.security.crypto.MasterKey
 import com.feedbacksdk.models.User
 import com.google.gson.Gson
 
+@Suppress("DEPRECATION")
 internal object TokenStore {
 
     private const val PREF_NAME = "feedback_sdk_secure_prefs"

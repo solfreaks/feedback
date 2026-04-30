@@ -60,9 +60,7 @@ class FeedbackBellView @JvmOverloads constructor(
             background = ta.getDrawable(0)
             ta.recycle()
         }
-        applyLoggedOutState()
         setOnClickListener {
-            if (!FeedbackSDK.isLoggedIn) return@setOnClickListener
             val host = findActivity()
             if (host != null) FeedbackSDK.openNotifications(host)
         }
@@ -94,10 +92,8 @@ class FeedbackBellView @JvmOverloads constructor(
         refreshJob?.cancel()
         if (!FeedbackSDK.isLoggedIn) {
             applyCount(0)
-            applyLoggedOutState()
             return
         }
-        applyLoggedOutState()
         refreshJob = viewScope.launch(Dispatchers.IO) {
             val result = FeedbackSDK.getUnreadNotificationCount()
             withContext(Dispatchers.Main) {
@@ -113,12 +109,6 @@ class FeedbackBellView @JvmOverloads constructor(
         }
         badge.visibility = VISIBLE
         badge.text = if (count > 99) context.getString(R.string.sdk_badge_overflow) else count.toString()
-    }
-
-    /** Dim the widget when the user is not logged in so it looks inactive. */
-    private fun applyLoggedOutState() {
-        alpha = if (FeedbackSDK.isLoggedIn) 1f else 0.38f
-        isClickable = FeedbackSDK.isLoggedIn
     }
 
     private fun findActivity(): Activity? {

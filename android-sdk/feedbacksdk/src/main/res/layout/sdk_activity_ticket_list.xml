@@ -107,6 +107,82 @@
 
     </LinearLayout>
 
+    <!-- Login prompt — shown when user is not authenticated -->
+    <LinearLayout
+        android:id="@+id/loginPrompt"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:paddingHorizontal="40dp"
+        android:visibility="gone"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <FrameLayout
+            android:layout_width="128dp"
+            android:layout_height="128dp"
+            android:background="@drawable/sdk_bg_avatar">
+            <ImageView
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:layout_gravity="center"
+                android:src="@drawable/sdk_ic_circle_user"
+                android:contentDescription="@null"
+                app:tint="?attr/colorOnPrimaryContainer" />
+        </FrameLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/sdk_login_required_title"
+            android:textAppearance="?attr/textAppearanceTitleLarge"
+            android:textColor="?attr/colorOnSurface"
+            android:textStyle="bold"
+            android:layout_marginTop="24dp"
+            android:gravity="center" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/sdk_login_required_subtitle"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:lineSpacingMultiplier="1.3" />
+
+        <LinearLayout
+            android:id="@+id/btnGoogleSignIn"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:layout_marginTop="24dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/sdk_bg_google_btn"
+            android:paddingStart="12dp"
+            android:paddingEnd="24dp"
+            android:elevation="1dp"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:src="@drawable/sdk_ic_google_logo"
+                android:contentDescription="@null" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:text="@string/sdk_sign_in"
+                android:textSize="14sp"
+                android:textColor="#3C4043"
+                android:letterSpacing="0.01"
+                android:fontFamily="sans-serif-medium" />
+        </LinearLayout>
+
+    </LinearLayout>
+
     <include
         android:id="@+id/shimmerContainer"
         layout="@layout/sdk_shimmer_list"

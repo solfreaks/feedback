@@ -9,6 +9,7 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -36,11 +37,27 @@ import java.util.Locale
 
 class TicketListActivity : AppCompatActivity() {
 
+    private val googleSignInLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        lifecycleScope.launch {
+            val sdkResult = FeedbackSDK.handleGoogleSignInResult(result.data)
+            if (sdkResult is SdkResult.Success) {
+                showContent()
+                reloadTickets()
+            } else {
+                val msg = (sdkResult as? SdkResult.Error)?.message ?: getString(R.string.sdk_error_not_logged_in)
+                Toast.makeText(this@TicketListActivity, msg, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     private lateinit var recyclerView: RecyclerView
     private lateinit var progressBar: ProgressBar
     private lateinit var shimmerContainer: com.facebook.shimmer.ShimmerFrameLayout
     private lateinit var swipeRefresh: androidx.swiperefreshlayout.widget.SwipeRefreshLayout
     private lateinit var emptyState: View
+    private lateinit var loginPrompt: View
     private lateinit var statusBanner: android.widget.LinearLayout
     private var lastLoadFailed = false
     private val connectivityListener = ConnectivityMonitor.Listener { online ->
@@ -90,6 +107,11 @@ class TicketListActivity : AppCompatActivity() {
         swipeRefresh = findViewById<View>(R.id.swipeRefresh) as androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         swipeRefresh.setOnRefreshListener { reloadTickets() }
         emptyState = findViewById(R.id.emptyState)
+        loginPrompt = findViewById(R.id.loginPrompt)
+        loginPrompt.findViewById<View>(R.id.btnGoogleSignIn).setOnClickListener {
+            @Suppress("DEPRECATION")
+            googleSignInLauncher.launch(FeedbackSDK.getGoogleSignInIntent(this))
+        }
         statusBanner = findViewById(R.id.statusBanner)
         ConnectivityMonitor.addListener(connectivityListener)
 
@@ -105,7 +127,22 @@ class TicketListActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (!FeedbackSDK.isLoggedIn) { showLoginPrompt(); return }
+        showContent()
         reloadTickets()
+    }
+
+    private fun showLoginPrompt() {
+        shimmerContainer.stopShimmer()
+        shimmerContainer.visibility = View.GONE
+        recyclerView.visibility = View.GONE
+        swipeRefresh.isRefreshing = false
+        emptyState.visibility = View.GONE
+        loginPrompt.visibility = View.VISIBLE
+    }
+
+    private fun showContent() {
+        loginPrompt.visibility = View.GONE
     }
 
     /** Full refresh — resets to page 1. Used on first load, swipe-refresh, and onResume. */

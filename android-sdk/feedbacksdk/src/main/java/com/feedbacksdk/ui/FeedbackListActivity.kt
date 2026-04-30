@@ -19,13 +19,17 @@ import com.feedbacksdk.R
 import com.feedbacksdk.internal.ConnectivityMonitor
 import com.feedbacksdk.internal.SdkResult
 import com.feedbacksdk.internal.StatusBanner
+import com.feedbacksdk.internal.UnreadStore
 import com.feedbacksdk.internal.applySystemBarInsets
 import com.feedbacksdk.internal.resolveThemeColor
 import com.feedbacksdk.internal.statusColor
 import com.feedbacksdk.models.Feedback
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.appbar.MaterialToolbar
-import com.google.android.material.button.MaterialButton
+import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -42,8 +46,12 @@ class FeedbackListActivity : AppCompatActivity() {
     private val connectivityListener = ConnectivityMonitor.Listener { online ->
         runOnUiThread { refreshBanner(online) }
     }
+
     private val feedbacks = mutableListOf<Feedback>()
     private lateinit var adapter: FeedbackAdapter
+    private var currentPage = 1
+    private var totalPages = 1
+    private var isLoadingMore = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,54 +70,84 @@ class FeedbackListActivity : AppCompatActivity() {
         }
         applySystemBarInsets(
             topView = findViewById<AppBarLayout>(R.id.appBar),
-            bottomView = findViewById(R.id.bottomBar),
+            bottomView = null,
         )
+        val fab = findViewById<ExtendedFloatingActionButton>(R.id.fabSubmit)
+        ViewCompat.setOnApplyWindowInsetsListener(fab) { v, insets ->
+            val nav = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom
+            (v.layoutParams as? androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams)
+                ?.bottomMargin = nav + resources.getDimensionPixelSize(R.dimen.sdk_fab_margin)
+            insets
+        }
 
         recyclerView = findViewById(R.id.recyclerView)
         progressBar = findViewById(R.id.progressBar)
-        shimmerContainer = findViewById(R.id.shimmerContainer)
-        swipeRefresh = findViewById(R.id.swipeRefresh)
-        swipeRefresh.setOnRefreshListener { loadFeedbacks() }
+        @Suppress("UNCHECKED_CAST")
+        shimmerContainer = findViewById<View>(R.id.shimmerContainer) as com.facebook.shimmer.ShimmerFrameLayout
+        @Suppress("UNCHECKED_CAST")
+        swipeRefresh = findViewById<View>(R.id.swipeRefresh) as androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        swipeRefresh.setOnRefreshListener { reloadFeedbacks() }
         emptyState = findViewById(R.id.emptyState)
         statusBanner = findViewById(R.id.statusBanner)
         ConnectivityMonitor.addListener(connectivityListener)
 
-        adapter = FeedbackAdapter { feedback ->
-            FeedbackSDK.openFeedbackDetail(this, feedback.id)
-        }
+        adapter = FeedbackAdapter(
+            onClick = { feedback -> FeedbackSDK.openFeedbackDetail(this, feedback.id) },
+            onLoadMore = { loadMoreFeedbacks() },
+        )
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.adapter = adapter
 
-        findViewById<MaterialButton>(R.id.btnSubmit).setOnClickListener {
-            FeedbackSDK.openFeedback(this)
-        }
-        emptyState.findViewById<MaterialButton>(R.id.btnEmptySubmit)?.setOnClickListener {
-            FeedbackSDK.openFeedback(this)
-        }
+        fab.setOnClickListener { FeedbackSDK.openFeedback(this) }
     }
 
     override fun onResume() {
         super.onResume()
-        loadFeedbacks()
+        reloadFeedbacks()
     }
 
-    private fun loadFeedbacks() {
+    private fun reloadFeedbacks() {
+        currentPage = 1
+        totalPages = 1
+        loadFeedbacks(page = 1, append = false)
+    }
+
+    private fun loadMoreFeedbacks() {
+        if (isLoadingMore || currentPage >= totalPages) return
+        loadFeedbacks(page = currentPage + 1, append = true)
+    }
+
+    private fun loadFeedbacks(page: Int, append: Boolean) {
         lifecycleScope.launch {
-            val firstLoad = feedbacks.isEmpty()
-            val swipe = swipeRefresh.isRefreshing
-            if (firstLoad && !swipe) {
-                shimmerContainer.visibility = View.VISIBLE
-                shimmerContainer.startShimmer()
-                recyclerView.visibility = View.GONE
-            } else if (!swipe) {
-                progressBar.visibility = View.VISIBLE
+            if (!append) {
+                val firstLoad = feedbacks.isEmpty()
+                val swipe = swipeRefresh.isRefreshing
+                if (firstLoad && !swipe) {
+                    shimmerContainer.visibility = View.VISIBLE
+                    shimmerContainer.startShimmer()
+                    recyclerView.visibility = View.GONE
+                } else if (!swipe) {
+                    progressBar.visibility = View.VISIBLE
+                }
+                emptyState.visibility = View.GONE
+            } else {
+                isLoadingMore = true
+                adapter.setLoadingMore(true)
             }
-            emptyState.visibility = View.GONE
-            when (val result = FeedbackSDK.listFeedbacks()) {
+
+            when (val result = FeedbackSDK.listFeedbacks(page = page)) {
                 is SdkResult.Success -> {
-                    feedbacks.clear()
-                    feedbacks.addAll(result.data.feedbacks)
-                    adapter.submitList(feedbacks.toList())
+                    val data = result.data
+                    currentPage = page
+                    totalPages = data.totalPages
+                    if (append) {
+                        feedbacks.addAll(data.feedbacks)
+                    } else {
+                        feedbacks.clear()
+                        feedbacks.addAll(data.feedbacks)
+                    }
+                    val hasMore = currentPage < totalPages
+                    adapter.setItems(feedbacks.toList(), hasMore)
                     shimmerContainer.stopShimmer()
                     shimmerContainer.visibility = View.GONE
                     recyclerView.visibility = View.VISIBLE
@@ -125,20 +163,22 @@ class FeedbackListActivity : AppCompatActivity() {
                     recyclerView.visibility = View.VISIBLE
                     progressBar.visibility = View.GONE
                     swipeRefresh.isRefreshing = false
-                    lastLoadFailed = true
+                    lastLoadFailed = !append
                     refreshBanner(ConnectivityMonitor.isOnline)
                     if (feedbacks.isEmpty()) {
                         Toast.makeText(this@FeedbackListActivity, result.message, Toast.LENGTH_LONG).show()
                     }
                 }
             }
+            isLoadingMore = false
+            adapter.setLoadingMore(false)
         }
     }
 
     private fun refreshBanner(online: Boolean) {
         when {
             !online -> StatusBanner.showOffline(statusBanner)
-            lastLoadFailed -> StatusBanner.showError(statusBanner) { loadFeedbacks() }
+            lastLoadFailed -> StatusBanner.showError(statusBanner) { reloadFeedbacks() }
             else -> StatusBanner.hide(statusBanner)
         }
     }
@@ -149,33 +189,47 @@ class FeedbackListActivity : AppCompatActivity() {
     }
 
     private class FeedbackAdapter(
-        private val onClick: (Feedback) -> Unit
-    ) : androidx.recyclerview.widget.ListAdapter<Feedback, FeedbackAdapter.ViewHolder>(DIFF) {
+        private val onClick: (Feedback) -> Unit,
+        private val onLoadMore: () -> Unit,
+    ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
-        class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-            val stars: List<ImageView> = listOf(
-                view.findViewById(R.id.star1),
-                view.findViewById(R.id.star2),
-                view.findViewById(R.id.star3),
-                view.findViewById(R.id.star4),
-                view.findViewById(R.id.star5),
-            )
-            val tvStatus: TextView = view.findViewById(R.id.tvStatus)
-            val tvComment: TextView = view.findViewById(R.id.tvComment)
-            val tvCategory: TextView = view.findViewById(R.id.tvCategory)
-            val tvDate: TextView = view.findViewById(R.id.tvDate)
-            val unreadDot: View = view.findViewById(R.id.unreadDot)
+        private val rows = mutableListOf<Feedback>()
+        private var showLoadMore = false
+        private var loadingMore = false
+
+        fun setItems(items: List<Feedback>, hasMore: Boolean) {
+            rows.clear()
+            rows.addAll(items)
+            showLoadMore = hasMore
+            notifyDataSetChanged()
         }
 
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            val view = LayoutInflater.from(parent.context)
-                .inflate(R.layout.sdk_item_feedback, parent, false)
-            return ViewHolder(view)
+        fun setLoadingMore(loading: Boolean) {
+            loadingMore = loading
+            notifyDataSetChanged()
         }
 
-        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        override fun getItemViewType(position: Int) =
+            if (position < rows.size) TYPE_FEEDBACK else TYPE_FOOTER
+
+        override fun getItemCount() = rows.size + if (showLoadMore) 1 else 0
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+            val inflater = LayoutInflater.from(parent.context)
+            return if (viewType == TYPE_FEEDBACK) {
+                FeedbackVH(inflater.inflate(R.layout.sdk_item_feedback, parent, false))
+            } else {
+                FooterVH(inflater.inflate(R.layout.sdk_item_load_more, parent, false))
+            }
+        }
+
+        override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+            if (holder is FeedbackVH) bindFeedback(holder, rows[position])
+            else if (holder is FooterVH) bindFooter(holder)
+        }
+
+        private fun bindFeedback(holder: FeedbackVH, feedback: Feedback) {
             val ctx = holder.itemView.context
-            val feedback = getItem(position)
 
             holder.stars.forEachIndexed { i, star ->
                 star.setImageResource(
@@ -183,10 +237,13 @@ class FeedbackListActivity : AppCompatActivity() {
                     else R.drawable.sdk_ic_star_outline
                 )
             }
+            holder.stars.firstOrNull()?.contentDescription =
+                ctx.getString(R.string.sdk_star_rating_selected, feedback.rating)
 
             holder.tvStatus.text = feedback.status.replace("_", " ")
             holder.tvStatus.backgroundTintList = ColorStateList.valueOf(ctx.statusColor(feedback.status))
             holder.tvStatus.setTextColor(ctx.resolveThemeColor(R.attr.sdkColorOnStatus))
+            holder.tvStatus.contentDescription = ctx.getString(R.string.sdk_status_label, feedback.status.replace("_", " "))
 
             val comment = feedback.comment?.trim().orEmpty()
             if (comment.isEmpty()) {
@@ -201,29 +258,47 @@ class FeedbackListActivity : AppCompatActivity() {
                 .replaceFirstChar { it.uppercase() }
 
             holder.tvDate.text = formatDate(feedback.createdAt)
-            holder.unreadDot.visibility =
-                if (com.feedbacksdk.internal.UnreadStore.isFeedbackUnread(
-                        feedback.id,
-                        feedback.count?.replies ?: 0,
-                    )
-                ) View.VISIBLE else View.GONE
+            val isUnread = UnreadStore.isFeedbackUnread(feedback.id, feedback.count?.replies ?: 0)
+            holder.unreadDot.visibility = if (isUnread) View.VISIBLE else View.GONE
+            holder.unreadDot.contentDescription = if (isUnread) ctx.getString(R.string.sdk_unread_indicator) else null
             holder.itemView.setOnClickListener { onClick(feedback) }
+        }
+
+        private fun bindFooter(holder: FooterVH) {
+            holder.btnLoadMore.visibility = if (loadingMore) View.INVISIBLE else View.VISIBLE
+            holder.progress.visibility = if (loadingMore) View.VISIBLE else View.GONE
+            holder.btnLoadMore.setOnClickListener { onLoadMore() }
         }
 
         private fun formatDate(dateStr: String): String = try {
             val input = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
             val output = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-            val date = input.parse(dateStr.substringBefore('.'))
-            date?.let { output.format(it) } ?: dateStr
-        } catch (_: Exception) {
-            dateStr.substringBefore('T')
+            input.parse(dateStr.substringBefore('.'))?.let { output.format(it) } ?: dateStr
+        } catch (_: Exception) { dateStr.substringBefore('T') }
+
+        class FeedbackVH(view: View) : RecyclerView.ViewHolder(view) {
+            val stars: List<ImageView> = listOf(
+                view.findViewById(R.id.star1),
+                view.findViewById(R.id.star2),
+                view.findViewById(R.id.star3),
+                view.findViewById(R.id.star4),
+                view.findViewById(R.id.star5),
+            )
+            val tvStatus: TextView = view.findViewById(R.id.tvStatus)
+            val tvComment: TextView = view.findViewById(R.id.tvComment)
+            val tvCategory: TextView = view.findViewById(R.id.tvCategory)
+            val tvDate: TextView = view.findViewById(R.id.tvDate)
+            val unreadDot: View = view.findViewById(R.id.unreadDot)
+        }
+
+        class FooterVH(view: View) : RecyclerView.ViewHolder(view) {
+            val btnLoadMore: View = view.findViewById(R.id.btnLoadMore)
+            val progress: ProgressBar = view.findViewById(R.id.loadMoreProgress)
         }
 
         companion object {
-            private val DIFF = object : androidx.recyclerview.widget.DiffUtil.ItemCallback<Feedback>() {
-                override fun areItemsTheSame(old: Feedback, new: Feedback) = old.id == new.id
-                override fun areContentsTheSame(old: Feedback, new: Feedback) = old == new
-            }
+            private const val TYPE_FEEDBACK = 0
+            private const val TYPE_FOOTER = 1
         }
     }
 }

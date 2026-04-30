@@ -64,6 +64,44 @@
             android:text="@string/sdk_open_external" />
     </LinearLayout>
 
+    <!-- Shown when an image fails to load — lets the user retry. -->
+    <LinearLayout
+        android:id="@+id/imageErrorState"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="32dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:src="@drawable/sdk_ic_wifi_off"
+            android:contentDescription="@null"
+            app:tint="@android:color/white" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/sdk_attachment_failed_title"
+            android:textColor="@android:color/white"
+            android:textAppearance="?attr/textAppearanceBodyLarge"
+            android:layout_marginTop="16dp"
+            android:gravity="center" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnRetryImage"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:textColor="@android:color/white"
+            app:strokeColor="@android:color/white"
+            android:text="@string/sdk_retry_load" />
+    </LinearLayout>
+
     <com.google.android.material.progressindicator.CircularProgressIndicator
         android:id="@+id/progressBar"
         android:layout_width="wrap_content"

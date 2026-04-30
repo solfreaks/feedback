@@ -87,4 +87,55 @@
     <string name="sdk_no_app_to_open">ఈ ఫైలు తెరవడానికి యాప్ అందుబాటులో లేదు</string>
     <string name="sdk_ticket_created_attach_failed">టిక్కెట్ సృష్టించబడింది, కానీ ఒకటి లేదా అంతకంటే ఎక్కువ అటాచ్మెంట్లను అప్లోడ్ చేయలేకపోయాం.</string>
     <string name="sdk_feedback_submitted_attach_failed">అభిప్రాయం సమర్పించబడింది, కానీ ఒకటి లేదా అంతకంటే ఎక్కువ అటాచ్మెంట్లను అప్లోడ్ చేయలేకపోయాం.</string>
+
+    <!-- Bell badge overflow label -->
+    <string name="sdk_badge_overflow">99+</string>
+
+    <!-- Pagination -->
+    <string name="sdk_load_more">మరిన్ని లోడ్ చేయి</string>
+    <string name="sdk_loading_more">లోడ్ అవుతోంది…</string>
+
+    <!-- Attachment viewer error/retry -->
+    <string name="sdk_attachment_failed_title">అటాచ్మెంట్ లోడ్ చేయలేకపోయాం</string>
+    <string name="sdk_retry_load">మళ్ళీ ప్రయత్నించు</string>
+
+    <!-- Accessibility labels -->
+    <string name="sdk_star_rating_label">5 లో %1$d నంబరు నక్షత్రం</string>
+    <string name="sdk_star_rating_selected">5 లో %1$d నక్షత్రాలు ఎంచుకోబడ్డాయి</string>
+    <string name="sdk_status_label">స్థితి: %1$s</string>
+    <string name="sdk_priority_label">ప్రాధాన్యత: %1$s</string>
+    <string name="sdk_attach_button_desc">అటాచ్మెంట్ జోడించు</string>
+    <string name="sdk_remove_attachment_desc">%1$s తీసివేయి</string>
+    <string name="sdk_unread_indicator">చదవలేదు</string>
+
+    <!-- Ticket list -->
+    <string name="sdk_no_tickets_hint">ప్రారంభించడానికి + కొత్త టిక్కెట్ నొక్కండి</string>
+    <string name="sdk_new_ticket">కొత్త టిక్కెట్</string>
+
+    <!-- Feedback list -->
+    <string name="sdk_no_feedback_hint">మీ అనుభవం పంచుకోవడానికి రేట్ నొక్కండి</string>
+    <string name="sdk_new_feedback">రేట్ చేయి &amp; అభిప్రాయం</string>
+
+    <!-- Date section headers -->
+    <string name="sdk_date_today">నేడు</string>
+    <string name="sdk_date_yesterday">నిన్న</string>
+
+    <!-- Login prompt -->
+    <string name="sdk_login_required_title">సైన్ ఇన్ అవసరం</string>
+    <string name="sdk_login_required_subtitle">మీ నోటిఫికేషన్లు చూడటానికి సైన్ ఇన్ అవ్వండి.</string>
+    <string name="sdk_sign_in">Google తో సైన్ ఇన్ అవ్వండి</string>
+
+    <!-- Relative timestamps -->
+    <string name="sdk_time_just_now">ఇప్పుడే</string>
+    <string name="sdk_time_minutes_ago">%1$d నిమి క్రితం</string>
+    <string name="sdk_time_hours_ago">%1$d గం క్రితం</string>
+    <string name="sdk_time_days_ago">%1$d రో క్రితం</string>
+
+    <!-- Author fallbacks -->
+    <string name="sdk_user_fallback">వినియోగదారు</string>
+    <string name="sdk_support_fallback">సపోర్ట్</string>
+
+    <!-- Clipboard -->
+    <string name="sdk_copied">కాపీ అయింది</string>
+    <string name="sdk_copy">కాపీ చేయి</string>
 </resources>

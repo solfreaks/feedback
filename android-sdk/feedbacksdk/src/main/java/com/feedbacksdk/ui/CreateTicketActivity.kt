@@ -41,6 +41,7 @@ class CreateTicketActivity : AppCompatActivity() {
 
     private val pendingFiles = mutableListOf<File>()
     private lateinit var pendingAdapter: PendingAttachmentAdapter
+    private var isSubmitting = false
 
     private val pickAttachments = registerForActivityResult(
         ActivityResultContracts.GetMultipleContents()
@@ -108,6 +109,7 @@ class CreateTicketActivity : AppCompatActivity() {
     }
 
     private fun submitTicket() {
+        if (isSubmitting) return
         val title = editTitle.text?.toString()?.trim() ?: ""
         val description = editDescription.text?.toString()?.trim() ?: ""
 
@@ -127,6 +129,7 @@ class CreateTicketActivity : AppCompatActivity() {
             else -> "medium"
         }
 
+        isSubmitting = true
         setLoading(true)
 
         lifecycleScope.launch {
@@ -147,6 +150,7 @@ class CreateTicketActivity : AppCompatActivity() {
                     finish()
                 }
                 is SdkResult.Error -> {
+                    isSubmitting = false
                     setLoading(false)
                     Toast.makeText(this@CreateTicketActivity, result.message, Toast.LENGTH_LONG).show()
                 }

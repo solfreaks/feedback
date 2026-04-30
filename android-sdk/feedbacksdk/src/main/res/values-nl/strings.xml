@@ -87,4 +87,55 @@
     <string name="sdk_no_app_to_open">Geen app beschikbaar om dit bestand te openen</string>
     <string name="sdk_ticket_created_attach_failed">Ticket aangemaakt, maar een of meer bijlagen konden niet worden geüpload.</string>
     <string name="sdk_feedback_submitted_attach_failed">Feedback verstuurd, maar een of meer bijlagen konden niet worden geüpload.</string>
+
+    <!-- Bell badge overflow label -->
+    <string name="sdk_badge_overflow">99+</string>
+
+    <!-- Pagination -->
+    <string name="sdk_load_more">Meer laden</string>
+    <string name="sdk_loading_more">Laden…</string>
+
+    <!-- Attachment viewer error/retry -->
+    <string name="sdk_attachment_failed_title">Kan bijlage niet laden</string>
+    <string name="sdk_retry_load">Opnieuw proberen</string>
+
+    <!-- Accessibility labels -->
+    <string name="sdk_star_rating_label">Ster %1$d van 5</string>
+    <string name="sdk_star_rating_selected">%1$d van 5 sterren geselecteerd</string>
+    <string name="sdk_status_label">Status: %1$s</string>
+    <string name="sdk_priority_label">Prioriteit: %1$s</string>
+    <string name="sdk_attach_button_desc">Bijlage toevoegen</string>
+    <string name="sdk_remove_attachment_desc">%1$s verwijderen</string>
+    <string name="sdk_unread_indicator">Ongelezen</string>
+
+    <!-- Ticket list -->
+    <string name="sdk_no_tickets_hint">Tik op + Nieuw ticket om te beginnen</string>
+    <string name="sdk_new_ticket">Nieuw ticket</string>
+
+    <!-- Feedback list -->
+    <string name="sdk_no_feedback_hint">Tik op Beoordelen om uw ervaring te delen</string>
+    <string name="sdk_new_feedback">Beoordelen &amp; Feedback</string>
+
+    <!-- Date section headers -->
+    <string name="sdk_date_today">Vandaag</string>
+    <string name="sdk_date_yesterday">Gisteren</string>
+
+    <!-- Login prompt -->
+    <string name="sdk_login_required_title">Aanmelden vereist</string>
+    <string name="sdk_login_required_subtitle">Meld u aan om uw meldingen te bekijken.</string>
+    <string name="sdk_sign_in">Aanmelden met Google</string>
+
+    <!-- Relative timestamps -->
+    <string name="sdk_time_just_now">zojuist</string>
+    <string name="sdk_time_minutes_ago">%1$d min geleden</string>
+    <string name="sdk_time_hours_ago">%1$d uur geleden</string>
+    <string name="sdk_time_days_ago">%1$d dag geleden</string>
+
+    <!-- Author fallbacks -->
+    <string name="sdk_user_fallback">Gebruiker</string>
+    <string name="sdk_support_fallback">Ondersteuning</string>
+
+    <!-- Clipboard -->
+    <string name="sdk_copied">Gekopieerd</string>
+    <string name="sdk_copy">Kopiëren</string>
 </resources>

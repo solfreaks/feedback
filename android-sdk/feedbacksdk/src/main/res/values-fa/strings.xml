@@ -87,4 +87,55 @@
     <string name="sdk_no_app_to_open">هیچ برنامه‌ای برای باز کردن این فایل موجود نیست</string>
     <string name="sdk_ticket_created_attach_failed">تیکت ایجاد شد، اما یک یا چند پیوست آپلود نشد.</string>
     <string name="sdk_feedback_submitted_attach_failed">بازخورد ارسال شد، اما یک یا چند پیوست آپلود نشد.</string>
+
+    <!-- Bell badge overflow label -->
+    <string name="sdk_badge_overflow">99+</string>
+
+    <!-- Pagination -->
+    <string name="sdk_load_more">بارگذاری بیشتر</string>
+    <string name="sdk_loading_more">در حال بارگذاری…</string>
+
+    <!-- Attachment viewer error/retry -->
+    <string name="sdk_attachment_failed_title">بارگذاری پیوست ناموفق بود</string>
+    <string name="sdk_retry_load">تلاش مجدد</string>
+
+    <!-- Accessibility labels -->
+    <string name="sdk_star_rating_label">ستاره %1$d از ۵</string>
+    <string name="sdk_star_rating_selected">%1$d از ۵ ستاره انتخاب شد</string>
+    <string name="sdk_status_label">وضعیت: %1$s</string>
+    <string name="sdk_priority_label">اولویت: %1$s</string>
+    <string name="sdk_attach_button_desc">افزودن پیوست</string>
+    <string name="sdk_remove_attachment_desc">حذف %1$s</string>
+    <string name="sdk_unread_indicator">خوانده‌نشده</string>
+
+    <!-- Ticket list -->
+    <string name="sdk_no_tickets_hint">برای شروع روی + تیکت جدید بزنید</string>
+    <string name="sdk_new_ticket">تیکت جدید</string>
+
+    <!-- Feedback list -->
+    <string name="sdk_no_feedback_hint">برای اشتراک‌گذاری تجربه‌تان روی امتیاز بزنید</string>
+    <string name="sdk_new_feedback">امتیاز &amp; بازخورد</string>
+
+    <!-- Date section headers -->
+    <string name="sdk_date_today">امروز</string>
+    <string name="sdk_date_yesterday">دیروز</string>
+
+    <!-- Login prompt -->
+    <string name="sdk_login_required_title">ورود الزامی است</string>
+    <string name="sdk_login_required_subtitle">لطفاً برای مشاهده اعلان‌ها وارد شوید.</string>
+    <string name="sdk_sign_in">ورود با Google</string>
+
+    <!-- Relative timestamps -->
+    <string name="sdk_time_just_now">همین الان</string>
+    <string name="sdk_time_minutes_ago">%1$d د پیش</string>
+    <string name="sdk_time_hours_ago">%1$d س پیش</string>
+    <string name="sdk_time_days_ago">%1$d ر پیش</string>
+
+    <!-- Author fallbacks -->
+    <string name="sdk_user_fallback">کاربر</string>
+    <string name="sdk_support_fallback">پشتیبانی</string>
+
+    <!-- Clipboard -->
+    <string name="sdk_copied">کپی شد</string>
+    <string name="sdk_copy">کپی</string>
 </resources>

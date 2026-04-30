@@ -74,3 +74,9 @@ internal fun String.isImageFileName(): Boolean {
     val ext = substringAfterLast('.', "").lowercase()
     return ext in setOf("jpg", "jpeg", "png", "gif", "webp", "bmp", "heic", "heif")
 }
+
+/** Returns a MIME type for a filename extension, e.g. "application/pdf" for "doc.pdf". */
+internal fun mimeTypeForFileName(fileName: String): String {
+    val ext = fileName.substringAfterLast('.', "").lowercase()
+    return MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: ""
+}

@@ -87,4 +87,55 @@
     <string name="sdk_no_app_to_open">इस फ़ाइल को खोलने के लिए कोई ऐप उपलब्ध नहीं है</string>
     <string name="sdk_ticket_created_attach_failed">टिकट बनाया गया, लेकिन एक या अधिक अटैचमेंट अपलोड नहीं हो सके।</string>
     <string name="sdk_feedback_submitted_attach_failed">फ़ीडबैक भेजा गया, लेकिन एक या अधिक अटैचमेंट अपलोड नहीं हो सके।</string>
+
+    <!-- Bell badge overflow label -->
+    <string name="sdk_badge_overflow">99+</string>
+
+    <!-- Pagination -->
+    <string name="sdk_load_more">और लोड करें</string>
+    <string name="sdk_loading_more">लोड हो रहा है…</string>
+
+    <!-- Attachment viewer error/retry -->
+    <string name="sdk_attachment_failed_title">अटैचमेंट लोड नहीं हो सका</string>
+    <string name="sdk_retry_load">पुनः प्रयास करें</string>
+
+    <!-- Accessibility labels -->
+    <string name="sdk_star_rating_label">5 में से %1$d नंबर का तारा</string>
+    <string name="sdk_star_rating_selected">5 में से %1$d तारे चुने गए</string>
+    <string name="sdk_status_label">स्थिति: %1$s</string>
+    <string name="sdk_priority_label">प्राथमिकता: %1$s</string>
+    <string name="sdk_attach_button_desc">अटैचमेंट जोड़ें</string>
+    <string name="sdk_remove_attachment_desc">%1$s हटाएं</string>
+    <string name="sdk_unread_indicator">अपठित</string>
+
+    <!-- Ticket list -->
+    <string name="sdk_no_tickets_hint">शुरू करने के लिए + नया टिकट टैप करें</string>
+    <string name="sdk_new_ticket">नया टिकट</string>
+
+    <!-- Feedback list -->
+    <string name="sdk_no_feedback_hint">अपना अनुभव साझा करने के लिए रेट करें टैप करें</string>
+    <string name="sdk_new_feedback">रेट करें &amp; फ़ीडबैक दें</string>
+
+    <!-- Date section headers -->
+    <string name="sdk_date_today">आज</string>
+    <string name="sdk_date_yesterday">कल</string>
+
+    <!-- Login prompt -->
+    <string name="sdk_login_required_title">साइन इन आवश्यक है</string>
+    <string name="sdk_login_required_subtitle">अपनी सूचनाएं देखने के लिए साइन इन करें।</string>
+    <string name="sdk_sign_in">Google से साइन इन करें</string>
+
+    <!-- Relative timestamps -->
+    <string name="sdk_time_just_now">अभी</string>
+    <string name="sdk_time_minutes_ago">%1$d मिनट पहले</string>
+    <string name="sdk_time_hours_ago">%1$d घंटे पहले</string>
+    <string name="sdk_time_days_ago">%1$d दिन पहले</string>
+
+    <!-- Author fallbacks -->
+    <string name="sdk_user_fallback">उपयोगकर्ता</string>
+    <string name="sdk_support_fallback">सपोर्ट</string>
+
+    <!-- Clipboard -->
+    <string name="sdk_copied">कॉपी हो गया</string>
+    <string name="sdk_copy">कॉपी करें</string>
 </resources>

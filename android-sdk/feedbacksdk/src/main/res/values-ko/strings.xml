@@ -87,4 +87,55 @@
     <string name="sdk_no_app_to_open">이 파일을 열 수 있는 앱이 없습니다</string>
     <string name="sdk_ticket_created_attach_failed">티켓이 생성됐지만 하나 이상의 첨부파일 업로드에 실패했습니다.</string>
     <string name="sdk_feedback_submitted_attach_failed">피드백이 제출됐지만 하나 이상의 첨부파일 업로드에 실패했습니다.</string>
+
+    <!-- Bell badge overflow label -->
+    <string name="sdk_badge_overflow">99+</string>
+
+    <!-- Pagination -->
+    <string name="sdk_load_more">더 불러오기</string>
+    <string name="sdk_loading_more">불러오는 중…</string>
+
+    <!-- Attachment viewer error/retry -->
+    <string name="sdk_attachment_failed_title">첨부파일을 불러올 수 없습니다</string>
+    <string name="sdk_retry_load">다시 시도</string>
+
+    <!-- Accessibility labels -->
+    <string name="sdk_star_rating_label">5개 중 %1$d번째 별</string>
+    <string name="sdk_star_rating_selected">5개 중 %1$d개 별 선택됨</string>
+    <string name="sdk_status_label">상태: %1$s</string>
+    <string name="sdk_priority_label">우선순위: %1$s</string>
+    <string name="sdk_attach_button_desc">첨부파일 추가</string>
+    <string name="sdk_remove_attachment_desc">%1$s 삭제</string>
+    <string name="sdk_unread_indicator">읽지 않음</string>
+
+    <!-- Ticket list -->
+    <string name="sdk_no_tickets_hint">+ 새 티켓을 눌러 시작하세요</string>
+    <string name="sdk_new_ticket">새 티켓</string>
+
+    <!-- Feedback list -->
+    <string name="sdk_no_feedback_hint">평가를 눌러 경험을 공유하세요</string>
+    <string name="sdk_new_feedback">평가 &amp; 피드백</string>
+
+    <!-- Date section headers -->
+    <string name="sdk_date_today">오늘</string>
+    <string name="sdk_date_yesterday">어제</string>
+
+    <!-- Login prompt -->
+    <string name="sdk_login_required_title">로그인이 필요합니다</string>
+    <string name="sdk_login_required_subtitle">알림을 보려면 로그인하세요.</string>
+    <string name="sdk_sign_in">Google로 로그인</string>
+
+    <!-- Relative timestamps -->
+    <string name="sdk_time_just_now">방금 전</string>
+    <string name="sdk_time_minutes_ago">%1$d분 전</string>
+    <string name="sdk_time_hours_ago">%1$d시간 전</string>
+    <string name="sdk_time_days_ago">%1$d일 전</string>
+
+    <!-- Author fallbacks -->
+    <string name="sdk_user_fallback">사용자</string>
+    <string name="sdk_support_fallback">지원팀</string>
+
+    <!-- Clipboard -->
+    <string name="sdk_copied">복사됨</string>
+    <string name="sdk_copy">복사</string>
 </resources>

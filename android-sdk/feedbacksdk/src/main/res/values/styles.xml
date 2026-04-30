@@ -53,6 +53,19 @@
         <item name="chipCornerRadius">12dp</item>
     </style>
 
+    <style name="Widget.FeedbackSDK.ExtendedFab" parent="Widget.Material3.ExtendedFloatingActionButton.Icon.Primary">
+        <item name="backgroundTint">?attr/colorPrimary</item>
+        <item name="tint">?attr/colorOnPrimary</item>
+        <item name="android:textColor">?attr/colorOnPrimary</item>
+        <item name="iconTint">?attr/colorOnPrimary</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:letterSpacing">0.01</item>
+        <item name="android:textStyle">bold</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.FeedbackSDK.Fab</item>
+    </style>
+
+    <style name="ShapeAppearance.FeedbackSDK.Fab" parent="ShapeAppearance.Material3.Corner.Full" />
+
     <style name="TextAppearance.FeedbackSDK.Badge" parent="TextAppearance.Material3.LabelSmall">
         <item name="android:textAllCaps">true</item>
         <item name="android:textStyle">bold</item>

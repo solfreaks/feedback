@@ -22,11 +22,24 @@
             app:title="@string/sdk_notifications" />
     </com.google.android.material.appbar.AppBarLayout>
 
+    <!-- Bottom nav lives directly in CoordinatorLayout so insets apply cleanly -->
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="?attr/colorSurface"
+        app:menu="@menu/sdk_bottom_nav_menu"
+        app:labelVisibilityMode="labeled" />
+
+    <!-- Content area sits between the app bar and bottom nav -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        app:layout_anchorGravity="top"
+        android:layout_marginBottom="0dp">
 
         <com.google.android.material.tabs.TabLayout
             android:id="@+id/tabs"
@@ -64,6 +77,7 @@
                 android:layout_height="match_parent"
                 android:visibility="gone" />
         </FrameLayout>
+
     </LinearLayout>
 
     <LinearLayout
@@ -96,11 +110,12 @@
             android:background="@drawable/sdk_bg_avatar">
 
             <ImageView
+                android:id="@+id/ivEmptyIcon"
                 android:layout_width="64dp"
                 android:layout_height="64dp"
                 android:layout_gravity="center"
-                android:src="@drawable/sdk_ic_inbox"
-                android:contentDescription="@string/sdk_no_notifications"
+                android:src="@drawable/sdk_ic_bell"
+                android:contentDescription="@null"
                 app:tint="?attr/colorOnPrimaryContainer" />
         </FrameLayout>
 

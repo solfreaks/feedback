@@ -87,4 +87,55 @@
     <string name="sdk_no_app_to_open">Tiada aplikasi tersedia untuk membuka fail ini</string>
     <string name="sdk_ticket_created_attach_failed">Tiket dicipta, tetapi satu atau lebih lampiran gagal dimuat naik.</string>
     <string name="sdk_feedback_submitted_attach_failed">Maklum balas dihantar, tetapi satu atau lebih lampiran gagal dimuat naik.</string>
+
+    <!-- Bell badge overflow label -->
+    <string name="sdk_badge_overflow">99+</string>
+
+    <!-- Pagination -->
+    <string name="sdk_load_more">Muatkan lebih banyak</string>
+    <string name="sdk_loading_more">Memuatkan…</string>
+
+    <!-- Attachment viewer error/retry -->
+    <string name="sdk_attachment_failed_title">Tidak dapat memuatkan lampiran</string>
+    <string name="sdk_retry_load">Cuba lagi</string>
+
+    <!-- Accessibility labels -->
+    <string name="sdk_star_rating_label">Bintang %1$d daripada 5</string>
+    <string name="sdk_star_rating_selected">%1$d daripada 5 bintang dipilih</string>
+    <string name="sdk_status_label">Status: %1$s</string>
+    <string name="sdk_priority_label">Keutamaan: %1$s</string>
+    <string name="sdk_attach_button_desc">Tambah lampiran</string>
+    <string name="sdk_remove_attachment_desc">Buang %1$s</string>
+    <string name="sdk_unread_indicator">Belum dibaca</string>
+
+    <!-- Ticket list -->
+    <string name="sdk_no_tickets_hint">Ketik + Tiket Baru untuk bermula</string>
+    <string name="sdk_new_ticket">Tiket Baru</string>
+
+    <!-- Feedback list -->
+    <string name="sdk_no_feedback_hint">Ketik Nilai untuk berkongsi pengalaman anda</string>
+    <string name="sdk_new_feedback">Nilai &amp; Maklum Balas</string>
+
+    <!-- Date section headers -->
+    <string name="sdk_date_today">Hari ini</string>
+    <string name="sdk_date_yesterday">Semalam</string>
+
+    <!-- Login prompt -->
+    <string name="sdk_login_required_title">Log masuk diperlukan</string>
+    <string name="sdk_login_required_subtitle">Sila log masuk untuk melihat pemberitahuan anda.</string>
+    <string name="sdk_sign_in">Log masuk dengan Google</string>
+
+    <!-- Relative timestamps -->
+    <string name="sdk_time_just_now">baru sahaja</string>
+    <string name="sdk_time_minutes_ago">%1$d min lalu</string>
+    <string name="sdk_time_hours_ago">%1$d j lalu</string>
+    <string name="sdk_time_days_ago">%1$d hr lalu</string>
+
+    <!-- Author fallbacks -->
+    <string name="sdk_user_fallback">Pengguna</string>
+    <string name="sdk_support_fallback">Sokongan</string>
+
+    <!-- Clipboard -->
+    <string name="sdk_copied">Disalin</string>
+    <string name="sdk_copy">Salin</string>
 </resources>

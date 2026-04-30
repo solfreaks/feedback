@@ -87,4 +87,55 @@
     <string name="sdk_no_app_to_open">Δεν υπάρχει διαθέσιμη εφαρμογή για άνοιγμα αυτού του αρχείου</string>
     <string name="sdk_ticket_created_attach_failed">Το αίτημα δημιουργήθηκε, αλλά ένα ή περισσότερα συνημμένα απέτυχαν να μεταφορτωθούν.</string>
     <string name="sdk_feedback_submitted_attach_failed">Τα σχόλια υποβλήθηκαν, αλλά ένα ή περισσότερα συνημμένα απέτυχαν να μεταφορτωθούν.</string>
+
+    <!-- Bell badge overflow label -->
+    <string name="sdk_badge_overflow">99+</string>
+
+    <!-- Pagination -->
+    <string name="sdk_load_more">Φόρτωση περισσότερων</string>
+    <string name="sdk_loading_more">Φόρτωση…</string>
+
+    <!-- Attachment viewer error/retry -->
+    <string name="sdk_attachment_failed_title">Αδυναμία φόρτωσης συνημμένου</string>
+    <string name="sdk_retry_load">Επανάληψη</string>
+
+    <!-- Accessibility labels -->
+    <string name="sdk_star_rating_label">Αστέρι %1$d από 5</string>
+    <string name="sdk_star_rating_selected">Επιλέχθηκαν %1$d από 5 αστέρια</string>
+    <string name="sdk_status_label">Κατάσταση: %1$s</string>
+    <string name="sdk_priority_label">Προτεραιότητα: %1$s</string>
+    <string name="sdk_attach_button_desc">Προσθήκη συνημμένου</string>
+    <string name="sdk_remove_attachment_desc">Αφαίρεση %1$s</string>
+    <string name="sdk_unread_indicator">Μη αναγνωσμένο</string>
+
+    <!-- Ticket list -->
+    <string name="sdk_no_tickets_hint">Πατήστε + Νέο αίτημα για να ξεκινήσετε</string>
+    <string name="sdk_new_ticket">Νέο αίτημα</string>
+
+    <!-- Feedback list -->
+    <string name="sdk_no_feedback_hint">Πατήστε Αξιολόγηση για να μοιραστείτε την εμπειρία σας</string>
+    <string name="sdk_new_feedback">Αξιολόγηση &amp; Σχόλια</string>
+
+    <!-- Date section headers -->
+    <string name="sdk_date_today">Σήμερα</string>
+    <string name="sdk_date_yesterday">Χθες</string>
+
+    <!-- Login prompt -->
+    <string name="sdk_login_required_title">Απαιτείται σύνδεση</string>
+    <string name="sdk_login_required_subtitle">Συνδεθείτε για να δείτε τις ειδοποιήσεις σας.</string>
+    <string name="sdk_sign_in">Σύνδεση με Google</string>
+
+    <!-- Relative timestamps -->
+    <string name="sdk_time_just_now">μόλις τώρα</string>
+    <string name="sdk_time_minutes_ago">%1$d λεπ. πριν</string>
+    <string name="sdk_time_hours_ago">%1$d ώρ. πριν</string>
+    <string name="sdk_time_days_ago">%1$d ημ. πριν</string>
+
+    <!-- Author fallbacks -->
+    <string name="sdk_user_fallback">Χρήστης</string>
+    <string name="sdk_support_fallback">Υποστήριξη</string>
+
+    <!-- Clipboard -->
+    <string name="sdk_copied">Αντιγράφηκε</string>
+    <string name="sdk_copy">Αντιγραφή</string>
 </resources>

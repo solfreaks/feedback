@@ -87,4 +87,55 @@
     <string name="sdk_no_app_to_open">Нет приложения для открытия этого файла</string>
     <string name="sdk_ticket_created_attach_failed">Тикет создан, но одно или несколько вложений не удалось загрузить.</string>
     <string name="sdk_feedback_submitted_attach_failed">Отзыв отправлен, но одно или несколько вложений не удалось загрузить.</string>
+
+    <!-- Bell badge overflow label -->
+    <string name="sdk_badge_overflow">99+</string>
+
+    <!-- Pagination -->
+    <string name="sdk_load_more">Загрузить ещё</string>
+    <string name="sdk_loading_more">Загрузка…</string>
+
+    <!-- Attachment viewer error/retry -->
+    <string name="sdk_attachment_failed_title">Не удалось загрузить вложение</string>
+    <string name="sdk_retry_load">Повторить</string>
+
+    <!-- Accessibility labels -->
+    <string name="sdk_star_rating_label">Звезда %1$d из 5</string>
+    <string name="sdk_star_rating_selected">Выбрано %1$d из 5 звёзд</string>
+    <string name="sdk_status_label">Статус: %1$s</string>
+    <string name="sdk_priority_label">Приоритет: %1$s</string>
+    <string name="sdk_attach_button_desc">Добавить вложение</string>
+    <string name="sdk_remove_attachment_desc">Удалить %1$s</string>
+    <string name="sdk_unread_indicator">Непрочитанное</string>
+
+    <!-- Ticket list -->
+    <string name="sdk_no_tickets_hint">Нажмите + Новый тикет, чтобы начать</string>
+    <string name="sdk_new_ticket">Новый тикет</string>
+
+    <!-- Feedback list -->
+    <string name="sdk_no_feedback_hint">Нажмите Оценить, чтобы поделиться впечатлениями</string>
+    <string name="sdk_new_feedback">Оценить &amp; Отзыв</string>
+
+    <!-- Date section headers -->
+    <string name="sdk_date_today">Сегодня</string>
+    <string name="sdk_date_yesterday">Вчера</string>
+
+    <!-- Login prompt -->
+    <string name="sdk_login_required_title">Требуется вход</string>
+    <string name="sdk_login_required_subtitle">Войдите, чтобы просмотреть уведомления.</string>
+    <string name="sdk_sign_in">Войти через Google</string>
+
+    <!-- Relative timestamps -->
+    <string name="sdk_time_just_now">только что</string>
+    <string name="sdk_time_minutes_ago">%1$d мин назад</string>
+    <string name="sdk_time_hours_ago">%1$d ч назад</string>
+    <string name="sdk_time_days_ago">%1$d д назад</string>
+
+    <!-- Author fallbacks -->
+    <string name="sdk_user_fallback">Пользователь</string>
+    <string name="sdk_support_fallback">Поддержка</string>
+
+    <!-- Clipboard -->
+    <string name="sdk_copied">Скопировано</string>
+    <string name="sdk_copy">Копировать</string>
 </resources>

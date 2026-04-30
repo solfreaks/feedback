@@ -87,4 +87,55 @@
     <string name="sdk_no_app_to_open">Walang available na app para buksan ang file na ito</string>
     <string name="sdk_ticket_created_attach_failed">Nagawa ang ticket, ngunit nabigo ang pag-upload ng isa o higit pang attachment.</string>
     <string name="sdk_feedback_submitted_attach_failed">Nai-submit ang feedback, ngunit nabigo ang pag-upload ng isa o higit pang attachment.</string>
+
+    <!-- Bell badge overflow label -->
+    <string name="sdk_badge_overflow">99+</string>
+
+    <!-- Pagination -->
+    <string name="sdk_load_more">Mag-load ng higit pa</string>
+    <string name="sdk_loading_more">Naglo-load…</string>
+
+    <!-- Attachment viewer error/retry -->
+    <string name="sdk_attachment_failed_title">Hindi ma-load ang attachment</string>
+    <string name="sdk_retry_load">Subukan muli</string>
+
+    <!-- Accessibility labels -->
+    <string name="sdk_star_rating_label">Bituin %1$d sa 5</string>
+    <string name="sdk_star_rating_selected">%1$d sa 5 na bituin ang napili</string>
+    <string name="sdk_status_label">Katayuan: %1$s</string>
+    <string name="sdk_priority_label">Priyoridad: %1$s</string>
+    <string name="sdk_attach_button_desc">Magdagdag ng attachment</string>
+    <string name="sdk_remove_attachment_desc">Alisin ang %1$s</string>
+    <string name="sdk_unread_indicator">Hindi pa nabasa</string>
+
+    <!-- Ticket list -->
+    <string name="sdk_no_tickets_hint">I-tap ang + Bagong Ticket para magsimula</string>
+    <string name="sdk_new_ticket">Bagong Ticket</string>
+
+    <!-- Feedback list -->
+    <string name="sdk_no_feedback_hint">I-tap ang I-rate para ibahagi ang iyong karanasan</string>
+    <string name="sdk_new_feedback">I-rate &amp; Mag-feedback</string>
+
+    <!-- Date section headers -->
+    <string name="sdk_date_today">Ngayon</string>
+    <string name="sdk_date_yesterday">Kahapon</string>
+
+    <!-- Login prompt -->
+    <string name="sdk_login_required_title">Kailangan ng pag-sign in</string>
+    <string name="sdk_login_required_subtitle">Mag-sign in para makita ang iyong mga abiso.</string>
+    <string name="sdk_sign_in">Mag-sign in gamit ang Google</string>
+
+    <!-- Relative timestamps -->
+    <string name="sdk_time_just_now">kaagad</string>
+    <string name="sdk_time_minutes_ago">%1$dm na ang nakalipas</string>
+    <string name="sdk_time_hours_ago">%1$dh na ang nakalipas</string>
+    <string name="sdk_time_days_ago">%1$dd na ang nakalipas</string>
+
+    <!-- Author fallbacks -->
+    <string name="sdk_user_fallback">Gumagamit</string>
+    <string name="sdk_support_fallback">Suporta</string>
+
+    <!-- Clipboard -->
+    <string name="sdk_copied">Nakopya</string>
+    <string name="sdk_copy">Kopyahin</string>
 </resources>

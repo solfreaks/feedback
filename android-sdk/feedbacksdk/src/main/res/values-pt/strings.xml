@@ -87,4 +87,55 @@
     <string name="sdk_no_app_to_open">Nenhum aplicativo disponível para abrir este arquivo</string>
     <string name="sdk_ticket_created_attach_failed">Ticket criado, mas um ou mais anexos falharam ao enviar.</string>
     <string name="sdk_feedback_submitted_attach_failed">Feedback enviado, mas um ou mais anexos falharam ao enviar.</string>
+
+    <!-- Bell badge overflow label -->
+    <string name="sdk_badge_overflow">99+</string>
+
+    <!-- Pagination -->
+    <string name="sdk_load_more">Carregar mais</string>
+    <string name="sdk_loading_more">Carregando…</string>
+
+    <!-- Attachment viewer error/retry -->
+    <string name="sdk_attachment_failed_title">Não foi possível carregar o anexo</string>
+    <string name="sdk_retry_load">Tentar novamente</string>
+
+    <!-- Accessibility labels -->
+    <string name="sdk_star_rating_label">Estrela %1$d de 5</string>
+    <string name="sdk_star_rating_selected">%1$d de 5 estrelas selecionadas</string>
+    <string name="sdk_status_label">Status: %1$s</string>
+    <string name="sdk_priority_label">Prioridade: %1$s</string>
+    <string name="sdk_attach_button_desc">Adicionar anexo</string>
+    <string name="sdk_remove_attachment_desc">Remover %1$s</string>
+    <string name="sdk_unread_indicator">Não lido</string>
+
+    <!-- Ticket list -->
+    <string name="sdk_no_tickets_hint">Toque em + Novo Ticket para começar</string>
+    <string name="sdk_new_ticket">Novo Ticket</string>
+
+    <!-- Feedback list -->
+    <string name="sdk_no_feedback_hint">Toque em Avaliar para compartilhar sua experiência</string>
+    <string name="sdk_new_feedback">Avaliar &amp; Feedback</string>
+
+    <!-- Date section headers -->
+    <string name="sdk_date_today">Hoje</string>
+    <string name="sdk_date_yesterday">Ontem</string>
+
+    <!-- Login prompt -->
+    <string name="sdk_login_required_title">Login necessário</string>
+    <string name="sdk_login_required_subtitle">Faça login para ver suas notificações.</string>
+    <string name="sdk_sign_in">Entrar com Google</string>
+
+    <!-- Relative timestamps -->
+    <string name="sdk_time_just_now">agora mesmo</string>
+    <string name="sdk_time_minutes_ago">há %1$d min</string>
+    <string name="sdk_time_hours_ago">há %1$dh</string>
+    <string name="sdk_time_days_ago">há %1$dd</string>
+
+    <!-- Author fallbacks -->
+    <string name="sdk_user_fallback">Usuário</string>
+    <string name="sdk_support_fallback">Suporte</string>
+
+    <!-- Clipboard -->
+    <string name="sdk_copied">Copiado</string>
+    <string name="sdk_copy">Copiar</string>
 </resources>

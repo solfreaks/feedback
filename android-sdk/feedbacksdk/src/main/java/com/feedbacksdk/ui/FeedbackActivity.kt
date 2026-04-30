@@ -44,6 +44,7 @@ class FeedbackActivity : AppCompatActivity() {
     private lateinit var progressBar: View
 
     private var selectedRating = 0
+    private var isSubmitting = false
 
     private val pendingFiles = mutableListOf<File>()
     private lateinit var pendingAdapter: PendingAttachmentAdapter
@@ -94,11 +95,13 @@ class FeedbackActivity : AppCompatActivity() {
         progressBar = findViewById(R.id.progressBar)
 
         stars.forEachIndexed { index, imageView ->
+            imageView.contentDescription = getString(R.string.sdk_star_rating_label, index + 1)
             imageView.setOnClickListener {
                 selectedRating = index + 1
                 updateStars(animateIndex = index)
             }
         }
+        btnAttach.contentDescription = getString(R.string.sdk_attach_button_desc)
 
         pendingAdapter = PendingAttachmentAdapter(pendingFiles) { position ->
             pendingFiles.removeAt(position)
@@ -144,6 +147,9 @@ class FeedbackActivity : AppCompatActivity() {
                 else R.drawable.sdk_ic_star_outline
             )
         }
+        // Update the first star to announce the full selection for TalkBack.
+        stars.firstOrNull()?.contentDescription =
+            getString(R.string.sdk_star_rating_selected, selectedRating)
         stars[animateIndex].animate()
             .scaleX(1.25f).scaleY(1.25f)
             .setDuration(120)
@@ -169,6 +175,7 @@ class FeedbackActivity : AppCompatActivity() {
     }
 
     private fun submitFeedback() {
+        if (isSubmitting) return
         if (selectedRating == 0) {
             Toast.makeText(this, R.string.sdk_error_rating_required, Toast.LENGTH_SHORT).show()
             return
@@ -183,6 +190,7 @@ class FeedbackActivity : AppCompatActivity() {
         }
         val comment = editComment.text?.toString()?.trim()?.ifEmpty { null }
 
+        isSubmitting = true
         setLoading(true)
 
         lifecycleScope.launch {
@@ -202,6 +210,7 @@ class FeedbackActivity : AppCompatActivity() {
                     finish()
                 }
                 is SdkResult.Error -> {
+                    isSubmitting = false
                     setLoading(false)
                     Toast.makeText(this@FeedbackActivity, result.message, Toast.LENGTH_LONG).show()
                 }

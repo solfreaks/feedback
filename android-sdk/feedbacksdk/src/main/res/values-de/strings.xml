@@ -94,4 +94,55 @@
     <string name="sdk_no_app_to_open">Keine App zum Öffnen dieser Datei verfügbar</string>
     <string name="sdk_ticket_created_attach_failed">Ticket erstellt, aber ein oder mehrere Anhänge konnten nicht hochgeladen werden.</string>
     <string name="sdk_feedback_submitted_attach_failed">Feedback gesendet, aber ein oder mehrere Anhänge konnten nicht hochgeladen werden.</string>
+
+    <!-- Bell badge overflow label -->
+    <string name="sdk_badge_overflow">99+</string>
+
+    <!-- Pagination -->
+    <string name="sdk_load_more">Mehr laden</string>
+    <string name="sdk_loading_more">Wird geladen…</string>
+
+    <!-- Attachment viewer error/retry -->
+    <string name="sdk_attachment_failed_title">Anhang konnte nicht geladen werden</string>
+    <string name="sdk_retry_load">Erneut versuchen</string>
+
+    <!-- Accessibility labels -->
+    <string name="sdk_star_rating_label">Stern %1$d von 5</string>
+    <string name="sdk_star_rating_selected">%1$d von 5 Sternen ausgewählt</string>
+    <string name="sdk_status_label">Status: %1$s</string>
+    <string name="sdk_priority_label">Priorität: %1$s</string>
+    <string name="sdk_attach_button_desc">Anhang hinzufügen</string>
+    <string name="sdk_remove_attachment_desc">%1$s entfernen</string>
+    <string name="sdk_unread_indicator">Ungelesen</string>
+
+    <!-- Ticket list -->
+    <string name="sdk_no_tickets_hint">Tippe auf + Neues Ticket, um zu beginnen</string>
+    <string name="sdk_new_ticket">Neues Ticket</string>
+
+    <!-- Feedback list -->
+    <string name="sdk_no_feedback_hint">Tippe auf Bewerten, um deine Erfahrung zu teilen</string>
+    <string name="sdk_new_feedback">Bewerten &amp; Feedback</string>
+
+    <!-- Date section headers -->
+    <string name="sdk_date_today">Heute</string>
+    <string name="sdk_date_yesterday">Gestern</string>
+
+    <!-- Login prompt -->
+    <string name="sdk_login_required_title">Anmeldung erforderlich</string>
+    <string name="sdk_login_required_subtitle">Bitte melde dich an, um deine Benachrichtigungen zu sehen.</string>
+    <string name="sdk_sign_in">Mit Google anmelden</string>
+
+    <!-- Relative timestamps -->
+    <string name="sdk_time_just_now">gerade eben</string>
+    <string name="sdk_time_minutes_ago">vor %1$d Min.</string>
+    <string name="sdk_time_hours_ago">vor %1$d Std.</string>
+    <string name="sdk_time_days_ago">vor %1$d T.</string>
+
+    <!-- Author fallbacks -->
+    <string name="sdk_user_fallback">Benutzer</string>
+    <string name="sdk_support_fallback">Support</string>
+
+    <!-- Clipboard -->
+    <string name="sdk_copied">Kopiert</string>
+    <string name="sdk_copy">Kopieren</string>
 </resources>

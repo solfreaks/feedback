@@ -87,4 +87,55 @@
     <string name="sdk_no_app_to_open">এই ফাইল খোলার জন্য কোনো অ্যাপ পাওয়া যায়নি</string>
     <string name="sdk_ticket_created_attach_failed">টিকেট তৈরি হয়েছে, কিন্তু এক বা একাধিক সংযুক্তি আপলোড করা যায়নি।</string>
     <string name="sdk_feedback_submitted_attach_failed">ফিডব্যাক পাঠানো হয়েছে, কিন্তু এক বা একাধিক সংযুক্তি আপলোড করা যায়নি।</string>
+
+    <!-- Bell badge overflow label -->
+    <string name="sdk_badge_overflow">99+</string>
+
+    <!-- Pagination -->
+    <string name="sdk_load_more">আরো লোড করুন</string>
+    <string name="sdk_loading_more">লোড হচ্ছে…</string>
+
+    <!-- Attachment viewer error/retry -->
+    <string name="sdk_attachment_failed_title">সংযুক্তি লোড করা যায়নি</string>
+    <string name="sdk_retry_load">পুনরায় চেষ্টা করুন</string>
+
+    <!-- Accessibility labels -->
+    <string name="sdk_star_rating_label">৫ এর মধ্যে %1$d নম্বর তারা</string>
+    <string name="sdk_star_rating_selected">৫ এর মধ্যে %1$d তারা নির্বাচিত</string>
+    <string name="sdk_status_label">অবস্থা: %1$s</string>
+    <string name="sdk_priority_label">অগ্রাধিকার: %1$s</string>
+    <string name="sdk_attach_button_desc">সংযুক্তি যোগ করুন</string>
+    <string name="sdk_remove_attachment_desc">%1$s সরান</string>
+    <string name="sdk_unread_indicator">অপঠিত</string>
+
+    <!-- Ticket list -->
+    <string name="sdk_no_tickets_hint">শুরু করতে + নতুন টিকেট ট্যাপ করুন</string>
+    <string name="sdk_new_ticket">নতুন টিকেট</string>
+
+    <!-- Feedback list -->
+    <string name="sdk_no_feedback_hint">আপনার অভিজ্ঞতা শেয়ার করতে রেট ট্যাপ করুন</string>
+    <string name="sdk_new_feedback">রেট করুন ও ফিডব্যাক দিন</string>
+
+    <!-- Date section headers -->
+    <string name="sdk_date_today">আজ</string>
+    <string name="sdk_date_yesterday">গতকাল</string>
+
+    <!-- Login prompt -->
+    <string name="sdk_login_required_title">সাইন ইন প্রয়োজন</string>
+    <string name="sdk_login_required_subtitle">আপনার বিজ্ঞপ্তি দেখতে সাইন ইন করুন।</string>
+    <string name="sdk_sign_in">Google দিয়ে সাইন ইন করুন</string>
+
+    <!-- Relative timestamps -->
+    <string name="sdk_time_just_now">এইমাত্র</string>
+    <string name="sdk_time_minutes_ago">%1$dm আগে</string>
+    <string name="sdk_time_hours_ago">%1$dh আগে</string>
+    <string name="sdk_time_days_ago">%1$dd আগে</string>
+
+    <!-- Author fallbacks -->
+    <string name="sdk_user_fallback">ব্যবহারকারী</string>
+    <string name="sdk_support_fallback">সাপোর্ট</string>
+
+    <!-- Clipboard -->
+    <string name="sdk_copied">কপি হয়েছে</string>
+    <string name="sdk_copy">কপি করুন</string>
 </resources>

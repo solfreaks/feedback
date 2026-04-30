@@ -38,17 +38,18 @@ internal class AttachmentAdapter(
 
     override fun onBindViewHolder(holder: VH, position: Int) {
         val item = items[position]
+        val ctx = holder.itemView.context
         if (item.fileName.isImageFileName() || item.fileUrl.isImageFileName()) {
             holder.ivThumb.visibility = View.VISIBLE
             holder.nonImage.visibility = View.GONE
-            holder.ivThumb.load(absoluteAttachmentUrl(item.fileUrl)) {
-                crossfade(true)
-            }
+            holder.ivThumb.contentDescription = item.fileName
+            holder.ivThumb.load(absoluteAttachmentUrl(item.fileUrl)) { crossfade(true) }
         } else {
             holder.ivThumb.visibility = View.GONE
             holder.nonImage.visibility = View.VISIBLE
             holder.tvFileName.text = item.fileName
         }
+        holder.itemView.contentDescription = item.fileName
         holder.itemView.setOnClickListener { onClick(item) }
     }
 
@@ -80,15 +81,18 @@ internal class PendingAttachmentAdapter(
 
     override fun onBindViewHolder(holder: VH, position: Int) {
         val file = items[position]
+        val ctx = holder.itemView.context
         if (file.name.isImageFileName()) {
             holder.ivThumb.visibility = View.VISIBLE
             holder.nonImage.visibility = View.GONE
+            holder.ivThumb.contentDescription = file.name
             holder.ivThumb.load(file) { crossfade(true) }
         } else {
             holder.ivThumb.visibility = View.GONE
             holder.nonImage.visibility = View.VISIBLE
             holder.tvFileName.text = file.name
         }
+        holder.btnRemove.contentDescription = ctx.getString(R.string.sdk_remove_attachment_desc, file.name)
         holder.btnRemove.setOnClickListener {
             val pos = holder.bindingAdapterPosition
             if (pos != RecyclerView.NO_POSITION) onRemove(pos)

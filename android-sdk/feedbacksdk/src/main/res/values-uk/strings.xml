@@ -87,4 +87,55 @@
     <string name="sdk_no_app_to_open">Немає доступного додатку для відкриття цього файлу</string>
     <string name="sdk_ticket_created_attach_failed">Заявку створено, але одне або кілька вкладень не вдалося завантажити.</string>
     <string name="sdk_feedback_submitted_attach_failed">Відгук надіслано, але одне або кілька вкладень не вдалося завантажити.</string>
+
+    <!-- Bell badge overflow label -->
+    <string name="sdk_badge_overflow">99+</string>
+
+    <!-- Pagination -->
+    <string name="sdk_load_more">Завантажити ще</string>
+    <string name="sdk_loading_more">Завантаження…</string>
+
+    <!-- Attachment viewer error/retry -->
+    <string name="sdk_attachment_failed_title">Не вдалося завантажити вкладення</string>
+    <string name="sdk_retry_load">Повторити</string>
+
+    <!-- Accessibility labels -->
+    <string name="sdk_star_rating_label">Зірка %1$d з 5</string>
+    <string name="sdk_star_rating_selected">Вибрано %1$d з 5 зірок</string>
+    <string name="sdk_status_label">Статус: %1$s</string>
+    <string name="sdk_priority_label">Пріоритет: %1$s</string>
+    <string name="sdk_attach_button_desc">Додати вкладення</string>
+    <string name="sdk_remove_attachment_desc">Видалити %1$s</string>
+    <string name="sdk_unread_indicator">Непрочитане</string>
+
+    <!-- Ticket list -->
+    <string name="sdk_no_tickets_hint">Натисніть + Нова заявка, щоб почати</string>
+    <string name="sdk_new_ticket">Нова заявка</string>
+
+    <!-- Feedback list -->
+    <string name="sdk_no_feedback_hint">Натисніть Оцінити, щоб поділитися враженнями</string>
+    <string name="sdk_new_feedback">Оцінити &amp; Відгук</string>
+
+    <!-- Date section headers -->
+    <string name="sdk_date_today">Сьогодні</string>
+    <string name="sdk_date_yesterday">Вчора</string>
+
+    <!-- Login prompt -->
+    <string name="sdk_login_required_title">Потрібен вхід</string>
+    <string name="sdk_login_required_subtitle">Будь ласка, увійдіть, щоб переглянути сповіщення.</string>
+    <string name="sdk_sign_in">Увійти через Google</string>
+
+    <!-- Relative timestamps -->
+    <string name="sdk_time_just_now">щойно</string>
+    <string name="sdk_time_minutes_ago">%1$d хв тому</string>
+    <string name="sdk_time_hours_ago">%1$d год тому</string>
+    <string name="sdk_time_days_ago">%1$d дн тому</string>
+
+    <!-- Author fallbacks -->
+    <string name="sdk_user_fallback">Користувач</string>
+    <string name="sdk_support_fallback">Підтримка</string>
+
+    <!-- Clipboard -->
+    <string name="sdk_copied">Скопійовано</string>
+    <string name="sdk_copy">Копіювати</string>
 </resources>

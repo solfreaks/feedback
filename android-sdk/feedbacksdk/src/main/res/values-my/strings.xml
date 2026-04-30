@@ -87,4 +87,55 @@
     <string name="sdk_no_app_to_open">ဤဖိုင်ဖွင့်ရန်အက်ပ်မရှိပါ</string>
     <string name="sdk_ticket_created_attach_failed">တိကက်ဖန်တီးပြီး၊ သို့သော်ပူးတွဲတစ်ခုနှင့်အထက်တင်မရပါ။</string>
     <string name="sdk_feedback_submitted_attach_failed">အကြံပြုချက်တင်ပြပြီး၊ သို့သော်ပူးတွဲတစ်ခုနှင့်အထက်တင်မရပါ။</string>
+
+    <!-- Bell badge overflow label -->
+    <string name="sdk_badge_overflow">99+</string>
+
+    <!-- Pagination -->
+    <string name="sdk_load_more">ထပ်တင်မည်</string>
+    <string name="sdk_loading_more">ဒေါင်းလုဒ်လုပ်နေသည်…</string>
+
+    <!-- Attachment viewer error/retry -->
+    <string name="sdk_attachment_failed_title">ပူးတွဲဒေါင်းလုဒ်မရပါ</string>
+    <string name="sdk_retry_load">ထပ်ကြိုးစားမည်</string>
+
+    <!-- Accessibility labels -->
+    <string name="sdk_star_rating_label">၅ ထဲမှ %1$d နံပါတ်ကြယ်</string>
+    <string name="sdk_star_rating_selected">၅ ထဲမှ %1$d ကြယ်ရွေးချယ်ပြီး</string>
+    <string name="sdk_status_label">အခြေအနေ: %1$s</string>
+    <string name="sdk_priority_label">ဦးစားပေး: %1$s</string>
+    <string name="sdk_attach_button_desc">ပူးတွဲထည့်မည်</string>
+    <string name="sdk_remove_attachment_desc">%1$s ဖယ်ရှားမည်</string>
+    <string name="sdk_unread_indicator">မဖတ်ရသေး</string>
+
+    <!-- Ticket list -->
+    <string name="sdk_no_tickets_hint">စတင်ရန် + တိကက်သစ်ကိုနှိပ်ပါ</string>
+    <string name="sdk_new_ticket">တိကက်သစ်</string>
+
+    <!-- Feedback list -->
+    <string name="sdk_no_feedback_hint">သင်၏အတွေ့အကြုံမျှဝေရန် အဆင့်သတ်မှတ်ကိုနှိပ်ပါ</string>
+    <string name="sdk_new_feedback">အဆင့်သတ်မှတ် &amp; အကြံပြုချက်</string>
+
+    <!-- Date section headers -->
+    <string name="sdk_date_today">ယနေ့</string>
+    <string name="sdk_date_yesterday">မနေ့က</string>
+
+    <!-- Login prompt -->
+    <string name="sdk_login_required_title">ဝင်ရောက်ရန်လိုအပ်သည်</string>
+    <string name="sdk_login_required_subtitle">သင်၏အကြောင်းကြားချက်များကြည့်ရန် ဝင်ရောက်ပါ။</string>
+    <string name="sdk_sign_in">Google ဖြင့်ဝင်ရောက်မည်</string>
+
+    <!-- Relative timestamps -->
+    <string name="sdk_time_just_now">ခုဏက</string>
+    <string name="sdk_time_minutes_ago">%1$d မိနစ်ကြာ</string>
+    <string name="sdk_time_hours_ago">%1$d နာရီကြာ</string>
+    <string name="sdk_time_days_ago">%1$d ရက်ကြာ</string>
+
+    <!-- Author fallbacks -->
+    <string name="sdk_user_fallback">အသုံးပြုသူ</string>
+    <string name="sdk_support_fallback">ပံ့ပိုးမှု</string>
+
+    <!-- Clipboard -->
+    <string name="sdk_copied">ကူးယူပြီး</string>
+    <string name="sdk_copy">ကူးယူမည်</string>
 </resources>

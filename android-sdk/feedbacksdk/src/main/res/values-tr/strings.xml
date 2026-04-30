@@ -87,4 +87,55 @@
     <string name="sdk_no_app_to_open">Bu dosyayı açabilecek uygulama yok</string>
     <string name="sdk_ticket_created_attach_failed">Bilet oluşturuldu, ancak bir veya daha fazla ek yüklenemedi.</string>
     <string name="sdk_feedback_submitted_attach_failed">Geri bildirim gönderildi, ancak bir veya daha fazla ek yüklenemedi.</string>
+
+    <!-- Bell badge overflow label -->
+    <string name="sdk_badge_overflow">99+</string>
+
+    <!-- Pagination -->
+    <string name="sdk_load_more">Daha fazla yükle</string>
+    <string name="sdk_loading_more">Yükleniyor…</string>
+
+    <!-- Attachment viewer error/retry -->
+    <string name="sdk_attachment_failed_title">Ek yüklenemedi</string>
+    <string name="sdk_retry_load">Yeniden dene</string>
+
+    <!-- Accessibility labels -->
+    <string name="sdk_star_rating_label">5 üzerinden %1$d. yıldız</string>
+    <string name="sdk_star_rating_selected">5 üzerinden %1$d yıldız seçildi</string>
+    <string name="sdk_status_label">Durum: %1$s</string>
+    <string name="sdk_priority_label">Öncelik: %1$s</string>
+    <string name="sdk_attach_button_desc">Ek ekle</string>
+    <string name="sdk_remove_attachment_desc">%1$s kaldır</string>
+    <string name="sdk_unread_indicator">Okunmadı</string>
+
+    <!-- Ticket list -->
+    <string name="sdk_no_tickets_hint">Başlamak için + Yeni Bilet\'e dokunun</string>
+    <string name="sdk_new_ticket">Yeni Bilet</string>
+
+    <!-- Feedback list -->
+    <string name="sdk_no_feedback_hint">Deneyiminizi paylaşmak için Değerlendir\'e dokunun</string>
+    <string name="sdk_new_feedback">Değerlendir &amp; Geri Bildirim</string>
+
+    <!-- Date section headers -->
+    <string name="sdk_date_today">Bugün</string>
+    <string name="sdk_date_yesterday">Dün</string>
+
+    <!-- Login prompt -->
+    <string name="sdk_login_required_title">Oturum açma gerekli</string>
+    <string name="sdk_login_required_subtitle">Bildirimlerinizi görmek için oturum açın.</string>
+    <string name="sdk_sign_in">Google ile giriş yap</string>
+
+    <!-- Relative timestamps -->
+    <string name="sdk_time_just_now">şimdi</string>
+    <string name="sdk_time_minutes_ago">%1$d dk önce</string>
+    <string name="sdk_time_hours_ago">%1$d sa önce</string>
+    <string name="sdk_time_days_ago">%1$d g önce</string>
+
+    <!-- Author fallbacks -->
+    <string name="sdk_user_fallback">Kullanıcı</string>
+    <string name="sdk_support_fallback">Destek</string>
+
+    <!-- Clipboard -->
+    <string name="sdk_copied">Kopyalandı</string>
+    <string name="sdk_copy">Kopyala</string>
 </resources>

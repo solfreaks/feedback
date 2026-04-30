@@ -87,4 +87,55 @@
     <string name="sdk_no_app_to_open">ไม่มีแอปสำหรับเปิดไฟล์นี้</string>
     <string name="sdk_ticket_created_attach_failed">สร้างตั๋วแล้ว แต่ไฟล์แนบบางรายการอัปโหลดไม่สำเร็จ</string>
     <string name="sdk_feedback_submitted_attach_failed">ส่งคำติชมแล้ว แต่ไฟล์แนบบางรายการอัปโหลดไม่สำเร็จ</string>
+
+    <!-- Bell badge overflow label -->
+    <string name="sdk_badge_overflow">99+</string>
+
+    <!-- Pagination -->
+    <string name="sdk_load_more">โหลดเพิ่มเติม</string>
+    <string name="sdk_loading_more">กำลังโหลด…</string>
+
+    <!-- Attachment viewer error/retry -->
+    <string name="sdk_attachment_failed_title">ไม่สามารถโหลดไฟล์แนบได้</string>
+    <string name="sdk_retry_load">ลองใหม่</string>
+
+    <!-- Accessibility labels -->
+    <string name="sdk_star_rating_label">ดาวที่ %1$d จาก 5</string>
+    <string name="sdk_star_rating_selected">เลือก %1$d จาก 5 ดาว</string>
+    <string name="sdk_status_label">สถานะ: %1$s</string>
+    <string name="sdk_priority_label">ลำดับความสำคัญ: %1$s</string>
+    <string name="sdk_attach_button_desc">เพิ่มไฟล์แนบ</string>
+    <string name="sdk_remove_attachment_desc">ลบ %1$s</string>
+    <string name="sdk_unread_indicator">ยังไม่ได้อ่าน</string>
+
+    <!-- Ticket list -->
+    <string name="sdk_no_tickets_hint">แตะ + ตั๋วใหม่เพื่อเริ่มต้น</string>
+    <string name="sdk_new_ticket">ตั๋วใหม่</string>
+
+    <!-- Feedback list -->
+    <string name="sdk_no_feedback_hint">แตะให้คะแนนเพื่อแบ่งปันประสบการณ์</string>
+    <string name="sdk_new_feedback">ให้คะแนน &amp; ติชม</string>
+
+    <!-- Date section headers -->
+    <string name="sdk_date_today">วันนี้</string>
+    <string name="sdk_date_yesterday">เมื่อวาน</string>
+
+    <!-- Login prompt -->
+    <string name="sdk_login_required_title">ต้องลงชื่อเข้าใช้</string>
+    <string name="sdk_login_required_subtitle">กรุณาลงชื่อเข้าใช้เพื่อดูการแจ้งเตือน</string>
+    <string name="sdk_sign_in">ลงชื่อเข้าใช้ด้วย Google</string>
+
+    <!-- Relative timestamps -->
+    <string name="sdk_time_just_now">เมื่อสักครู่</string>
+    <string name="sdk_time_minutes_ago">%1$d นาทีที่แล้ว</string>
+    <string name="sdk_time_hours_ago">%1$d ชั่วโมงที่แล้ว</string>
+    <string name="sdk_time_days_ago">%1$d วันที่แล้ว</string>
+
+    <!-- Author fallbacks -->
+    <string name="sdk_user_fallback">ผู้ใช้</string>
+    <string name="sdk_support_fallback">ฝ่ายสนับสนุน</string>
+
+    <!-- Clipboard -->
+    <string name="sdk_copied">คัดลอกแล้ว</string>
+    <string name="sdk_copy">คัดลอก</string>
 </resources>

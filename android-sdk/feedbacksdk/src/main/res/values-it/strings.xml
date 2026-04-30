@@ -87,4 +87,55 @@
     <string name="sdk_no_app_to_open">Nessuna app disponibile per aprire questo file</string>
     <string name="sdk_ticket_created_attach_failed">Ticket creato, ma uno o più allegati non sono stati caricati.</string>
     <string name="sdk_feedback_submitted_attach_failed">Feedback inviato, ma uno o più allegati non sono stati caricati.</string>
+
+    <!-- Bell badge overflow label -->
+    <string name="sdk_badge_overflow">99+</string>
+
+    <!-- Pagination -->
+    <string name="sdk_load_more">Carica altro</string>
+    <string name="sdk_loading_more">Caricamento…</string>
+
+    <!-- Attachment viewer error/retry -->
+    <string name="sdk_attachment_failed_title">Impossibile caricare l\'allegato</string>
+    <string name="sdk_retry_load">Riprova</string>
+
+    <!-- Accessibility labels -->
+    <string name="sdk_star_rating_label">Stella %1$d di 5</string>
+    <string name="sdk_star_rating_selected">%1$d su 5 stelle selezionate</string>
+    <string name="sdk_status_label">Stato: %1$s</string>
+    <string name="sdk_priority_label">Priorità: %1$s</string>
+    <string name="sdk_attach_button_desc">Aggiungi allegato</string>
+    <string name="sdk_remove_attachment_desc">Rimuovi %1$s</string>
+    <string name="sdk_unread_indicator">Non letto</string>
+
+    <!-- Ticket list -->
+    <string name="sdk_no_tickets_hint">Tocca + Nuovo ticket per iniziare</string>
+    <string name="sdk_new_ticket">Nuovo ticket</string>
+
+    <!-- Feedback list -->
+    <string name="sdk_no_feedback_hint">Tocca Valuta per condividere la tua esperienza</string>
+    <string name="sdk_new_feedback">Valuta &amp; Feedback</string>
+
+    <!-- Date section headers -->
+    <string name="sdk_date_today">Oggi</string>
+    <string name="sdk_date_yesterday">Ieri</string>
+
+    <!-- Login prompt -->
+    <string name="sdk_login_required_title">Accesso richiesto</string>
+    <string name="sdk_login_required_subtitle">Accedi per visualizzare le notifiche.</string>
+    <string name="sdk_sign_in">Accedi con Google</string>
+
+    <!-- Relative timestamps -->
+    <string name="sdk_time_just_now">adesso</string>
+    <string name="sdk_time_minutes_ago">%1$d min fa</string>
+    <string name="sdk_time_hours_ago">%1$dh fa</string>
+    <string name="sdk_time_days_ago">%1$dg fa</string>
+
+    <!-- Author fallbacks -->
+    <string name="sdk_user_fallback">Utente</string>
+    <string name="sdk_support_fallback">Supporto</string>
+
+    <!-- Clipboard -->
+    <string name="sdk_copied">Copiato</string>
+    <string name="sdk_copy">Copia</string>
 </resources>

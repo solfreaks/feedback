@@ -16,6 +16,8 @@ import com.feedbacksdk.internal.SdkResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -41,6 +43,10 @@ class FeedbackBellView @JvmOverloads constructor(
 ) : FrameLayout(context, attrs, defStyleAttr) {
 
     private val badge: TextView
+
+    // Single long-lived scope tied to the view's attach/detach lifecycle.
+    // All refresh jobs run as children of this scope so cancelling it is enough.
+    private val viewScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var refreshJob: Job? = null
     private var lifecycleObserver: LifecycleEventObserver? = null
 
@@ -50,16 +56,12 @@ class FeedbackBellView @JvmOverloads constructor(
         isClickable = true
         isFocusable = true
         if (background == null) {
-            // Default ripple so the tap feels right even without the host
-            // supplying a background.
             val ta = context.obtainStyledAttributes(intArrayOf(android.R.attr.selectableItemBackgroundBorderless))
             background = ta.getDrawable(0)
             ta.recycle()
         }
+        applyLoggedOutState()
         setOnClickListener {
-            // No point opening the notifications screen when logged out — it
-            // would just show an empty shell with 401s in the background. Host
-            // apps that want to trigger sign-in here can override this listener.
             if (!FeedbackSDK.isLoggedIn) return@setOnClickListener
             val host = findActivity()
             if (host != null) FeedbackSDK.openNotifications(host)
@@ -69,8 +71,6 @@ class FeedbackBellView @JvmOverloads constructor(
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         refresh()
-        // Auto-refresh when the hosting activity resumes. If the host isn't a
-        // LifecycleOwner, we fall back to the single onAttachedToWindow poll.
         val owner = findLifecycleOwner()
         if (owner != null) {
             lifecycleObserver = LifecycleEventObserver { _, event ->
@@ -80,7 +80,8 @@ class FeedbackBellView @JvmOverloads constructor(
     }
 
     override fun onDetachedFromWindow() {
-        refreshJob?.cancel()
+        // Cancel all coroutines owned by this view — no leaks possible after this.
+        viewScope.cancel()
         lifecycleObserver?.let { obs ->
             findLifecycleOwner()?.lifecycle?.removeObserver(obs)
         }
@@ -91,14 +92,13 @@ class FeedbackBellView @JvmOverloads constructor(
     /** Force a badge re-fetch. Safe to call from any thread. */
     fun refresh() {
         refreshJob?.cancel()
-        // Skip the network round-trip entirely when logged out — the endpoint
-        // would just 401 and the badge has nothing to show. Host decides how
-        // to handle taps via its own click listener in that state.
         if (!FeedbackSDK.isLoggedIn) {
             applyCount(0)
+            applyLoggedOutState()
             return
         }
-        refreshJob = CoroutineScope(Dispatchers.IO).launch {
+        applyLoggedOutState()
+        refreshJob = viewScope.launch(Dispatchers.IO) {
             val result = FeedbackSDK.getUnreadNotificationCount()
             withContext(Dispatchers.Main) {
                 applyCount(if (result is SdkResult.Success) result.data else 0)
@@ -112,7 +112,13 @@ class FeedbackBellView @JvmOverloads constructor(
             return
         }
         badge.visibility = VISIBLE
-        badge.text = if (count > 99) "99+" else count.toString()
+        badge.text = if (count > 99) context.getString(R.string.sdk_badge_overflow) else count.toString()
+    }
+
+    /** Dim the widget when the user is not logged in so it looks inactive. */
+    private fun applyLoggedOutState() {
+        alpha = if (FeedbackSDK.isLoggedIn) 1f else 0.38f
+        isClickable = FeedbackSDK.isLoggedIn
     }
 
     private fun findActivity(): Activity? {

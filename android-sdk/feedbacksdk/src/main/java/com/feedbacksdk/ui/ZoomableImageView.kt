@@ -3,6 +3,7 @@ package com.feedbacksdk.ui
 import android.content.Context
 import android.graphics.Matrix
 import android.graphics.PointF
+import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
@@ -38,6 +39,7 @@ internal class ZoomableImageView @JvmOverloads constructor(
                 val appliedFactor = newScale / scale
                 scale = newScale
                 imageMatrix.postScale(appliedFactor, appliedFactor, detector.focusX, detector.focusY)
+                clampTranslation()
                 setImageMatrix(imageMatrix)
                 return true
             }
@@ -46,10 +48,6 @@ internal class ZoomableImageView @JvmOverloads constructor(
 
     init {
         scaleType = ScaleType.MATRIX
-    }
-
-    override fun setImageMatrix(matrix: Matrix?) {
-        super.setImageMatrix(matrix)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -69,6 +67,7 @@ internal class ZoomableImageView @JvmOverloads constructor(
                     val dx = event.x - lastTouch.x
                     val dy = event.y - lastTouch.y
                     imageMatrix.postTranslate(dx, dy)
+                    clampTranslation()
                     setImageMatrix(imageMatrix)
                     lastTouch.set(event.x, event.y)
                 }
@@ -82,9 +81,7 @@ internal class ZoomableImageView @JvmOverloads constructor(
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         super.onLayout(changed, left, top, right, bottom)
-        if (changed || imageMatrix.isIdentity) {
-            fitCenter()
-        }
+        if (changed || imageMatrix.isIdentity) fitCenter()
     }
 
     private fun fitCenter() {
@@ -104,6 +101,41 @@ internal class ZoomableImageView @JvmOverloads constructor(
         imageMatrix.postTranslate(tx, ty)
         setImageMatrix(imageMatrix)
         scale = 1f
+    }
+
+    /**
+     * Adjusts the matrix translation so the scaled image cannot be panned
+     * beyond the view edges — at least one edge always stays in contact with
+     * the corresponding view boundary.
+     */
+    private fun clampTranslation() {
+        val drawable = drawable ?: return
+        val viewW = (width - paddingLeft - paddingRight).toFloat()
+        val viewH = (height - paddingTop - paddingBottom).toFloat()
+        val dW = drawable.intrinsicWidth.toFloat()
+        val dH = drawable.intrinsicHeight.toFloat()
+        if (viewW <= 0 || viewH <= 0 || dW <= 0 || dH <= 0) return
+
+        val bounds = RectF(0f, 0f, dW, dH)
+        imageMatrix.mapRect(bounds)
+
+        val scaledW = bounds.width()
+        val scaledH = bounds.height()
+
+        val dx = when {
+            scaledW <= viewW -> (viewW - scaledW) / 2f - bounds.left   // centre if fits
+            bounds.left > paddingLeft.toFloat() -> paddingLeft.toFloat() - bounds.left
+            bounds.right < viewW + paddingLeft -> (viewW + paddingLeft) - bounds.right
+            else -> 0f
+        }
+        val dy = when {
+            scaledH <= viewH -> (viewH - scaledH) / 2f - bounds.top    // centre if fits
+            bounds.top > paddingTop.toFloat() -> paddingTop.toFloat() - bounds.top
+            bounds.bottom < viewH + paddingTop -> (viewH + paddingTop) - bounds.bottom
+            else -> 0f
+        }
+
+        if (dx != 0f || dy != 0f) imageMatrix.postTranslate(dx, dy)
     }
 
     private companion object {

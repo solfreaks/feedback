@@ -1,6 +1,9 @@
 package com.feedbacksdk.ui
 
 import android.app.AlertDialog
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.net.Uri
@@ -13,6 +16,7 @@ import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.widget.NestedScrollView
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -23,10 +27,10 @@ import com.feedbacksdk.internal.ConnectivityMonitor
 import com.feedbacksdk.internal.SdkResult
 import com.feedbacksdk.internal.SdkWebSocket
 import com.feedbacksdk.internal.StatusBanner
+import com.feedbacksdk.internal.UnreadStore
 import com.feedbacksdk.internal.applySystemBarInsets
 import com.feedbacksdk.internal.priorityColor
 import com.feedbacksdk.internal.resolveThemeColor
-import com.feedbacksdk.internal.UnreadStore
 import com.feedbacksdk.internal.statusColor
 import com.feedbacksdk.internal.uriToCacheFile
 import com.feedbacksdk.models.Attachment
@@ -59,6 +63,7 @@ class TicketDetailActivity : AppCompatActivity() {
     private lateinit var progressBar: View
     private lateinit var tvTyping: TextView
     private lateinit var statusBanner: LinearLayout
+    private lateinit var scrollView: NestedScrollView
     private var lastLoadFailed = false
     private val connectivityListener = ConnectivityMonitor.Listener { online ->
         runOnUiThread { refreshBanner(online) }
@@ -67,19 +72,17 @@ class TicketDetailActivity : AppCompatActivity() {
     private var ticketId: String = ""
     private var typingHideJob: kotlinx.coroutines.Job? = null
     private var lastTypingSentAt: Long = 0L
+    private var isSending = false
 
-    // Singleton listener registered per-open; removed on finish.
     private val wsListener = object : SdkWebSocket.Listener {
         override fun onMessage(envelope: SdkWebSocket.Envelope) {
             if (envelope.ticketId != ticketId) return
             val me = FeedbackSDK.currentUser?.id
             when (envelope.type) {
                 "ticket_comment" -> {
-                    // Skip self-echoes — we already rendered this optimistically.
                     if (envelope.userId == me) return
                     runOnUiThread {
-                        loadTicket()
-                        // Hide typing the moment a real comment arrives.
+                        loadTicket(scrollToBottom = true)
                         tvTyping.visibility = View.GONE
                     }
                 }
@@ -99,9 +102,7 @@ class TicketDetailActivity : AppCompatActivity() {
     ) { uris: List<Uri> ->
         if (uris.isEmpty()) return@registerForActivityResult
         lifecycleScope.launch {
-            uris.forEach { uri ->
-                uriToCacheFile(uri)?.let { pendingFiles.add(it) }
-            }
+            uris.forEach { uri -> uriToCacheFile(uri)?.let { pendingFiles.add(it) } }
             refreshPending()
         }
     }
@@ -112,10 +113,7 @@ class TicketDetailActivity : AppCompatActivity() {
         setTheme(R.style.FeedbackSDK_Theme)
         setContentView(R.layout.sdk_activity_ticket_detail)
 
-        ticketId = intent.getStringExtra("ticket_id") ?: run {
-            finish()
-            return
-        }
+        ticketId = intent.getStringExtra("ticket_id") ?: run { finish(); return }
 
         val appBar = findViewById<AppBarLayout>(R.id.appBar)
         findViewById<MaterialToolbar>(R.id.toolbar).setNavigationOnClickListener { finish() }
@@ -138,6 +136,7 @@ class TicketDetailActivity : AppCompatActivity() {
         progressBar = findViewById(R.id.progressBar)
         tvTyping = findViewById(R.id.tvTyping)
         statusBanner = findViewById(R.id.statusBanner)
+        scrollView = findViewById(R.id.contentScrollView)
         ConnectivityMonitor.addListener(connectivityListener)
 
         rvAttachments.layoutManager = LinearLayoutManager(this, RecyclerView.HORIZONTAL, false)
@@ -152,8 +151,6 @@ class TicketDetailActivity : AppCompatActivity() {
         btnSend.setOnClickListener { sendMessage() }
         btnAttach.setOnClickListener { pickAttachments.launch("*/*") }
 
-        // Emit typing pings while the user is composing, throttled to one per
-        // 4s so we don't flood the server with keystrokes.
         editComment.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun afterTextChanged(s: android.text.Editable?) {}
@@ -162,8 +159,6 @@ class TicketDetailActivity : AppCompatActivity() {
             }
         })
 
-        // Make sure the shared socket is live even if the consumer skipped
-        // calling initialize() through the usual login path.
         SdkWebSocket.connect()
         SdkWebSocket.addListener(wsListener)
 
@@ -175,6 +170,11 @@ class TicketDetailActivity : AppCompatActivity() {
         ConnectivityMonitor.removeListener(connectivityListener)
         typingHideJob?.cancel()
         super.onDestroy()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        loadTicket()
     }
 
     private fun refreshBanner(online: Boolean) {
@@ -190,7 +190,7 @@ class TicketDetailActivity : AppCompatActivity() {
         if (now - lastTypingSentAt < 4_000L) return
         lastTypingSentAt = now
         lifecycleScope.launch {
-            try { ApiClient.getApi().sendTyping(ticketId) } catch (_: Exception) { /* best effort */ }
+            try { ApiClient.getApi().sendTyping(ticketId) } catch (_: Exception) { }
         }
     }
 
@@ -209,12 +209,7 @@ class TicketDetailActivity : AppCompatActivity() {
         rvPending.visibility = if (pendingFiles.isEmpty()) View.GONE else View.VISIBLE
     }
 
-    override fun onResume() {
-        super.onResume()
-        loadTicket()
-    }
-
-    private fun loadTicket() {
+    private fun loadTicket(scrollToBottom: Boolean = false) {
         lifecycleScope.launch {
             progressBar.visibility = View.VISIBLE
             when (val result = FeedbackSDK.getTicket(ticketId)) {
@@ -222,17 +217,21 @@ class TicketDetailActivity : AppCompatActivity() {
                     progressBar.visibility = View.GONE
                     val ticket = result.data
                     UnreadStore.markTicketSeen(ticket.id, ticket.updatedAt)
+
                     tvTitle.text = ticket.title
+                    tvTitle.contentDescription = ticket.title
                     tvDescription.text = ticket.description
 
-                    tvStatus.text = ticket.status.replace("_", " ")
+                    tvStatus.text = ticket.status.replace("_", " ").replaceFirstChar { it.uppercase() }
                     tvStatus.backgroundTintList = ColorStateList.valueOf(statusColor(ticket.status))
                     tvStatus.setTextColor(resolveThemeColor(R.attr.sdkColorOnStatus))
+                    tvStatus.contentDescription = getString(R.string.sdk_status_label, ticket.status.replace("_", " "))
 
                     priorityDot.backgroundTintList = ColorStateList.valueOf(priorityColor(ticket.priority))
                     tvPriority.text = ticket.priority.replaceFirstChar { it.uppercase() }
+                    tvPriority.contentDescription = getString(R.string.sdk_priority_label, ticket.priority.replaceFirstChar { it.uppercase() })
 
-                    tvDate.text = formatDate(ticket.createdAt)
+                    tvDate.text = relativeTime(ticket.createdAt)
 
                     renderAttachments(ticket.attachments)
 
@@ -244,15 +243,18 @@ class TicketDetailActivity : AppCompatActivity() {
                         emptyComments.visibility = View.GONE
                         visibleComments.forEach { addCommentView(it) }
                     }
+
                     lastLoadFailed = false
                     refreshBanner(ConnectivityMonitor.isOnline)
+
+                    if (scrollToBottom) {
+                        scrollView.post { scrollView.fullScroll(View.FOCUS_DOWN) }
+                    }
                 }
                 is SdkResult.Error -> {
                     progressBar.visibility = View.GONE
                     lastLoadFailed = true
                     refreshBanner(ConnectivityMonitor.isOnline)
-                    // Only toast if we've never successfully loaded; otherwise
-                    // the banner + stale state is enough.
                     if (tvTitle.text.isNullOrEmpty()) {
                         Toast.makeText(this@TicketDetailActivity, result.message, Toast.LENGTH_LONG).show()
                     }
@@ -281,16 +283,27 @@ class TicketDetailActivity : AppCompatActivity() {
 
     private fun addCommentView(comment: Comment) {
         val view = layoutInflater.inflate(R.layout.sdk_item_comment, commentsContainer, false)
-        view.findViewById<TextView>(R.id.tvAuthor).text = comment.user?.name ?: "User"
-        view.findViewById<TextView>(R.id.tvBody).text = comment.body
-        view.findViewById<TextView>(R.id.tvTime).text = formatDate(comment.createdAt)
+        val tvAuthor = view.findViewById<TextView>(R.id.tvAuthor)
+        val tvBody = view.findViewById<TextView>(R.id.tvBody)
+        val tvTime = view.findViewById<TextView>(R.id.tvTime)
+
+        tvAuthor.text = comment.user?.name ?: getString(R.string.sdk_user_fallback)
+        tvBody.text = comment.body
+        tvTime.text = relativeTime(comment.createdAt)
         com.feedbacksdk.internal.AvatarBinder.bind(view, comment.user)
 
-        // Only the author can edit/delete, and only within the 10-min window.
-        // Server enforces both; this just suppresses the affordance when it
-        // wouldn't work anyway.
+        // Long-press copies the comment body to the clipboard.
+        tvBody.setOnLongClickListener {
+            copyToClipboard(comment.body)
+            true
+        }
+        view.setOnLongClickListener {
+            copyToClipboard(comment.body)
+            true
+        }
+
         val myId = FeedbackSDK.currentUser?.id
-        if (myId != null && comment.user?.id == myId && isCommentEditable(comment.createdAt)) {
+        if (myId != null && comment.user?.id == myId && isWithinEditWindow(comment.createdAt, COMMENT_EDIT_WINDOW_MS)) {
             view.setOnLongClickListener {
                 showCommentPopup(view, comment)
                 true
@@ -300,25 +313,25 @@ class TicketDetailActivity : AppCompatActivity() {
         commentsContainer.addView(view)
     }
 
-    private fun isCommentEditable(createdAtIso: String): Boolean {
+    private fun isWithinEditWindow(createdAtIso: String, windowMs: Long): Boolean {
         return try {
             val fmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
             fmt.timeZone = java.util.TimeZone.getTimeZone("UTC")
             val created = fmt.parse(createdAtIso.substringBefore('.'))?.time ?: return false
-            System.currentTimeMillis() - created < 10L * 60L * 1000L
-        } catch (_: Exception) {
-            false
-        }
+            System.currentTimeMillis() - created < windowMs
+        } catch (_: Exception) { false }
     }
 
     private fun showCommentPopup(anchor: View, comment: Comment) {
         val popup = PopupMenu(this, anchor)
         popup.menu.add(0, 1, 0, R.string.sdk_edit)
         popup.menu.add(0, 2, 1, R.string.sdk_delete)
+        popup.menu.add(0, 3, 2, R.string.sdk_copy)
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 1 -> { showCommentEditSheet(comment); true }
                 2 -> { confirmDeleteComment(comment); true }
+                3 -> { copyToClipboard(comment.body); true }
                 else -> false
             }
         }
@@ -370,12 +383,10 @@ class TicketDetailActivity : AppCompatActivity() {
     }
 
     private fun sendMessage() {
+        if (isSending) return
         val body = editComment.text?.toString()?.trim().orEmpty()
         if (body.isEmpty() && pendingFiles.isEmpty()) return
 
-        // Optimistic path: clear the composer immediately, render a placeholder
-        // row so the user sees instant response. Real server comment replaces
-        // the placeholder on success; on failure the row becomes a retry chip.
         val optimisticBody = body
         val filesToUpload = pendingFiles.toList()
         editComment.text?.clear()
@@ -385,8 +396,12 @@ class TicketDetailActivity : AppCompatActivity() {
         val placeholder = if (optimisticBody.isNotEmpty()) addPendingCommentView(optimisticBody) else null
         if (placeholder != null) emptyComments.visibility = View.GONE
 
+        isSending = true
         btnSend.isEnabled = false
         btnAttach.isEnabled = false
+
+        // Scroll so the optimistic row is visible immediately.
+        scrollView.post { scrollView.fullScroll(View.FOCUS_DOWN) }
 
         lifecycleScope.launch {
             var commentFailed = false
@@ -395,9 +410,7 @@ class TicketDetailActivity : AppCompatActivity() {
 
             if (optimisticBody.isNotEmpty() && placeholder != null) {
                 when (val result = FeedbackSDK.addComment(ticketId, optimisticBody)) {
-                    is SdkResult.Success -> {
-                        replacePendingCommentView(placeholder, result.data)
-                    }
+                    is SdkResult.Success -> replacePendingCommentView(placeholder, result.data)
                     is SdkResult.Error -> {
                         commentFailed = true
                         markPendingCommentFailed(placeholder, optimisticBody)
@@ -412,27 +425,19 @@ class TicketDetailActivity : AppCompatActivity() {
                         is SdkResult.Error -> attachmentFailed = true
                     }
                 }
-                if (attachmentsUploaded) loadTicket()
+                if (attachmentsUploaded) loadTicket(scrollToBottom = true)
             }
 
             if (attachmentFailed && !commentFailed) {
-                Toast.makeText(
-                    this@TicketDetailActivity,
-                    R.string.sdk_attachment_upload_failed,
-                    Toast.LENGTH_LONG,
-                ).show()
+                Toast.makeText(this@TicketDetailActivity, R.string.sdk_attachment_upload_failed, Toast.LENGTH_LONG).show()
             }
 
+            isSending = false
             btnSend.isEnabled = true
             btnAttach.isEnabled = true
         }
     }
 
-    /**
-     * Render a transient "sending…" row so the user sees their message appear
-     * immediately. Returned view is handed back into [replacePendingCommentView]
-     * or [markPendingCommentFailed] depending on the server's response.
-     */
     private fun addPendingCommentView(body: String): View {
         val view = layoutInflater.inflate(R.layout.sdk_item_comment, commentsContainer, false)
         view.findViewById<TextView>(R.id.tvAuthor).text =
@@ -445,17 +450,14 @@ class TicketDetailActivity : AppCompatActivity() {
         return view
     }
 
-    private fun replacePendingCommentView(placeholder: View, comment: com.feedbacksdk.models.Comment) {
+    private fun replacePendingCommentView(placeholder: View, comment: Comment) {
         val index = commentsContainer.indexOfChild(placeholder)
-        if (index < 0) {
-            addCommentView(comment)
-            return
-        }
+        if (index < 0) { addCommentView(comment); return }
         commentsContainer.removeView(placeholder)
         val view = layoutInflater.inflate(R.layout.sdk_item_comment, commentsContainer, false)
-        view.findViewById<TextView>(R.id.tvAuthor).text = comment.user?.name ?: "User"
+        view.findViewById<TextView>(R.id.tvAuthor).text = comment.user?.name ?: getString(R.string.sdk_user_fallback)
         view.findViewById<TextView>(R.id.tvBody).text = comment.body
-        view.findViewById<TextView>(R.id.tvTime).text = formatDate(comment.createdAt)
+        view.findViewById<TextView>(R.id.tvTime).text = relativeTime(comment.createdAt)
         com.feedbacksdk.internal.AvatarBinder.bind(view, comment.user)
         commentsContainer.addView(view, index)
     }
@@ -464,9 +466,7 @@ class TicketDetailActivity : AppCompatActivity() {
         placeholder.alpha = 1f
         val tvTime = placeholder.findViewById<TextView>(R.id.tvTime)
         tvTime.text = getString(R.string.sdk_send_failed_tap_to_retry)
-        tvTime.setTextColor(
-            androidx.core.content.ContextCompat.getColor(this, android.R.color.holo_red_dark)
-        )
+        tvTime.setTextColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.holo_red_dark))
         placeholder.setOnClickListener {
             commentsContainer.removeView(placeholder)
             editComment.setText(body)
@@ -475,12 +475,29 @@ class TicketDetailActivity : AppCompatActivity() {
         }
     }
 
-    private fun formatDate(dateStr: String): String = try {
-        val input = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
-        val output = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-        val date = input.parse(dateStr.substringBefore('.'))
-        date?.let { output.format(it) } ?: dateStr
-    } catch (_: Exception) {
-        dateStr.substringBefore('T')
+    private fun copyToClipboard(text: String) {
+        val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        cm.setPrimaryClip(ClipData.newPlainText(null, text))
+        Toast.makeText(this, R.string.sdk_copied, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun relativeTime(dateStr: String): String {
+        return try {
+            val fmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+            fmt.timeZone = java.util.TimeZone.getTimeZone("UTC")
+            val ms = fmt.parse(dateStr.substringBefore('.'))?.time ?: return dateStr
+            val diff = System.currentTimeMillis() - ms
+            when {
+                diff < 60_000 -> getString(R.string.sdk_time_just_now)
+                diff < 3_600_000 -> getString(R.string.sdk_time_minutes_ago, diff / 60_000)
+                diff < 86_400_000 -> getString(R.string.sdk_time_hours_ago, diff / 3_600_000)
+                diff < 7L * 86_400_000 -> getString(R.string.sdk_time_days_ago, diff / 86_400_000)
+                else -> SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(java.util.Date(ms))
+            }
+        } catch (_: Exception) { dateStr.substringBefore('T') }
+    }
+
+    companion object {
+        private const val COMMENT_EDIT_WINDOW_MS = 10L * 60L * 1000L
     }
 }

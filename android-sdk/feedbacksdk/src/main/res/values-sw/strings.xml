@@ -87,4 +87,55 @@
     <string name="sdk_no_app_to_open">Hakuna programu inayopatikana kufungua faili hili</string>
     <string name="sdk_ticket_created_attach_failed">Tiketi imeundwa, lakini kiambatisho kimoja au zaidi hakikuweza kupakiwa.</string>
     <string name="sdk_feedback_submitted_attach_failed">Maoni yametumwa, lakini kiambatisho kimoja au zaidi hakikuweza kupakiwa.</string>
+
+    <!-- Bell badge overflow label -->
+    <string name="sdk_badge_overflow">99+</string>
+
+    <!-- Pagination -->
+    <string name="sdk_load_more">Pakia zaidi</string>
+    <string name="sdk_loading_more">Inapakia…</string>
+
+    <!-- Attachment viewer error/retry -->
+    <string name="sdk_attachment_failed_title">Haikuweza kupakia kiambatisho</string>
+    <string name="sdk_retry_load">Jaribu tena</string>
+
+    <!-- Accessibility labels -->
+    <string name="sdk_star_rating_label">Nyota %1$d kati ya 5</string>
+    <string name="sdk_star_rating_selected">Nyota %1$d kati ya 5 zimechaguliwa</string>
+    <string name="sdk_status_label">Hali: %1$s</string>
+    <string name="sdk_priority_label">Kipaumbele: %1$s</string>
+    <string name="sdk_attach_button_desc">Ongeza kiambatisho</string>
+    <string name="sdk_remove_attachment_desc">Ondoa %1$s</string>
+    <string name="sdk_unread_indicator">Haijasomwa</string>
+
+    <!-- Ticket list -->
+    <string name="sdk_no_tickets_hint">Gusa + Tiketi Mpya ili kuanza</string>
+    <string name="sdk_new_ticket">Tiketi Mpya</string>
+
+    <!-- Feedback list -->
+    <string name="sdk_no_feedback_hint">Gusa Kadiria kushiriki uzoefu wako</string>
+    <string name="sdk_new_feedback">Kadiria &amp; Maoni</string>
+
+    <!-- Date section headers -->
+    <string name="sdk_date_today">Leo</string>
+    <string name="sdk_date_yesterday">Jana</string>
+
+    <!-- Login prompt -->
+    <string name="sdk_login_required_title">Kuingia kunahitajika</string>
+    <string name="sdk_login_required_subtitle">Tafadhali ingia kuona arifa zako.</string>
+    <string name="sdk_sign_in">Ingia kwa Google</string>
+
+    <!-- Relative timestamps -->
+    <string name="sdk_time_just_now">sasa hivi</string>
+    <string name="sdk_time_minutes_ago">dakika %1$d zilizopita</string>
+    <string name="sdk_time_hours_ago">saa %1$d zilizopita</string>
+    <string name="sdk_time_days_ago">siku %1$d zilizopita</string>
+
+    <!-- Author fallbacks -->
+    <string name="sdk_user_fallback">Mtumiaji</string>
+    <string name="sdk_support_fallback">Msaada</string>
+
+    <!-- Clipboard -->
+    <string name="sdk_copied">Imenakiliwa</string>
+    <string name="sdk_copy">Nakili</string>
 </resources>

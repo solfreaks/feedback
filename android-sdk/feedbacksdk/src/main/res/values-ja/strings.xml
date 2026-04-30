@@ -87,4 +87,55 @@
     <string name="sdk_no_app_to_open">このファイルを開けるアプリがありません</string>
     <string name="sdk_ticket_created_attach_failed">チケットを作成しましたが、一部の添付ファイルのアップロードに失敗しました。</string>
     <string name="sdk_feedback_submitted_attach_failed">フィードバックを送信しましたが、一部の添付ファイルのアップロードに失敗しました。</string>
+
+    <!-- Bell badge overflow label -->
+    <string name="sdk_badge_overflow">99+</string>
+
+    <!-- Pagination -->
+    <string name="sdk_load_more">もっと読み込む</string>
+    <string name="sdk_loading_more">読み込み中…</string>
+
+    <!-- Attachment viewer error/retry -->
+    <string name="sdk_attachment_failed_title">添付ファイルを読み込めませんでした</string>
+    <string name="sdk_retry_load">再試行</string>
+
+    <!-- Accessibility labels -->
+    <string name="sdk_star_rating_label">5つ中%1$d番目の星</string>
+    <string name="sdk_star_rating_selected">5つ中%1$d個の星を選択</string>
+    <string name="sdk_status_label">ステータス: %1$s</string>
+    <string name="sdk_priority_label">優先度: %1$s</string>
+    <string name="sdk_attach_button_desc">添付ファイルを追加</string>
+    <string name="sdk_remove_attachment_desc">%1$sを削除</string>
+    <string name="sdk_unread_indicator">未読</string>
+
+    <!-- Ticket list -->
+    <string name="sdk_no_tickets_hint">+ 新しいチケットをタップして始めましょう</string>
+    <string name="sdk_new_ticket">新しいチケット</string>
+
+    <!-- Feedback list -->
+    <string name="sdk_no_feedback_hint">評価をタップして体験を共有しましょう</string>
+    <string name="sdk_new_feedback">評価 &amp; フィードバック</string>
+
+    <!-- Date section headers -->
+    <string name="sdk_date_today">今日</string>
+    <string name="sdk_date_yesterday">昨日</string>
+
+    <!-- Login prompt -->
+    <string name="sdk_login_required_title">サインインが必要です</string>
+    <string name="sdk_login_required_subtitle">通知を見るにはサインインしてください。</string>
+    <string name="sdk_sign_in">Googleでサインイン</string>
+
+    <!-- Relative timestamps -->
+    <string name="sdk_time_just_now">たった今</string>
+    <string name="sdk_time_minutes_ago">%1$d分前</string>
+    <string name="sdk_time_hours_ago">%1$d時間前</string>
+    <string name="sdk_time_days_ago">%1$d日前</string>
+
+    <!-- Author fallbacks -->
+    <string name="sdk_user_fallback">ユーザー</string>
+    <string name="sdk_support_fallback">サポート</string>
+
+    <!-- Clipboard -->
+    <string name="sdk_copied">コピーしました</string>
+    <string name="sdk_copy">コピー</string>
 </resources>

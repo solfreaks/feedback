@@ -1,6 +1,9 @@
 package com.feedbacksdk.ui
 
 import android.app.AlertDialog
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.net.Uri
@@ -8,8 +11,6 @@ import android.os.Bundle
 import android.provider.OpenableColumns
 import android.text.Editable
 import android.text.TextWatcher
-import android.view.Menu
-import android.view.MenuItem
 import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -19,6 +20,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.widget.NestedScrollView
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -27,9 +29,9 @@ import com.feedbacksdk.R
 import com.feedbacksdk.internal.ConnectivityMonitor
 import com.feedbacksdk.internal.SdkResult
 import com.feedbacksdk.internal.StatusBanner
+import com.feedbacksdk.internal.UnreadStore
 import com.feedbacksdk.internal.applySystemBarInsets
 import com.feedbacksdk.internal.resolveThemeColor
-import com.feedbacksdk.internal.UnreadStore
 import com.feedbacksdk.internal.statusColor
 import com.feedbacksdk.models.Attachment
 import com.feedbacksdk.models.FeedbackDetail
@@ -44,6 +46,7 @@ import java.util.Locale
 class FeedbackDetailActivity : AppCompatActivity() {
 
     private lateinit var stars: List<ImageView>
+    private lateinit var starsRow: LinearLayout
     private lateinit var tvStatus: TextView
     private lateinit var tvCategory: TextView
     private lateinit var tvDate: TextView
@@ -53,15 +56,13 @@ class FeedbackDetailActivity : AppCompatActivity() {
     private lateinit var repliesContainer: LinearLayout
     private lateinit var emptyReplies: View
     private lateinit var progressBar: View
+    private lateinit var contentScroll: NestedScrollView
 
-    // Reply composer — only shown for the feedback owner.
     private lateinit var replyComposer: LinearLayout
     private lateinit var editReply: TextInputEditText
     private lateinit var btnAttach: ImageView
     private lateinit var btnSendReply: ImageView
     private lateinit var attachChipRow: LinearLayout
-    // File URIs selected by the user; resolved to real Files at send time so
-    // we don't hold the content-resolver cursor open across the async call.
     private val pendingAttachments = mutableListOf<Uri>()
     private var sendingReply = false
 
@@ -83,7 +84,6 @@ class FeedbackDetailActivity : AppCompatActivity() {
         runOnUiThread { refreshBanner(online) }
     }
 
-    // Server-enforced too; we mirror the window here so the menu hides cleanly.
     private val editWindowMs = 24L * 60L * 60L * 1000L
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -92,17 +92,14 @@ class FeedbackDetailActivity : AppCompatActivity() {
         setTheme(R.style.FeedbackSDK_Theme)
         setContentView(R.layout.sdk_activity_feedback_detail)
 
-        feedbackId = intent.getStringExtra("feedback_id") ?: run {
-            finish()
-            return
-        }
+        feedbackId = intent.getStringExtra("feedback_id") ?: run { finish(); return }
 
         val appBar = findViewById<AppBarLayout>(R.id.appBar)
         toolbar = findViewById(R.id.toolbar)
         toolbar.setNavigationOnClickListener { finish() }
         applySystemBarInsets(topView = appBar, bottomView = findViewById(R.id.replyComposer))
 
-        val contentScroll = findViewById<androidx.core.widget.NestedScrollView>(R.id.contentScroll)
+        contentScroll = findViewById(R.id.contentScroll)
         val baseScrollPadBottom = contentScroll.paddingBottom
         androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(contentScroll) { v, insets ->
             val ime = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.ime()).bottom
@@ -117,6 +114,7 @@ class FeedbackDetailActivity : AppCompatActivity() {
             findViewById(R.id.star4),
             findViewById(R.id.star5),
         )
+        starsRow = findViewById(R.id.starsRow)
         tvStatus = findViewById(R.id.tvStatus)
         tvCategory = findViewById(R.id.tvCategory)
         tvDate = findViewById(R.id.tvDate)
@@ -140,9 +138,7 @@ class FeedbackDetailActivity : AppCompatActivity() {
         editReply.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: Editable?) {
-                refreshSendButton()
-            }
+            override fun afterTextChanged(s: Editable?) { refreshSendButton() }
         })
         btnAttach.setOnClickListener { pickAttachment.launch("*/*") }
         btnSendReply.setOnClickListener { sendReply() }
@@ -150,24 +146,17 @@ class FeedbackDetailActivity : AppCompatActivity() {
         loadFeedback()
     }
 
-    /**
-     * Show the overflow only when the loaded feedback belongs to the current
-     * user and is still inside the 24h edit window. Tapping it pops a simple
-     * menu with Edit / Delete.
-     */
     private fun refreshOverflow() {
         toolbar.menu.clear()
         val fb = currentFeedback ?: return
         val me = FeedbackSDK.currentUser ?: return
         if (fb.user?.id != me.id) return
-        if (!isWithinEditWindow(fb.createdAt)) return
+        if (!isWithinWindow(fb.createdAt, editWindowMs)) return
 
         toolbar.inflateMenu(R.menu.sdk_feedback_detail_menu)
         toolbar.setOnMenuItemClickListener { item ->
-            if (item.itemId == R.id.action_feedback_overflow) {
-                showOverflowPopup()
-                true
-            } else false
+            if (item.itemId == R.id.action_feedback_overflow) { showOverflowPopup(); true }
+            else false
         }
     }
 
@@ -186,15 +175,13 @@ class FeedbackDetailActivity : AppCompatActivity() {
         popup.show()
     }
 
-    private fun isWithinEditWindow(createdAtIso: String): Boolean {
+    private fun isWithinWindow(createdAtIso: String, windowMs: Long): Boolean {
         return try {
             val fmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
             fmt.timeZone = java.util.TimeZone.getTimeZone("UTC")
             val created = fmt.parse(createdAtIso.substringBefore('.'))?.time ?: return false
-            System.currentTimeMillis() - created < editWindowMs
-        } catch (_: Exception) {
-            false
-        }
+            System.currentTimeMillis() - created < windowMs
+        } catch (_: Exception) { false }
     }
 
     private fun confirmDelete() {
@@ -219,11 +206,6 @@ class FeedbackDetailActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Inline edit sheet shown via AlertDialog. Simple enough that a full
-     * separate activity would be overkill. Lets the user change rating,
-     * category, and comment; status stays server-managed.
-     */
     private fun showEditSheet() {
         val fb = currentFeedback ?: return
         val sheet = layoutInflater.inflate(R.layout.sdk_edit_feedback_sheet, null)
@@ -240,14 +222,12 @@ class FeedbackDetailActivity : AppCompatActivity() {
 
         fun paintStars() {
             starViews.forEachIndexed { i, iv ->
-                iv.setImageResource(
-                    if (i < rating) R.drawable.sdk_ic_star_filled
-                    else R.drawable.sdk_ic_star_outline
-                )
+                iv.setImageResource(if (i < rating) R.drawable.sdk_ic_star_filled else R.drawable.sdk_ic_star_outline)
             }
         }
         paintStars()
         starViews.forEachIndexed { i, iv ->
+            iv.contentDescription = getString(R.string.sdk_star_rating_label, i + 1)
             iv.setOnClickListener { rating = i + 1; paintStars() }
         }
 
@@ -274,7 +254,7 @@ class FeedbackDetailActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun loadFeedback() {
+    private fun loadFeedback(scrollToBottom: Boolean = false) {
         lifecycleScope.launch {
             progressBar.visibility = View.VISIBLE
             when (val result = FeedbackSDK.getFeedback(feedbackId)) {
@@ -291,15 +271,20 @@ class FeedbackDetailActivity : AppCompatActivity() {
                             else R.drawable.sdk_ic_star_outline
                         )
                     }
+                    // Single accessible label on the row so TalkBack reads "4 out of 5 stars".
+                    starsRow.contentDescription = getString(R.string.sdk_star_rating_selected, feedback.rating)
+                    starsRow.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+                    stars.forEach { it.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO }
 
-                    tvStatus.text = feedback.status.replace("_", " ")
+                    tvStatus.text = feedback.status.replace("_", " ").replaceFirstChar { it.uppercase() }
                     tvStatus.backgroundTintList = ColorStateList.valueOf(statusColor(feedback.status))
                     tvStatus.setTextColor(resolveThemeColor(R.attr.sdkColorOnStatus))
+                    tvStatus.contentDescription = getString(R.string.sdk_status_label, feedback.status.replace("_", " "))
 
                     tvCategory.text = feedback.category
                         .replace("_", " ")
                         .replaceFirstChar { it.uppercase() }
-                    tvDate.text = formatDate(feedback.createdAt)
+                    tvDate.text = relativeTime(feedback.createdAt)
 
                     val comment = feedback.comment?.trim().orEmpty()
                     if (comment.isEmpty()) {
@@ -307,6 +292,7 @@ class FeedbackDetailActivity : AppCompatActivity() {
                     } else {
                         tvComment.visibility = View.VISIBLE
                         tvComment.text = comment
+                        tvComment.setOnLongClickListener { copyToClipboard(comment); true }
                     }
 
                     renderAttachments(feedback.attachments)
@@ -318,16 +304,17 @@ class FeedbackDetailActivity : AppCompatActivity() {
                         emptyReplies.visibility = View.GONE
                         feedback.replies.forEach { addReplyView(it) }
                     }
-                    // Show the reply composer for the feedback owner only —
-                    // other users (including admins viewing their own copy)
-                    // don't need it on this screen.
+
                     val me = FeedbackSDK.currentUser
                     replyComposer.visibility =
-                        if (me != null && feedback.user?.id == me.id) View.VISIBLE
-                        else View.GONE
+                        if (me != null && feedback.user?.id == me.id) View.VISIBLE else View.GONE
 
                     lastLoadFailed = false
                     refreshBanner(ConnectivityMonitor.isOnline)
+
+                    if (scrollToBottom) {
+                        contentScroll.post { contentScroll.fullScroll(View.FOCUS_DOWN) }
+                    }
                 }
                 is SdkResult.Error -> {
                     progressBar.visibility = View.GONE
@@ -374,11 +361,40 @@ class FeedbackDetailActivity : AppCompatActivity() {
 
     private fun addReplyView(reply: FeedbackReply) {
         val view = layoutInflater.inflate(R.layout.sdk_item_comment, repliesContainer, false)
-        view.findViewById<TextView>(R.id.tvAuthor).text = reply.user?.name ?: "Support"
-        view.findViewById<TextView>(R.id.tvBody).text = reply.body
-        view.findViewById<TextView>(R.id.tvTime).text = formatDate(reply.createdAt)
+        val tvAuthor = view.findViewById<TextView>(R.id.tvAuthor)
+        val tvBody = view.findViewById<TextView>(R.id.tvBody)
+        val tvTime = view.findViewById<TextView>(R.id.tvTime)
+
+        tvAuthor.text = reply.user?.name ?: getString(R.string.sdk_support_fallback)
+        tvBody.text = reply.body
+        tvTime.text = relativeTime(reply.createdAt)
         com.feedbacksdk.internal.AvatarBinder.bind(view, reply.user)
+
+        // Long-press copies body; show popup if it's the current user's own reply.
+        val myId = FeedbackSDK.currentUser?.id
+        if (myId != null && reply.user?.id == myId) {
+            view.setOnLongClickListener {
+                showReplyPopup(view, reply)
+                true
+            }
+        } else {
+            tvBody.setOnLongClickListener { copyToClipboard(reply.body); true }
+            view.setOnLongClickListener { copyToClipboard(reply.body); true }
+        }
+
         repliesContainer.addView(view)
+    }
+
+    private fun showReplyPopup(anchor: View, reply: FeedbackReply) {
+        val popup = PopupMenu(this, anchor)
+        popup.menu.add(0, 1, 0, R.string.sdk_copy)
+        popup.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                1 -> { copyToClipboard(reply.body); true }
+                else -> false
+            }
+        }
+        popup.show()
     }
 
     private fun refreshSendButton() {
@@ -392,18 +408,21 @@ class FeedbackDetailActivity : AppCompatActivity() {
         attachChipRow.visibility = if (pendingAttachments.isEmpty()) View.GONE else View.VISIBLE
         pendingAttachments.forEachIndexed { idx, uri ->
             val chip = layoutInflater.inflate(R.layout.sdk_item_attach_chip, attachChipRow, false)
-            chip.findViewById<TextView>(R.id.tvChipName).text = displayName(uri)
-            chip.findViewById<ImageView>(R.id.btnChipRemove).setOnClickListener {
-                pendingAttachments.removeAt(idx)
-                renderAttachChips()
+            val name = displayName(uri)
+            chip.findViewById<TextView>(R.id.tvChipName).text = name
+            chip.contentDescription = name
+            chip.findViewById<ImageView>(R.id.btnChipRemove).apply {
+                contentDescription = getString(R.string.sdk_remove_attachment_desc, name)
+                setOnClickListener {
+                    pendingAttachments.removeAt(idx)
+                    renderAttachChips()
+                }
             }
             attachChipRow.addView(chip)
         }
     }
 
     private fun displayName(uri: Uri): String {
-        // contentResolver.query + OpenableColumns gives the user-friendly
-        // filename for content:// URIs; fall back to the last path segment.
         val cursor = contentResolver.query(uri, null, null, null, null)
         cursor?.use {
             val idx = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
@@ -413,6 +432,7 @@ class FeedbackDetailActivity : AppCompatActivity() {
     }
 
     private fun sendReply() {
+        if (sendingReply) return
         val text = editReply.text?.toString()?.trim().orEmpty()
         if (text.isEmpty()) {
             Toast.makeText(this, R.string.sdk_reply_empty, Toast.LENGTH_SHORT).show()
@@ -420,6 +440,7 @@ class FeedbackDetailActivity : AppCompatActivity() {
         }
         sendingReply = true
         refreshSendButton()
+
         lifecycleScope.launch {
             val tempFiles = pendingAttachments.mapNotNull { uri ->
                 runCatching { copyUriToCache(uri) }.getOrNull()
@@ -431,14 +452,13 @@ class FeedbackDetailActivity : AppCompatActivity() {
                         editReply.setText("")
                         pendingAttachments.clear()
                         renderAttachChips()
-                        loadFeedback()
+                        loadFeedback(scrollToBottom = true)
                     }
                     is SdkResult.Error -> {
                         Toast.makeText(this@FeedbackDetailActivity, r.message, Toast.LENGTH_LONG).show()
                     }
                 }
             } finally {
-                // Scratch files live in cache — delete them regardless of outcome.
                 tempFiles.forEach { runCatching { it.delete() } }
                 sendingReply = false
                 refreshSendButton()
@@ -446,11 +466,28 @@ class FeedbackDetailActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Copy a content:// URI to a temp file in cacheDir so Retrofit can stream
-     * it as multipart. Returns the File or throws on I/O failure; caller
-     * handles the cleanup.
-     */
+    private fun copyToClipboard(text: String) {
+        val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        cm.setPrimaryClip(ClipData.newPlainText(null, text))
+        Toast.makeText(this, R.string.sdk_copied, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun relativeTime(dateStr: String): String {
+        return try {
+            val fmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+            fmt.timeZone = java.util.TimeZone.getTimeZone("UTC")
+            val ms = fmt.parse(dateStr.substringBefore('.'))?.time ?: return dateStr
+            val diff = System.currentTimeMillis() - ms
+            when {
+                diff < 60_000 -> getString(R.string.sdk_time_just_now)
+                diff < 3_600_000 -> getString(R.string.sdk_time_minutes_ago, diff / 60_000)
+                diff < 86_400_000 -> getString(R.string.sdk_time_hours_ago, diff / 3_600_000)
+                diff < 7L * 86_400_000 -> getString(R.string.sdk_time_days_ago, diff / 86_400_000)
+                else -> SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(java.util.Date(ms))
+            }
+        } catch (_: Exception) { dateStr.substringBefore('T') }
+    }
+
     private fun copyUriToCache(uri: Uri): java.io.File {
         val name = displayName(uri).take(100).ifEmpty { "upload" }
         val outFile = java.io.File.createTempFile("fbreply_", "_$name", cacheDir)
@@ -460,14 +497,5 @@ class FeedbackDetailActivity : AppCompatActivity() {
             }
         }
         return outFile
-    }
-
-    private fun formatDate(dateStr: String): String = try {
-        val input = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
-        val output = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-        val date = input.parse(dateStr.substringBefore('.'))
-        date?.let { output.format(it) } ?: dateStr
-    } catch (_: Exception) {
-        dateStr.substringBefore('T')
     }
 }

@@ -87,4 +87,55 @@
     <string name="sdk_no_app_to_open">没有可用于打开此文件的应用</string>
     <string name="sdk_ticket_created_attach_failed">工单已创建，但一个或多个附件上传失败。</string>
     <string name="sdk_feedback_submitted_attach_failed">反馈已提交，但一个或多个附件上传失败。</string>
+
+    <!-- Bell badge overflow label -->
+    <string name="sdk_badge_overflow">99+</string>
+
+    <!-- Pagination -->
+    <string name="sdk_load_more">加载更多</string>
+    <string name="sdk_loading_more">加载中…</string>
+
+    <!-- Attachment viewer error/retry -->
+    <string name="sdk_attachment_failed_title">无法加载附件</string>
+    <string name="sdk_retry_load">重试</string>
+
+    <!-- Accessibility labels -->
+    <string name="sdk_star_rating_label">第 %1$d 颗星（共 5 颗）</string>
+    <string name="sdk_star_rating_selected">已选择 %1$d 颗星（共 5 颗）</string>
+    <string name="sdk_status_label">状态：%1$s</string>
+    <string name="sdk_priority_label">优先级：%1$s</string>
+    <string name="sdk_attach_button_desc">添加附件</string>
+    <string name="sdk_remove_attachment_desc">删除 %1$s</string>
+    <string name="sdk_unread_indicator">未读</string>
+
+    <!-- Ticket list -->
+    <string name="sdk_no_tickets_hint">点击 + 新工单开始</string>
+    <string name="sdk_new_ticket">新工单</string>
+
+    <!-- Feedback list -->
+    <string name="sdk_no_feedback_hint">点击评分分享您的体验</string>
+    <string name="sdk_new_feedback">评分 &amp; 反馈</string>
+
+    <!-- Date section headers -->
+    <string name="sdk_date_today">今天</string>
+    <string name="sdk_date_yesterday">昨天</string>
+
+    <!-- Login prompt -->
+    <string name="sdk_login_required_title">需要登录</string>
+    <string name="sdk_login_required_subtitle">请登录以查看您的通知。</string>
+    <string name="sdk_sign_in">使用 Google 登录</string>
+
+    <!-- Relative timestamps -->
+    <string name="sdk_time_just_now">刚刚</string>
+    <string name="sdk_time_minutes_ago">%1$d分钟前</string>
+    <string name="sdk_time_hours_ago">%1$d小时前</string>
+    <string name="sdk_time_days_ago">%1$d天前</string>
+
+    <!-- Author fallbacks -->
+    <string name="sdk_user_fallback">用户</string>
+    <string name="sdk_support_fallback">支持</string>
+
+    <!-- Clipboard -->
+    <string name="sdk_copied">已复制</string>
+    <string name="sdk_copy">复制</string>
 </resources>

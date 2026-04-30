@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/nav_tickets"
+        android:icon="@drawable/sdk_ic_ticket"
+        android:title="@string/sdk_my_tickets" />
+
+    <item
+        android:id="@+id/nav_notifications"
+        android:icon="@drawable/sdk_ic_bell"
+        android:title="@string/sdk_notifications" />
+
+    <item
+        android:id="@+id/nav_feedback"
+        android:icon="@drawable/sdk_ic_megaphone"
+        android:title="@string/sdk_my_feedback" />
+
+</menu>

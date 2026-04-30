@@ -87,4 +87,55 @@
     <string name="sdk_no_app_to_open">Không có ứng dụng để mở tệp này</string>
     <string name="sdk_ticket_created_attach_failed">Đã tạo phiếu, nhưng một hoặc nhiều tệp đính kèm tải lên thất bại.</string>
     <string name="sdk_feedback_submitted_attach_failed">Đã gửi phản hồi, nhưng một hoặc nhiều tệp đính kèm tải lên thất bại.</string>
+
+    <!-- Bell badge overflow label -->
+    <string name="sdk_badge_overflow">99+</string>
+
+    <!-- Pagination -->
+    <string name="sdk_load_more">Tải thêm</string>
+    <string name="sdk_loading_more">Đang tải…</string>
+
+    <!-- Attachment viewer error/retry -->
+    <string name="sdk_attachment_failed_title">Không thể tải tệp đính kèm</string>
+    <string name="sdk_retry_load">Thử lại</string>
+
+    <!-- Accessibility labels -->
+    <string name="sdk_star_rating_label">Sao %1$d trong 5</string>
+    <string name="sdk_star_rating_selected">Đã chọn %1$d trong 5 sao</string>
+    <string name="sdk_status_label">Trạng thái: %1$s</string>
+    <string name="sdk_priority_label">Độ ưu tiên: %1$s</string>
+    <string name="sdk_attach_button_desc">Thêm tệp đính kèm</string>
+    <string name="sdk_remove_attachment_desc">Xóa %1$s</string>
+    <string name="sdk_unread_indicator">Chưa đọc</string>
+
+    <!-- Ticket list -->
+    <string name="sdk_no_tickets_hint">Nhấn + Phiếu mới để bắt đầu</string>
+    <string name="sdk_new_ticket">Phiếu mới</string>
+
+    <!-- Feedback list -->
+    <string name="sdk_no_feedback_hint">Nhấn Đánh giá để chia sẻ trải nghiệm</string>
+    <string name="sdk_new_feedback">Đánh giá &amp; Phản hồi</string>
+
+    <!-- Date section headers -->
+    <string name="sdk_date_today">Hôm nay</string>
+    <string name="sdk_date_yesterday">Hôm qua</string>
+
+    <!-- Login prompt -->
+    <string name="sdk_login_required_title">Yêu cầu đăng nhập</string>
+    <string name="sdk_login_required_subtitle">Vui lòng đăng nhập để xem thông báo của bạn.</string>
+    <string name="sdk_sign_in">Đăng nhập bằng Google</string>
+
+    <!-- Relative timestamps -->
+    <string name="sdk_time_just_now">vừa xong</string>
+    <string name="sdk_time_minutes_ago">%1$d phút trước</string>
+    <string name="sdk_time_hours_ago">%1$d giờ trước</string>
+    <string name="sdk_time_days_ago">%1$d ngày trước</string>
+
+    <!-- Author fallbacks -->
+    <string name="sdk_user_fallback">Người dùng</string>
+    <string name="sdk_support_fallback">Hỗ trợ</string>
+
+    <!-- Clipboard -->
+    <string name="sdk_copied">Đã sao chép</string>
+    <string name="sdk_copy">Sao chép</string>
 </resources>

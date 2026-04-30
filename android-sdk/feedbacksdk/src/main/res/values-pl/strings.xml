@@ -87,4 +87,55 @@
     <string name="sdk_no_app_to_open">Brak aplikacji do otwarcia tego pliku</string>
     <string name="sdk_ticket_created_attach_failed">Zgłoszenie utworzone, ale jeden lub więcej załączników nie zostało przesłanych.</string>
     <string name="sdk_feedback_submitted_attach_failed">Opinia wysłana, ale jeden lub więcej załączników nie zostało przesłanych.</string>
+
+    <!-- Bell badge overflow label -->
+    <string name="sdk_badge_overflow">99+</string>
+
+    <!-- Pagination -->
+    <string name="sdk_load_more">Załaduj więcej</string>
+    <string name="sdk_loading_more">Ładowanie…</string>
+
+    <!-- Attachment viewer error/retry -->
+    <string name="sdk_attachment_failed_title">Nie można załadować załącznika</string>
+    <string name="sdk_retry_load">Spróbuj ponownie</string>
+
+    <!-- Accessibility labels -->
+    <string name="sdk_star_rating_label">Gwiazdka %1$d z 5</string>
+    <string name="sdk_star_rating_selected">Wybrano %1$d z 5 gwiazdek</string>
+    <string name="sdk_status_label">Status: %1$s</string>
+    <string name="sdk_priority_label">Priorytet: %1$s</string>
+    <string name="sdk_attach_button_desc">Dodaj załącznik</string>
+    <string name="sdk_remove_attachment_desc">Usuń %1$s</string>
+    <string name="sdk_unread_indicator">Nieprzeczytane</string>
+
+    <!-- Ticket list -->
+    <string name="sdk_no_tickets_hint">Dotknij + Nowe zgłoszenie, aby zacząć</string>
+    <string name="sdk_new_ticket">Nowe zgłoszenie</string>
+
+    <!-- Feedback list -->
+    <string name="sdk_no_feedback_hint">Dotknij Oceń, aby podzielić się doświadczeniem</string>
+    <string name="sdk_new_feedback">Oceń &amp; Opinia</string>
+
+    <!-- Date section headers -->
+    <string name="sdk_date_today">Dziś</string>
+    <string name="sdk_date_yesterday">Wczoraj</string>
+
+    <!-- Login prompt -->
+    <string name="sdk_login_required_title">Wymagane logowanie</string>
+    <string name="sdk_login_required_subtitle">Zaloguj się, aby zobaczyć powiadomienia.</string>
+    <string name="sdk_sign_in">Zaloguj się przez Google</string>
+
+    <!-- Relative timestamps -->
+    <string name="sdk_time_just_now">przed chwilą</string>
+    <string name="sdk_time_minutes_ago">%1$d min temu</string>
+    <string name="sdk_time_hours_ago">%1$d godz. temu</string>
+    <string name="sdk_time_days_ago">%1$d dni temu</string>
+
+    <!-- Author fallbacks -->
+    <string name="sdk_user_fallback">Użytkownik</string>
+    <string name="sdk_support_fallback">Pomoc techniczna</string>
+
+    <!-- Clipboard -->
+    <string name="sdk_copied">Skopiowano</string>
+    <string name="sdk_copy">Kopiuj</string>
 </resources>

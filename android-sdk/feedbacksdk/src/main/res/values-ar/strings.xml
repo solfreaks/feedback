@@ -94,4 +94,55 @@
     <string name="sdk_no_app_to_open">لا يوجد تطبيق لفتح هذا الملف</string>
     <string name="sdk_ticket_created_attach_failed">تم إنشاء التذكرة، لكن فشل رفع بعض المرفقات.</string>
     <string name="sdk_feedback_submitted_attach_failed">تم إرسال الملاحظة، لكن فشل رفع بعض المرفقات.</string>
+
+    <!-- Bell badge overflow label -->
+    <string name="sdk_badge_overflow">99+</string>
+
+    <!-- Pagination -->
+    <string name="sdk_load_more">تحميل المزيد</string>
+    <string name="sdk_loading_more">جارٍ التحميل…</string>
+
+    <!-- Attachment viewer error/retry -->
+    <string name="sdk_attachment_failed_title">تعذّر تحميل المرفق</string>
+    <string name="sdk_retry_load">إعادة المحاولة</string>
+
+    <!-- Accessibility labels -->
+    <string name="sdk_star_rating_label">النجمة %1$d من 5</string>
+    <string name="sdk_star_rating_selected">تم اختيار %1$d من 5 نجوم</string>
+    <string name="sdk_status_label">الحالة: %1$s</string>
+    <string name="sdk_priority_label">الأولوية: %1$s</string>
+    <string name="sdk_attach_button_desc">إضافة مرفق</string>
+    <string name="sdk_remove_attachment_desc">إزالة %1$s</string>
+    <string name="sdk_unread_indicator">غير مقروء</string>
+
+    <!-- Ticket list -->
+    <string name="sdk_no_tickets_hint">اضغط على + تذكرة جديدة للبدء</string>
+    <string name="sdk_new_ticket">تذكرة جديدة</string>
+
+    <!-- Feedback list -->
+    <string name="sdk_no_feedback_hint">اضغط على تقييم لمشاركة تجربتك</string>
+    <string name="sdk_new_feedback">تقييم وملاحظات</string>
+
+    <!-- Date section headers -->
+    <string name="sdk_date_today">اليوم</string>
+    <string name="sdk_date_yesterday">أمس</string>
+
+    <!-- Login prompt -->
+    <string name="sdk_login_required_title">تسجيل الدخول مطلوب</string>
+    <string name="sdk_login_required_subtitle">يرجى تسجيل الدخول لعرض إشعاراتك.</string>
+    <string name="sdk_sign_in">تسجيل الدخول باستخدام Google</string>
+
+    <!-- Relative timestamps -->
+    <string name="sdk_time_just_now">الآن</string>
+    <string name="sdk_time_minutes_ago">منذ %1$d د</string>
+    <string name="sdk_time_hours_ago">منذ %1$d س</string>
+    <string name="sdk_time_days_ago">منذ %1$d ي</string>
+
+    <!-- Author fallbacks -->
+    <string name="sdk_user_fallback">مستخدم</string>
+    <string name="sdk_support_fallback">الدعم</string>
+
+    <!-- Clipboard -->
+    <string name="sdk_copied">تم النسخ</string>
+    <string name="sdk_copy">نسخ</string>
 </resources>

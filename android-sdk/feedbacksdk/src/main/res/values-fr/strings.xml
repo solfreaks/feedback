@@ -94,4 +94,55 @@
     <string name="sdk_no_app_to_open">Aucune application disponible pour ouvrir ce fichier</string>
     <string name="sdk_ticket_created_attach_failed">Ticket créé, mais une ou plusieurs pièces jointes n\'ont pas pu être envoyées.</string>
     <string name="sdk_feedback_submitted_attach_failed">Avis envoyé, mais une ou plusieurs pièces jointes n\'ont pas pu être envoyées.</string>
+
+    <!-- Bell badge overflow label -->
+    <string name="sdk_badge_overflow">99+</string>
+
+    <!-- Pagination -->
+    <string name="sdk_load_more">Charger plus</string>
+    <string name="sdk_loading_more">Chargement…</string>
+
+    <!-- Attachment viewer error/retry -->
+    <string name="sdk_attachment_failed_title">Impossible de charger la pièce jointe</string>
+    <string name="sdk_retry_load">Réessayer</string>
+
+    <!-- Accessibility labels -->
+    <string name="sdk_star_rating_label">Étoile %1$d sur 5</string>
+    <string name="sdk_star_rating_selected">%1$d étoile(s) sur 5 sélectionnée(s)</string>
+    <string name="sdk_status_label">Statut : %1$s</string>
+    <string name="sdk_priority_label">Priorité : %1$s</string>
+    <string name="sdk_attach_button_desc">Ajouter une pièce jointe</string>
+    <string name="sdk_remove_attachment_desc">Supprimer %1$s</string>
+    <string name="sdk_unread_indicator">Non lu</string>
+
+    <!-- Ticket list -->
+    <string name="sdk_no_tickets_hint">Appuyez sur + Nouveau ticket pour commencer</string>
+    <string name="sdk_new_ticket">Nouveau ticket</string>
+
+    <!-- Feedback list -->
+    <string name="sdk_no_feedback_hint">Appuyez sur Évaluer pour partager votre expérience</string>
+    <string name="sdk_new_feedback">Évaluer &amp; Donner un avis</string>
+
+    <!-- Date section headers -->
+    <string name="sdk_date_today">Aujourd\'hui</string>
+    <string name="sdk_date_yesterday">Hier</string>
+
+    <!-- Login prompt -->
+    <string name="sdk_login_required_title">Connexion requise</string>
+    <string name="sdk_login_required_subtitle">Veuillez vous connecter pour voir vos notifications.</string>
+    <string name="sdk_sign_in">Se connecter avec Google</string>
+
+    <!-- Relative timestamps -->
+    <string name="sdk_time_just_now">à l\'instant</string>
+    <string name="sdk_time_minutes_ago">il y a %1$d min</string>
+    <string name="sdk_time_hours_ago">il y a %1$dh</string>
+    <string name="sdk_time_days_ago">il y a %1$dj</string>
+
+    <!-- Author fallbacks -->
+    <string name="sdk_user_fallback">Utilisateur</string>
+    <string name="sdk_support_fallback">Support</string>
+
+    <!-- Clipboard -->
+    <string name="sdk_copied">Copié</string>
+    <string name="sdk_copy">Copier</string>
 </resources>

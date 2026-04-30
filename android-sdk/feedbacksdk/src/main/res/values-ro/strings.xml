@@ -87,4 +87,55 @@
     <string name="sdk_no_app_to_open">Nicio aplicație disponibilă pentru a deschide acest fișier</string>
     <string name="sdk_ticket_created_attach_failed">Tichet creat, dar unul sau mai multe atașamente nu au putut fi încărcate.</string>
     <string name="sdk_feedback_submitted_attach_failed">Feedback trimis, dar unul sau mai multe atașamente nu au putut fi încărcate.</string>
+
+    <!-- Bell badge overflow label -->
+    <string name="sdk_badge_overflow">99+</string>
+
+    <!-- Pagination -->
+    <string name="sdk_load_more">Încarcă mai mult</string>
+    <string name="sdk_loading_more">Se încarcă…</string>
+
+    <!-- Attachment viewer error/retry -->
+    <string name="sdk_attachment_failed_title">Nu s-a putut încărca atașamentul</string>
+    <string name="sdk_retry_load">Reîncercați</string>
+
+    <!-- Accessibility labels -->
+    <string name="sdk_star_rating_label">Steaua %1$d din 5</string>
+    <string name="sdk_star_rating_selected">%1$d din 5 stele selectate</string>
+    <string name="sdk_status_label">Status: %1$s</string>
+    <string name="sdk_priority_label">Prioritate: %1$s</string>
+    <string name="sdk_attach_button_desc">Adaugă atașament</string>
+    <string name="sdk_remove_attachment_desc">Elimină %1$s</string>
+    <string name="sdk_unread_indicator">Necitit</string>
+
+    <!-- Ticket list -->
+    <string name="sdk_no_tickets_hint">Atingeți + Tichet nou pentru a începe</string>
+    <string name="sdk_new_ticket">Tichet nou</string>
+
+    <!-- Feedback list -->
+    <string name="sdk_no_feedback_hint">Atingeți Evaluați pentru a vă împărtăși experiența</string>
+    <string name="sdk_new_feedback">Evaluați &amp; Feedback</string>
+
+    <!-- Date section headers -->
+    <string name="sdk_date_today">Astăzi</string>
+    <string name="sdk_date_yesterday">Ieri</string>
+
+    <!-- Login prompt -->
+    <string name="sdk_login_required_title">Autentificare necesară</string>
+    <string name="sdk_login_required_subtitle">Vă rugăm să vă autentificați pentru a vedea notificările.</string>
+    <string name="sdk_sign_in">Conectați-vă cu Google</string>
+
+    <!-- Relative timestamps -->
+    <string name="sdk_time_just_now">chiar acum</string>
+    <string name="sdk_time_minutes_ago">acum %1$d min</string>
+    <string name="sdk_time_hours_ago">acum %1$dh</string>
+    <string name="sdk_time_days_ago">acum %1$dz</string>
+
+    <!-- Author fallbacks -->
+    <string name="sdk_user_fallback">Utilizator</string>
+    <string name="sdk_support_fallback">Suport</string>
+
+    <!-- Clipboard -->
+    <string name="sdk_copied">Copiat</string>
+    <string name="sdk_copy">Copiați</string>
 </resources>

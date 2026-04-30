@@ -37,6 +37,10 @@
     <string name="sdk_create_ticket_subtitle">Describe what\'s going wrong and we\'ll get back to you.</string>
     <string name="sdk_comments">Comments</string>
     <string name="sdk_no_tickets_subtitle">Your support tickets will show up here.</string>
+    <string name="sdk_no_tickets_hint">Tap + New Ticket to get started</string>
+    <string name="sdk_new_ticket">New Ticket</string>
+    <string name="sdk_no_feedback_hint">Tap Rate to share your experience</string>
+    <string name="sdk_new_feedback">Rate &amp; Feedback</string>
     <string name="sdk_rating_1">Terrible</string>
     <string name="sdk_rating_2">Poor</string>
     <string name="sdk_rating_3">Okay</string>
@@ -101,4 +105,47 @@
     <string name="sdk_no_app_to_open">No app available to open this file</string>
     <string name="sdk_ticket_created_attach_failed">Ticket created, but one or more attachments failed to upload.</string>
     <string name="sdk_feedback_submitted_attach_failed">Feedback submitted, but one or more attachments failed to upload.</string>
+
+    <!-- Bell badge overflow label -->
+    <string name="sdk_badge_overflow">99+</string>
+
+    <!-- Pagination -->
+    <string name="sdk_load_more">Load more</string>
+    <string name="sdk_loading_more">Loading…</string>
+
+    <!-- Attachment viewer error/retry -->
+    <string name="sdk_attachment_failed_title">Could not load attachment</string>
+    <string name="sdk_retry_load">Retry</string>
+
+    <!-- Accessibility labels -->
+    <string name="sdk_star_rating_label">Star %1$d of 5</string>
+    <string name="sdk_star_rating_selected">%1$d out of 5 stars selected</string>
+    <string name="sdk_status_label">Status: %1$s</string>
+    <string name="sdk_priority_label">Priority: %1$s</string>
+    <string name="sdk_attach_button_desc">Add attachment</string>
+    <string name="sdk_remove_attachment_desc">Remove %1$s</string>
+    <string name="sdk_unread_indicator">Unread</string>
+
+    <!-- Date section headers -->
+    <string name="sdk_date_today">Today</string>
+    <string name="sdk_date_yesterday">Yesterday</string>
+
+    <!-- Login prompt -->
+    <string name="sdk_login_required_title">Sign in required</string>
+    <string name="sdk_login_required_subtitle">Please sign in to view your notifications.</string>
+    <string name="sdk_sign_in">Sign in with Google</string>
+
+    <!-- Relative timestamps -->
+    <string name="sdk_time_just_now">just now</string>
+    <string name="sdk_time_minutes_ago">%1$dm ago</string>
+    <string name="sdk_time_hours_ago">%1$dh ago</string>
+    <string name="sdk_time_days_ago">%1$dd ago</string>
+
+    <!-- Author fallbacks -->
+    <string name="sdk_user_fallback">User</string>
+    <string name="sdk_support_fallback">Support</string>
+
+    <!-- Clipboard -->
+    <string name="sdk_copied">Copied</string>
+    <string name="sdk_copy">Copy</string>
 </resources>

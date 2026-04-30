@@ -47,6 +47,7 @@ class NotificationsActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val sdkResult = FeedbackSDK.handleGoogleSignInResult(result.data)
             if (sdkResult is SdkResult.Success) {
+                hideLoginPrompt()
                 load()
             } else {
                 val msg = (sdkResult as? SdkResult.Error)?.message ?: getString(R.string.sdk_error_not_logged_in)
@@ -62,6 +63,8 @@ class NotificationsActivity : AppCompatActivity() {
     private lateinit var tvEmptyTitle: TextView
     private lateinit var tvEmptySubtitle: TextView
     private lateinit var ivEmptyIcon: ImageView
+    private lateinit var btnEmptyRefresh: View
+    private lateinit var btnGoogleSignIn: View
     private lateinit var statusBanner: android.widget.LinearLayout
     private lateinit var tabs: TabLayout
     private lateinit var toolbar: MaterialToolbar
@@ -123,7 +126,13 @@ class NotificationsActivity : AppCompatActivity() {
         tvEmptyTitle = emptyState.findViewById(R.id.tvEmptyTitle)
         tvEmptySubtitle = emptyState.findViewById(R.id.tvEmptySubtitle)
         ivEmptyIcon = emptyState.findViewById(R.id.ivEmptyIcon)
-        emptyState.findViewById<View>(R.id.btnEmptyRefresh)?.setOnClickListener { load() }
+        btnEmptyRefresh = emptyState.findViewById(R.id.btnEmptyRefresh)
+        btnGoogleSignIn = emptyState.findViewById(R.id.btnGoogleSignIn)
+        btnEmptyRefresh.setOnClickListener { load() }
+        btnGoogleSignIn.setOnClickListener {
+            @Suppress("DEPRECATION")
+            googleSignInLauncher.launch(FeedbackSDK.getGoogleSignInIntent(this))
+        }
 
         statusBanner = findViewById(R.id.statusBanner)
         tabs = findViewById(R.id.tabs)
@@ -167,11 +176,13 @@ class NotificationsActivity : AppCompatActivity() {
         tvEmptyTitle.setText(R.string.sdk_login_required_title)
         tvEmptySubtitle.setText(R.string.sdk_login_required_subtitle)
         ivEmptyIcon.setImageResource(R.drawable.sdk_ic_circle_user)
-        val btnRefresh = emptyState.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnEmptyRefresh)
-        btnRefresh?.setText(R.string.sdk_sign_in)
-        btnRefresh?.setOnClickListener {
-            googleSignInLauncher.launch(FeedbackSDK.getGoogleSignInIntent(this))
-        }
+        btnEmptyRefresh.visibility = View.GONE
+        btnGoogleSignIn.visibility = View.VISIBLE
+    }
+
+    private fun hideLoginPrompt() {
+        btnEmptyRefresh.visibility = View.VISIBLE
+        btnGoogleSignIn.visibility = View.GONE
     }
 
     private fun refreshBanner(online: Boolean) {

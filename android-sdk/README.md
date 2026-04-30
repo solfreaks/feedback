@@ -40,14 +40,14 @@ In your app's **`build.gradle.kts`**:
 
 ```kotlin
 dependencies {
-    implementation("com.github.solfreaks:feedback:2.5.0")
+    implementation("com.github.solfreaks:feedback:2.6.0")
 }
 ```
 
 Groovy equivalent:
 
 ```groovy
-implementation 'com.github.solfreaks:feedback:2.5.0'
+implementation 'com.github.solfreaks:feedback:2.6.0'
 ```
 
 See the [JitPack badge](https://jitpack.io/#solfreaks/feedback) at the top for the latest version.

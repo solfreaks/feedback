@@ -7,7 +7,7 @@
 # See https://docs.jitpack.io/building/ for all options.
 
 jdk:
-  - openjdk17
+  - openjdk21
 
 # The SDK's Gradle project lives in the android-sdk/ subdirectory, so we
 # cd there before running the publish task. `publishToMavenLocal` writes

@@ -61,8 +61,9 @@ class FeedbackBellView @JvmOverloads constructor(
             ta.recycle()
         }
         setOnClickListener {
-            val host = findActivity()
-            if (host != null) FeedbackSDK.openNotifications(host)
+            if (!FeedbackSDK.isInitialized) return@setOnClickListener
+            val host = findActivity() ?: return@setOnClickListener
+            FeedbackSDK.openNotifications(host)
         }
     }
 
@@ -90,7 +91,14 @@ class FeedbackBellView @JvmOverloads constructor(
     /** Force a badge re-fetch. Safe to call from any thread. */
     fun refresh() {
         refreshJob?.cancel()
-        if (!FeedbackSDK.isLoggedIn) {
+        val loggedIn = try {
+            FeedbackSDK.isLoggedIn
+        } catch (_: IllegalStateException) {
+            // SDK not initialized yet (e.g. view inflated before Application.onCreate
+            // completes, or in layout preview). Render as logged-out and bail.
+            false
+        }
+        if (!loggedIn) {
             applyCount(0)
             return
         }

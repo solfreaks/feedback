@@ -116,6 +116,14 @@ object FeedbackSDK {
         }
     }
 
+    /**
+     * Whether [initialize] has been called. Useful for views that may attach
+     * before the consumer's `Application.onCreate` runs (e.g. layout preview)
+     * and want to render a neutral state instead of crashing.
+     */
+    val isInitialized: Boolean
+        get() = initialized
+
     // ── Auth ──
 
     /** Check if user is currently logged in */

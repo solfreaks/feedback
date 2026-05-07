@@ -14,7 +14,7 @@ internal object TokenStore {
     private const val KEY_AUTH_TOKEN = "auth_token"
     private const val KEY_USER = "current_user"
 
-    private lateinit var prefs: SharedPreferences
+    private var prefs: SharedPreferences? = null
     private val gson = Gson()
 
     fun init(context: Context) {
@@ -38,30 +38,30 @@ internal object TokenStore {
     }
 
     var authToken: String?
-        get() = prefs.getString(KEY_AUTH_TOKEN, null)
+        get() = prefs?.getString(KEY_AUTH_TOKEN, null)
         set(value) {
-            prefs.edit().putString(KEY_AUTH_TOKEN, value).apply()
+            prefs?.edit()?.putString(KEY_AUTH_TOKEN, value)?.apply()
         }
 
     var currentUser: User?
         get() {
-            val json = prefs.getString(KEY_USER, null) ?: return null
+            val json = prefs?.getString(KEY_USER, null) ?: return null
             return try {
                 gson.fromJson(json, User::class.java)
             } catch (_: Exception) {
                 // Corrupted entry — clear it so we don't keep retrying bad data.
-                prefs.edit().remove(KEY_USER).apply()
+                prefs?.edit()?.remove(KEY_USER)?.apply()
                 null
             }
         }
         set(value) {
-            prefs.edit().putString(KEY_USER, value?.let { gson.toJson(it) }).apply()
+            prefs?.edit()?.putString(KEY_USER, value?.let { gson.toJson(it) })?.apply()
         }
 
     val isLoggedIn: Boolean
         get() = authToken != null
 
     fun clear() {
-        prefs.edit().clear().apply()
+        prefs?.edit()?.clear()?.apply()
     }
 }
